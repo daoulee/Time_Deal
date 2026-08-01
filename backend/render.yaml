@@ -1,0 +1,28 @@
+# Hono 백엔드를 Render Web Service로 빌드·실행하는 Blueprint 설정입니다.
+# backend를 rootDir로 사용하고 `/health` 상태 확인과 서버 환경변수 입력 자리를 정의합니다.
+# Supabase 키와 허용 Origin의 실제 값은 sync하지 않고 Render Dashboard에서 설정합니다.
+services:
+  - type: web
+    name: timedeal-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: PUBLIC_BACKEND_URL
+        sync: false

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <!--
+      타임딜 Vite 앱의 HTML 진입 문서로 SEO·공유 메타데이터와 React 마운트 지점을 제공합니다.
+      main.tsx와 prerender 스크립트가 이 구조를 소비하므로 doctype·charset·JSON-LD 치환 규약을 유지합니다.
+    -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e85d18" />
+    <title>타임딜 | 이웃과 함께하는 시간 한정 공동구매</title>
+    <meta name="description" content="타임딜은 동네 이웃과 함께 목표 인원을 모아 생활 상품을 합리적인 가격에 구매하는 시간 한정 공동구매 서비스입니다." />
+    <meta property="og:title" content="타임딜 | 이웃과 함께하는 시간 한정 공동구매" />
+    <meta property="og:description" content="마감 시간과 참여 현황을 확인하고 이웃과 함께 타임딜에 참여해 보세요." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="타임딜 | 이웃과 함께하는 시간 한정 공동구매" />
+    <meta name="twitter:description" content="마감 시간과 참여 현황을 확인하고 이웃과 함께 타임딜에 참여해 보세요." />
+    <script id="structured-data-jsonld" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "타임딜",
+        "description": "동네 이웃과 함께 목표 인원을 모아 생활 상품을 합리적인 가격에 구매하는 시간 한정 공동구매 서비스",
+        "url": "__SITE_URL__"
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

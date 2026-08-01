@@ -1,0 +1,49 @@
+타임딜 전체 파일 한국어 헤더 주석 감사 결과
+실행 시각: 2026-08-01T03:01:22.080Z
+
+[확장자별 전체 인벤토리]
+.css: 1
+.example: 2
+.html: 1
+.ico: 1
+.jpeg: 6
+.js: 5
+.json: 11
+.mjs: 5
+.sql: 2
+.svg: 1
+.ts: 34
+.tsx: 74
+.txt: 1
+.yaml: 1
+<none>: 2
+
+[감사 대상] 127
+[적용 확인] 127
+[실패] 0
+[예외] 20
+
+[명시적 예외 목록]
+backend/package-lock.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+backend/package.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+backend/tsconfig.build.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+backend/tsconfig.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/components.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/package-lock.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/package.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/public/favicon.ico — 바이너리 파비콘
+frontend/public/images/detergent_1.jpeg — 바이너리 상품 이미지
+frontend/public/images/eggs_1.jpeg — 바이너리 상품 이미지
+frontend/public/images/grocery_1.jpeg — 바이너리 상품 이미지
+frontend/public/images/milk_1.jpeg — 바이너리 상품 이미지
+frontend/public/images/strawberries_1.jpeg — 바이너리 상품 이미지
+frontend/public/images/tissue_1.jpeg — 바이너리 상품 이미지
+frontend/public/placeholder.svg — 이미지 자산이며 placeholder.svg는 외부 제공 자산
+frontend/src/tailwind.config.lov.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/src/vite-env.d.ts — Vite가 관리하는 자동 생성 타입 참조 파일
+frontend/tsconfig.app.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/tsconfig.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+frontend/tsconfig.node.json — JSON 문법은 주석을 허용하지 않으며 package-lock/tsconfig 등 도구 입력 파일
+
+[실패 목록]
+없음

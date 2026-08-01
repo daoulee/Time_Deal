@@ -1,0 +1,9 @@
+# 이 프로젝트 영역에서 Git에 올리면 안 되는 로컬·비밀·빌드 파일을 제외합니다.
+# 루트 `.gitignore`와 함께 frontend 또는 backend에서 독립 저장소로 사용할 때도 보호합니다.
+# `.env.example`, 소스, SQL, Render 설정과 lockfile은 추적 가능해야 합니다.
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
