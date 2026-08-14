@@ -5,9 +5,14 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Town Flash Deal</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ko</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -47,6 +52,12 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>근처 딜을 찾고 내 위치를 지도에 표시하기 위해 위치 정보를 사용합니다.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>딜 등록 시 상품 사진을 선택하기 위해 사진 라이브러리에 접근합니다.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>딜 등록 시 상품 사진을 촬영하기 위해 카메라에 접근합니다.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -151,11 +151,11 @@ function Navbar() {
     }}>
       <ScrambleLink label="타임딜®" href="#" color={fg} weight={900} />
       <nav style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
-        {(['서비스', '기능', '기술', '팀'] as const).map((label, i) => (
+        {['서비스', '기능', '데모', '기술', '팀'].map((label, i) => (
           <ScrambleLink
             key={label}
             label={label}
-            href={`#${['meet', 'features', 'tech', 'team'][i]}`}
+            href={`#${['meet', 'features', 'demo', 'tech', 'team'][i]}`}
             color={fgMuted}
           />
         ))}
@@ -194,7 +194,7 @@ function HeroSection() {
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 999, padding: '7px 16px',
         }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fb923c', display: 'inline-block', boxShadow: '0 0 8px #fb923c' }} />
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF4500', display: 'inline-block', boxShadow: '0 0 8px #FF4500' }} />
           SW학부 해커톤 2026 &nbsp;·&nbsp; 08.20 – 08.22
         </span>
       </div>
@@ -297,7 +297,7 @@ function MeetSection() {
               { step: '01', title: '가게가 딜 등록', desc: '상품명 · 할인율 · 마감 시간을 30초 안에 입력' },
               { step: '02', title: '앱에 실시간 노출', desc: '반경 1km 주민에게 즉시 피드 & 푸시 알림 발송' },
               { step: '03', title: '1-탭 예약 & 픽업', desc: '예약 버튼 하나로 완료, 마감 전 가게에서 수령' },
-            ].map((s, i) => (
+            ].map((s) => (
               <div key={s.step} style={{
                 display: 'flex', gap: 24, alignItems: 'flex-start',
                 padding: '22px 0',
@@ -324,248 +324,69 @@ function MeetSection() {
 }
 
 
-// ─── App Mock UIs ─────────────────────────────────────────────────────────────
-function FeedMockUI() {
+// ─── Screenshot / GIF Display ────────────────────────────────────────────────
+function PhoneScreenshot({ src, alt }: { src: string; alt: string }) {
+  const [error, setError] = useState(false)
   return (
-    <div style={{ width: 300, background: '#0f1014', borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
-      {/* Status bar */}
-      <div style={{ padding: '12px 18px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>09:41</span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>●●● ◀</span>
-      </div>
-      {/* Header */}
-      <div style={{ padding: '6px 18px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 2 }}>내 위치</div>
-            <div style={{ fontSize: 16, color: '#fff', fontWeight: 700 }}>정왕동 근처</div>
+    <div style={{
+      width: 300,
+      background: '#0f1014',
+      borderRadius: 20,
+      overflow: 'hidden',
+      border: '1px solid rgba(255,255,255,0.07)',
+      boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+      minHeight: 500,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      {!error ? (
+        <img
+          src={src}
+          alt={alt}
+          onError={() => setError(true)}
+          style={{ width: '100%', display: 'block' }}
+        />
+      ) : (
+        <div style={{ padding: 28, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 14 }}>📸</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, marginBottom: 10 }}>
+            스크린샷을 여기에 추가하세요
           </div>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(251,146,60,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🔔</div>
-        </div>
-        {/* Tab */}
-        <div style={{ display: 'flex', gap: 0, marginTop: 14, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
-          {['지금 핫딜', '마감 임박', '전체'].map((tab, i) => (
-            <div key={tab} style={{ flex: 1, textAlign: 'center', padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, background: i === 0 ? '#fb923c' : 'transparent', color: i === 0 ? '#fff' : 'rgba(255,255,255,0.35)' }}>
-              {tab}
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Cards */}
-      {[
-        { store: '정왕동 식자재마트', product: '한우 1등급 채끝살 300g', sale: '21,000', orig: '35,000', pct: 40, time: '01:23', bars: 15, hot: true },
-        { store: '시화 베이커리', product: '크루아상 + 소금빵 세트 5개입', sale: '6,650', orig: '9,500', pct: 30, time: '00:48', bars: 33, hot: false },
-        { store: '능길동 과일가게', product: '유기농 딸기 500g', sale: '7,800', orig: '12,000', pct: 35, time: '02:45', bars: 37, hot: false },
-      ].map((item, i) => (
-        <div key={i} style={{ padding: '13px 18px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ width: 46, height: 46, borderRadius: 12, background: `hsl(${20 + i * 40},30%,18%)`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-            {['🥩', '🥐', '🍓'][i]}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 2 }}>{item.store}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 12, color: '#fb923c', fontWeight: 800 }}>{item.sale}원</span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', textDecoration: 'line-through' }}>{item.orig}</span>
-              {item.hot && <span style={{ fontSize: 9, background: 'rgba(251,146,60,0.2)', color: '#fb923c', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>HOT</span>}
-            </div>
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: '#fb923c' }}>-{item.pct}%</div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', marginTop: 3 }}>⏱ {item.time}</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.05)', padding: '6px 10px', borderRadius: 6 }}>
+            public{src}
           </div>
         </div>
-      ))}
-      <div style={{ padding: '12px 18px', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>· · ·</div>
-      </div>
+      )}
     </div>
   )
 }
 
-function TimerMockUI() {
-  const [sec, setSec] = useState(4 * 60 + 52)
-  useEffect(() => {
-    const t = setInterval(() => setSec(s => s > 0 ? s - 1 : 0), 1000)
-    return () => clearInterval(t)
-  }, [])
-  const h = String(Math.floor(sec / 3600)).padStart(2, '0')
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0')
-  const s = String(sec % 60).padStart(2, '0')
-  const pct = ((sec / (1 * 3600 + 23 * 60)) * 100).toFixed(0)
-
-  return (
-    <div style={{ width: 300, background: '#0f1014', borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
-      {/* Status bar */}
-      <div style={{ padding: '12px 18px 8px', display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>09:41</span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>●●● ◀</span>
+function GifDisplay({ src, alt }: { src: string; alt: string }) {
+  const [error, setError] = useState(false)
+  return error ? (
+    <div style={{
+      width: '100%', maxWidth: 680,
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px dashed rgba(255,255,255,0.12)',
+      borderRadius: 16, padding: '48px 32px',
+      textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 36, marginBottom: 16 }}>🎬</div>
+      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7, marginBottom: 12 }}>
+        실시간 동기화 화면녹화를 여기에 추가하세요
       </div>
-      {/* Product info */}
-      <div style={{ padding: '8px 18px 18px' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: '#1f1810', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🥩</div>
-          <div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>정왕동 식자재마트</div>
-            <div style={{ fontSize: 14, color: '#fff', fontWeight: 700, margin: '2px 0 4px' }}>한우 1등급 채끝살 300g</div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ fontSize: 15, fontWeight: 900, color: '#fb923c' }}>21,000원</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', textDecoration: 'line-through' }}>35,000원</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Timer */}
-        <div style={{ background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.2)', borderRadius: 14, padding: '18px 16px', textAlign: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(251,146,60,0.7)', textTransform: 'uppercase', marginBottom: 8 }}>딜 종료까지</div>
-          <div style={{ fontSize: 42, fontWeight: 900, color: '#fb923c', letterSpacing: '-0.03em', fontFamily: 'monospace', lineHeight: 1 }}>
-            {h}:{m}:{s}
-          </div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>
-            {['시간', '분', '초'].map((u, i) => (
-              <span key={u} style={{ display: 'inline-block', width: 42, textAlign: 'center' }}>{u}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>딜 진행률</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{pct}%</span>
-          </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#fb923c,#ef4444)', borderRadius: 2, transition: 'width 1s linear' }} />
-          </div>
-        </div>
-
-        {/* CTA */}
-        <button style={{ width: '100%', background: 'linear-gradient(135deg,#fb923c,#ef4444)', color: '#fff', fontWeight: 800, fontSize: 15, padding: '14px 0', border: 'none', borderRadius: 14, cursor: 'pointer' }}>
-          지금 예약하기 →
-        </button>
+      <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: 6, display: 'inline-block' }}>
+        public{src}
       </div>
     </div>
-  )
-}
-
-function StockMockUI() {
-  const items = [
-    { emoji: '🥩', name: '한우 채끝살 300g', store: '식자재마트', total: 20, left: 3 },
-    { emoji: '🍓', name: '유기농 딸기 500g', store: '능길동 과일가게', total: 30, left: 11 },
-    { emoji: '🐟', name: '신선 고등어 2마리', store: '정왕 수산시장', total: 25, left: 18 },
-    { emoji: '🥐', name: '크루아상 세트', store: '시화 베이커리', total: 15, left: 5 },
-  ]
-  const getColor = (left: number, total: number) => {
-    const r = left / total
-    if (r <= 0.2) return { bar: 'linear-gradient(90deg,#ef4444,#f97316)', label: '위험', labelColor: '#ef4444', bg: 'rgba(239,68,68,0.08)' }
-    if (r <= 0.5) return { bar: 'linear-gradient(90deg,#f97316,#fb923c)', label: '주의', labelColor: '#f97316', bg: 'rgba(249,115,22,0.08)' }
-    return { bar: 'linear-gradient(90deg,#22c55e,#4ade80)', label: '여유', labelColor: '#22c55e', bg: 'rgba(34,197,94,0.08)' }
-  }
-
-  return (
-    <div style={{ width: 300, background: '#0f1014', borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
-      <div style={{ padding: '16px 18px 8px', display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>09:41</span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>●●● ◀</span>
-      </div>
-      <div style={{ padding: '4px 18px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ fontSize: 16, color: '#fff', fontWeight: 700 }}>재고 현황</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>실시간 업데이트</div>
-      </div>
-      <div style={{ padding: '8px 0' }}>
-        {items.map((item) => {
-          const c = getColor(item.left, item.total)
-          const pct = (item.left / item.total) * 100
-          return (
-            <div key={item.name} style={{ padding: '12px 18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 16 }}>{item.emoji}</span>
-                  <div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>{item.name}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.store}</div>
-                  </div>
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: c.bg, color: c.labelColor }}>
-                  {c.label}
-                </span>
-              </div>
-              <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: c.bar, borderRadius: 3, transition: 'width 0.6s ease' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>잔여</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>{item.left} / {item.total}</span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function ReserveMockUI() {
-  const [state, setState] = useState<'idle' | 'done'>('idle')
-  useEffect(() => {
-    const t = setInterval(() => setState(s => s === 'idle' ? 'done' : 'idle'), 2800)
-    return () => clearInterval(t)
-  }, [])
-
-  return (
-    <div style={{ width: 300, background: '#0f1014', borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
-      <div style={{ padding: '16px 18px 8px', display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>09:41</span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>●●● ◀</span>
-      </div>
-      <div style={{ padding: '4px 18px 16px' }}>
-        {/* Product card */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: '14px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: '#1f1810', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🥩</div>
-            <div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>정왕동 식자재마트</div>
-              <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, margin: '2px 0' }}>한우 1등급 채끝살 300g</div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 900, color: '#fb923c' }}>21,000원</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>(-40%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Info rows */}
-        {[
-          { label: '예약자', value: '최다울', auto: true },
-          { label: '픽업 시간', value: '오늘 18:00 이전' },
-          { label: '결제', value: '현장 결제' },
-        ].map(row => (
-          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{row.label}</span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>
-              {row.value} {row.auto && <span style={{ fontSize: 10, color: 'rgba(251,146,60,0.7)', marginLeft: 4 }}>자동입력</span>}
-            </span>
-          </div>
-        ))}
-
-        <div style={{ marginTop: 20 }}>
-          {state === 'idle' ? (
-            <button
-              onClick={() => setState('done')}
-              style={{ width: '100%', background: 'linear-gradient(135deg,#fb923c,#ef4444)', color: '#fff', fontWeight: 800, fontSize: 15, padding: '14px 0', border: 'none', borderRadius: 14, cursor: 'pointer', letterSpacing: '-0.01em' }}
-            >
-              지금 예약하기 →
-            </button>
-          ) : (
-            <div style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 14, padding: '20px 0', textAlign: 'center', transition: 'all 0.4s ease' }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
-              <div style={{ fontSize: 15, color: '#4ade80', fontWeight: 800 }}>예약 완료!</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>18:00 이전 매장 방문</div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+  ) : (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setError(true)}
+      style={{ width: '100%', maxWidth: 680, borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', display: 'block' }}
+    />
   )
 }
 
@@ -575,10 +396,13 @@ interface Feature {
 }
 
 const FEATURE_UI: Record<string, ReactNode> = {
-  feed: <FeedMockUI />,
-  timer: <TimerMockUI />,
-  stock: <StockMockUI />,
-  reserve: <ReserveMockUI />,
+  feed:    <PhoneScreenshot src="/screens/feed.png"    alt="타임딜 피드" />,
+  timer:   <PhoneScreenshot src="/screens/timer.png"   alt="카운트다운 타이머" />,
+  stock:   <PhoneScreenshot src="/screens/stock.png"   alt="재고 게이지" />,
+  reserve: <PhoneScreenshot src="/screens/reserve.png" alt="원터치 예약" />,
+  map:     <PhoneScreenshot src="/screens/map.png"     alt="지도 & 마커" />,
+  upload:  <PhoneScreenshot src="/screens/upload.png"  alt="이미지 업로드" />,
+  gps:     <PhoneScreenshot src="/screens/gps.png"     alt="GPS 거리 정렬" />,
 }
 
 const FEATURES: Feature[] = [
@@ -601,6 +425,21 @@ const FEATURES: Feature[] = [
     id: 'reserve', name: '원터치 예약', index: '04', tags: ['1-TAP', 'INSTANT'],
     desc: '"지금 예약하기" 탭 한 번으로 완료. 최소한의 단계로 즉각적 구매 경험.',
     longDesc: '"지금 예약하기" 버튼 한 번으로 예약이 완료됩니다. 이름·픽업 시간·결제 방식이 자동 입력되어 마찰(friction) 없는 즉각적 구매 경험을 제공합니다. 예약 완료 후 지정 시간 내에 매장을 방문해 수령하면 되며, 별도 결제 없이 현장 결제로 간소화됩니다.',
+  },
+  {
+    id: 'map', name: '지도 & 마커', index: '05', tags: ['GOOGLE MAPS', 'LOCATION'],
+    desc: '할인율(%) 커스텀 마커로 근처 딜 위치를 지도에서 한눈에 파악합니다.',
+    longDesc: 'Google Maps 위에 할인율 % 텍스트가 담긴 커스텀 원형 마커를 렌더링합니다. 선택된 마커는 크기가 커지고 흰 테두리가 나타나며, 해당 딜 카드가 슬라이드업 애니메이션으로 표시됩니다. 다크모드 전용 지도 스타일을 JSON으로 적용해 앱 테마와 통일감을 줍니다. `dart:ui` Canvas와 `BitmapDescriptor.bytes()`를 사용해 마커를 직접 렌더링합니다.',
+  },
+  {
+    id: 'upload', name: '이미지 업로드', index: '06', tags: ['SUPABASE STORAGE', 'PHOTO'],
+    desc: '딜 등록 시 상품 사진을 촬영하거나 갤러리에서 선택해 업로드합니다.',
+    longDesc: '`image_picker`로 카메라·갤러리에서 선택한 이미지를 Supabase Storage `deal-images` 버킷에 직접 업로드합니다. 업로드 완료 후 공개 URL이 deals 테이블에 저장되어 소비자 피드 카드에 즉시 노출됩니다. 사장님은 가게 이름 · 상품명 · 할인율 · 마감 시간을 30초 안에 입력하고 딜 등록을 완료할 수 있습니다.',
+  },
+  {
+    id: 'gps', name: 'GPS 거리 정렬', index: '07', tags: ['GPS', 'HAVERSINE'],
+    desc: '기기 GPS로 실거리를 계산해 가까운 딜부터 자동 정렬합니다.',
+    longDesc: '`geolocator`로 취득한 GPS 좌표와 각 딜의 위치를 Haversine 공식으로 계산해 실제 직선 거리(km)를 표시합니다. 홈 피드는 거리 오름차순으로 자동 정렬되며, 카테고리 필터와 결합해도 거리 순서가 유지됩니다. 동네 설정 변경 시 지도 카메라도 해당 위치로 자동 이동합니다.',
   },
 ]
 
@@ -687,7 +526,7 @@ function FeatureModal({ feature, onClose }: { feature: Feature | null; onClose: 
 
           {/* Mock UI */}
           <div style={{ background: '#0a0a0a', borderRadius: 24, padding: '52px 40px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(251,146,60,0.07) 0%, transparent 68%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,69,0,0.07) 0%, transparent 68%)', pointerEvents: 'none' }} />
             <div style={{ position: 'relative' }}>
               {FEATURE_UI[rendered.id]}
             </div>
@@ -792,6 +631,110 @@ function FeaturesSection() {
   )
 }
 
+// ─── Live Demo ────────────────────────────────────────────────────────────────
+function LiveDemoSection() {
+  return (
+    <section id="demo" style={{ background: '#0a0a0a', padding: '96px 64px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+      <Reveal>
+        <span style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', display: 'block', marginBottom: 16 }}>
+          LIVE DEMO — 실시간 동기화
+        </span>
+        <h2 style={{ fontSize: 'clamp(40px, 6vw, 88px)', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 0.87, textTransform: 'uppercase', color: '#fff', margin: '0 0 72px' }}>
+          등록하면, 즉시<br />반영됩니다.
+        </h2>
+      </Reveal>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <GifDisplay src="/screens/realtime-sync.gif" alt="사장님 딜 등록 → 소비자 피드 실시간 반영" />
+      </div>
+
+      <Reveal delay={200}>
+        <div style={{ display: 'flex', marginTop: 72, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          {[
+            { step: '01', title: '사장님 딜 등록', desc: '사진 + 가격 + 마감 시간을 30초 안에 입력' },
+            { step: '02', title: 'Supabase Realtime', desc: 'WebSocket으로 즉시 모든 구독자에게 브로드캐스트' },
+            { step: '03', title: '소비자 피드 업데이트', desc: '앱 재시작 없이 새 딜이 홈 피드에 실시간 반영' },
+          ].map((s, i) => (
+            <div key={s.step} style={{ flex: 1, paddingTop: 32, paddingRight: i < 2 ? 32 : 0, paddingLeft: i > 0 ? 32 : 0, borderRight: i < 2 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.22)', marginBottom: 10, letterSpacing: '0.05em' }}>{s.step}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{s.title}</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.38)', lineHeight: 1.65 }}>{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </Reveal>
+    </section>
+  )
+}
+
+// ─── Architecture ─────────────────────────────────────────────────────────────
+function ArchSection() {
+  return (
+    <section style={{ background: '#fff', padding: '96px 64px', borderTop: '1px solid #e8e8e8' }}>
+      <Reveal>
+        <span style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#999', display: 'block', marginBottom: 16 }}>
+          시스템 아키텍처
+        </span>
+        <h2 style={{ fontSize: 'clamp(36px, 5.5vw, 80px)', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 0.87, textTransform: 'uppercase', color: '#0a0a0a', margin: '0 0 64px' }}>
+          기술 구조
+        </h2>
+      </Reveal>
+
+      <Reveal delay={100}>
+        <div style={{ background: '#0a0a0a', borderRadius: 20, padding: '48px', display: 'grid', gridTemplateColumns: '1fr 120px 1fr', gap: 24, alignItems: 'center' }}>
+          {/* Left: Client */}
+          <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: '24px 28px' }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>CLIENT</div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>📱 Flutter — 소비자</div>
+              {['Provider · geolocator', 'google_maps_flutter', 'Haversine 거리 계산'].map(t => (
+                <div key={t} style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', paddingLeft: 16, lineHeight: 1.8, fontFamily: 'monospace' }}>{t}</div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>📱 Flutter — 사장님</div>
+              {['Provider · image_picker', '딜 등록 · 대시보드', '픽업 확인 관리'].map(t => (
+                <div key={t} style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', paddingLeft: 16, lineHeight: 1.8, fontFamily: 'monospace' }}>{t}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Center: arrows */}
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+            {[
+              { label: 'REST API', color: 'rgba(255,255,255,0.3)', dir: '→' },
+              { label: 'Realtime WS', color: '#FF4500', dir: '⇄' },
+              { label: 'Storage', color: 'rgba(255,255,255,0.3)', dir: '→' },
+            ].map(a => (
+              <div key={a.label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 16, color: a.color, marginBottom: 2 }}>{a.dir}</div>
+                <div style={{ fontSize: 9, color: a.color, letterSpacing: '0.08em', fontFamily: 'monospace' }}>{a.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right: Supabase */}
+          <div style={{ border: '1px solid rgba(255,69,0,0.25)', borderRadius: 14, padding: '24px 28px', background: 'rgba(255,69,0,0.03)' }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,69,0,0.5)', marginBottom: 20 }}>SUPABASE</div>
+            {[
+              { icon: '🗄️', name: 'PostgreSQL', lines: ['deals · reservations', 'wishlists · RLS 정책'] },
+              { icon: '⚡', name: 'Realtime', lines: ['WebSocket 구독', '즉시 양방향 동기화'] },
+              { icon: '🖼️', name: 'Storage', lines: ['deal-images 버킷 (Public)', '이미지 업로드 · URL 저장'] },
+            ].map(item => (
+              <div key={item.name} style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 4 }}>{item.icon} {item.name}</div>
+                {item.lines.map(l => (
+                  <div key={l} style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', paddingLeft: 20, lineHeight: 1.8, fontFamily: 'monospace' }}>{l}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Reveal>
+    </section>
+  )
+}
+
 // ─── Tech Stack (03) ─────────────────────────────────────────────────────────
 // ↓ 프로젝트 카드 데이터 — 팀이 만든 실제 프로젝트로 업데이트해주세요
 const TEAM_PROJECTS = [
@@ -855,7 +798,7 @@ function TechSection() {
                 03 — 팀 작업물
               </span>
               <p style={{ fontSize: 16, color: '#777', maxWidth: 320, lineHeight: 1.65, margin: 0 }}>
-                Flutter · FastAPI · Supabase · Riverpod · Firebase<br />— 검증된 스택으로 완성한 결과물들.
+                Flutter · Supabase · google_maps_flutter · geolocator<br />— 검증된 스택으로 완성한 결과물들.
               </p>
             </div>
             <p style={{ fontSize: 14, color: '#bbb', maxWidth: 260, lineHeight: 1.7, margin: 0, textAlign: 'right' }}>
@@ -1089,6 +1032,8 @@ export default function App() {
       <HeroSection />
       <MeetSection />
       <FeaturesSection />
+      <LiveDemoSection />
+      <ArchSection />
       <TechSection />
       <BridgeSection />
       <TeamSection />
