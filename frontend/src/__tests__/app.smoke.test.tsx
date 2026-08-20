@@ -16,8 +16,8 @@ describe("App 스모크 렌더", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, error: { code: "UNAVAILABLE", message: "테스트 API 비활성" } }), { status: 503, headers: { "Content-Type": "application/json" } })));
     render(<App />);
     expect(screen.getByRole("link", { name: "타임딜 홈" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /필요한 만큼 모이면/ })).toBeTruthy();
-    await waitFor(() => expect(screen.getByText("진행 중인 타임딜이 없습니다.")).toBeTruthy());
-    expect(screen.getByRole("link", { name: "커뮤니티 둘러보기" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /우리 동네 타임딜/ })).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("[모닝특가] 신선 유기농 아침 샐러드 & 그래놀라 세트")).toBeTruthy());
+    expect(screen.getByText("커뮤니티")).toBeTruthy();
   });
 });

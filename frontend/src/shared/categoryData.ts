@@ -41,3 +41,11 @@ export const THEME_DESCRIPTION: Record<ThemeKey, string> = {
   discount: "할인율이 가장 높은 특가 상품이에요",
   morning: "내일 아침 7시부터 바로 픽업할 수 있는 상품이에요",
 };
+
+/** 아침 픽업에 어울리는 상품(모닝픽)을 고르는 기준입니다. 홈 화면 배너와 상품 목록 필터가 함께 씁니다. */
+export const MORNING_CATEGORIES = ["베이커리·델리", "음료·우유"];
+export const MORNING_KEYWORDS = ["달걀", "계란", "요거트", "샌드위치", "샐러드", "우유", "두유", "커피", "빵", "베이글", "그래놀라", "시리얼", "주스"];
+
+export function isMorningPick(item: { category: string; name: string }) {
+  return MORNING_CATEGORIES.includes(item.category) || MORNING_KEYWORDS.some((keyword) => item.name.includes(keyword));
+}

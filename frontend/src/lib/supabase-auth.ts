@@ -42,6 +42,19 @@ export async function startKakaoAuth(redirectTo = `${window.location.origin}/aut
   });
 }
 
+/**
+ * 네이버는 Supabase Auth 기본 제공 provider가 아니라, Supabase 프로젝트에
+ * "Custom OAuth provider"로 네이버 개발자센터 앱(Client ID/Secret)을 등록해야 동작합니다.
+ * 등록한 provider 식별자가 "custom:naver"가 아니라면 아래 문자열을 그 값으로 맞춰주세요.
+ */
+export async function startNaverAuth(redirectTo = `${window.location.origin}/auth`) {
+  if (!supabaseAuthClient) throw new Error("프론트 Supabase Auth 환경변수를 설정하세요.");
+  return supabaseAuthClient.auth.signInWithOAuth({
+    provider: "custom:naver" as Parameters<typeof supabaseAuthClient.auth.signInWithOAuth>[0]["provider"],
+    options: { redirectTo },
+  });
+}
+
 export async function getSupabaseAuthSession(): Promise<Session | null> {
   if (!supabaseAuthClient) return null;
   const { data } = await supabaseAuthClient.auth.getSession();

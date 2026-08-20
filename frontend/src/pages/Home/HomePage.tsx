@@ -26,7 +26,9 @@ import {
   isGoogleMapsConfigured,
   loadGoogleMaps,
 } from "@/lib/google-maps-loader";
-import { THEME_ROUTE } from "@/shared/categoryData";
+import { THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
+import { getCatalog } from "@/shared/services/catalog";
+import { discountPercentOf, formatPrice as formatDealPrice, type Product } from "@/shared/catalog";
 
 // ── 마켓컬리 스타일 2단 카테고리 데이터 ──
 const categoryData: Record<string, string[]> = {
@@ -264,36 +266,6 @@ const INITIAL_REOPEN_ITEMS = [
   },
 ];
 
-const MORNING_PREORDER_ITEMS = [
-  {
-    id: "m1",
-    name: "유기농 저지방 우유 900ml",
-    price: 2900,
-    originalPrice: 4200,
-    pickupTime: "07:00 ~ 09:00 픽업",
-    image:
-      "https://images.unsplash.com/photo-1607292819104-c54624be6bc2?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "m2",
-    name: "당일 산란 특란 15구",
-    price: 5900,
-    originalPrice: 8500,
-    pickupTime: "07:00 ~ 09:00 픽업",
-    image:
-      "https://images.unsplash.com/photo-1598965675045-45c5e72c7d05?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "m3",
-    name: "그릭요거트 & 그래놀라 샐러드",
-    price: 6500,
-    originalPrice: 9800,
-    pickupTime: "07:00 ~ 09:00 픽업",
-    image:
-      "https://images.unsplash.com/photo-1571230389215-b34a89739ef1?auto=format&fit=crop&w=600&q=80",
-  },
-];
-
 interface DealProduct {
   id: string;
   tag: string;
@@ -433,6 +405,17 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
+
+  // ── 모닝픽 배너에 쓸 실제 상품(아침 픽업 어울리는 상품 1개) ──
+  const [morningPick, setMorningPick] = useState<Product | null>(null);
+  useEffect(() => {
+    let active = true;
+    void getCatalog().then((result) => {
+      if (!active) return;
+      setMorningPick(result.products.find(isMorningPick) ?? null);
+    });
+    return () => { active = false; };
+  }, []);
 
   // ── 검색 상태 및 ref ──
   const [searchTerm, setSearchTerm] = useState("");
@@ -1379,7 +1362,6 @@ export default function HomePage() {
               display: "flex",
               alignItems: "center",
               gap: 32,
-              flex: 1,
               minWidth: 0,
               position: "relative",
             }}
@@ -1518,87 +1500,50 @@ export default function HomePage() {
             <div
               style={{
                 position: "relative",
-                flex: 1,
                 minWidth: 0,
                 display: "flex",
                 alignItems: "center",
               }}
             >
-              {canScrollNavLeft && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 48,
-                    background:
-                      "linear-gradient(90deg, #ffffff 0%, rgba(255,255,255,0.92) 45%, rgba(255,255,255,0) 100%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    zIndex: 10,
-                  }}
-                >
-                  <button
-                    onClick={() => handleNavScroll("left")}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      border: "1px solid #e2e8f0",
-                      background: "#ffffff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-                      color: "#555555",
-                    }}
-                    title="이전 카테고리 보기"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                </div>
-              )}
-
               <ul
                 ref={navScrollRef}
                 onScroll={handleNavScrollCheck}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 36,
+                  gap: 38,
                   listStyle: "none",
                   margin: 0,
-                  padding: canScrollNavLeft ? "0 40px" : "0 40px 0 0",
+                  marginLeft: 48,
+                  padding: 0,
                   overflowX: "auto",
                   scrollbarWidth: "none",
-                  width: "100%",
+                  maxWidth: "100%",
                   scrollBehavior: "smooth",
                 }}
               >
                 {MAIN_NAV_THEMES.map((tab) => {
                   const isSelected = selectedCategory === tab;
                   return (
-                    <li key={tab} style={{ flexShrink: 0 }}>
+                    <li key={tab} style={{ flexShrink: 0, display: "flex" }}>
                       <span
                         onClick={() => handleNavThemeClick(tab)}
                         style={{
-                          display: "inline-block",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: 36,
+                          padding: "0 4px",
+                          borderRadius: 18,
                           fontSize: 15,
                           fontWeight: isSelected ? 700 : 500,
-                          color: isSelected
-                            ? TOKENS.colors.primaryOrange
-                            : "#222222",
+                          color: isSelected ? TOKENS.colors.primaryOrange : "#333333",
+                          background: isSelected ? TOKENS.colors.primaryLight : "transparent",
                           cursor: "pointer",
                           letterSpacing: "-0.3px",
-                          lineHeight: "48px",
-                          borderBottom: isSelected
-                            ? `2.5px solid ${TOKENS.colors.primaryOrange}`
-                            : "2.5px solid transparent",
                           transition: "all 0.15s ease",
                           whiteSpace: "nowrap",
+                          boxSizing: "border-box",
                         }}
                       >
                         {tab}
@@ -1607,42 +1552,6 @@ export default function HomePage() {
                   );
                 })}
               </ul>
-
-              <div
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 48,
-                  background:
-                    "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 45%, #ffffff 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  zIndex: 10,
-                }}
-              >
-                <button
-                  onClick={() => handleNavScroll("right")}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-                    color: "#555555",
-                  }}
-                  title="다음 카테고리 보기"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
             </div>
           </div>
 
@@ -1681,7 +1590,7 @@ export default function HomePage() {
           height: 460,
           overflow: "hidden",
           marginBottom: 48,
-          borderRadius: 0, // 직각 복원
+          borderRadius: 0,
         }}
       >
         {HERO_SLIDES.map((slide, idx) => {
@@ -1954,12 +1863,11 @@ export default function HomePage() {
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
-              {MORNING_PREORDER_ITEMS.slice(0, 1).map((item) => (
+              {(() => {
+                const orderPath = morningPick ? `/products/${morningPick.id}` : "/products?theme=morning";
+                return (
                 <div
-                  key={item.id}
-                  onClick={() =>
-                    showToast("내일 아침 픽업 사전예약이 완료되었습니다!")
-                  }
+                  onClick={() => navigate(orderPath)}
                   style={{
                     position: "relative",
                     background: "#ffffff",
@@ -1982,8 +1890,8 @@ export default function HomePage() {
                     }}
                   >
                     <img
-                      src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"
-                      alt="신선한 샐러드"
+                      src={morningPick?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"}
+                      alt={morningPick?.name ?? "신선한 샐러드"}
                       style={{
                         width: "100%",
                         height: "100%",
@@ -2036,7 +1944,7 @@ export default function HomePage() {
                         marginBottom: 4,
                       }}
                     >
-                      상쾌한 아침을 여는 신선 샐러드 & 그릭요거트 패키지
+                      상쾌한 아침을 여는 신선 모닝픽 상품
                     </div>
                     <h3
                       style={{
@@ -2047,7 +1955,7 @@ export default function HomePage() {
                         lineHeight: "24px",
                       }}
                     >
-                      [모닝특가] 신선 유기농 아침 샐러드 & 그래놀라 세트
+                      {morningPick ? morningPick.name : "[모닝특가] 신선 유기농 아침 샐러드 & 그래놀라 세트"}
                     </h3>
                     <div
                       style={{
@@ -2063,7 +1971,7 @@ export default function HomePage() {
                           color: TOKENS.colors.primaryOrange,
                         }}
                       >
-                        35%
+                        {morningPick ? `${discountPercentOf(morningPick)}%` : "35%"}
                       </strong>
                       <strong
                         style={{
@@ -2072,15 +1980,12 @@ export default function HomePage() {
                           color: TOKENS.colors.textHeading,
                         }}
                       >
-                        6,500원
+                        {morningPick ? formatDealPrice(morningPick.dealPrice) : "6,500원"}
                       </strong>
                       <del
-                        style={{
-                          fontSize: 14,
-                          color: TOKENS.colors.textSubtle,
-                        }}
+                        style={{ fontSize: 14, color: TOKENS.colors.textSubtle }}
                       >
-                        9,800원
+                        {morningPick ? formatDealPrice(morningPick.originalPrice) : "9,800원"}
                       </del>
                     </div>
                     <div
@@ -2097,7 +2002,8 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })()}
             </div>
           </div>
         </section>
@@ -2383,7 +2289,9 @@ export default function HomePage() {
                       : TOKENS.colors.borderLight
                   }`,
                   background:
-                    rankingCategoryTab === cat ? TOKENS.colors.navy : "#ffffff",
+                    rankingCategoryTab === cat
+                      ? TOKENS.colors.navy
+                      : "#ffffff",
                   color:
                     rankingCategoryTab === cat
                       ? "#ffffff"
@@ -3150,34 +3058,74 @@ export default function HomePage() {
             style={{
               display: "flex",
               flexWrap: "wrap",
+              justifyContent: "flex-end",
               gap: 4,
               marginBottom: 20,
               fontSize: 13,
             }}
           >
             {[
-              "회사소개",
-              "이용약관",
-              "개인정보처리방침",
-              "이메일무단수집거부",
-              "고객센터",
-            ].map((label, idx, arr) => (
+              { label: "판매자 센터", to: "/seller" },
+              { label: "관리자 콘솔", to: "/admin" },
+              { label: "고객센터", to: "/notices" },
+            ].map((item, idx, arr) => (
+              <span key={item.label} style={{ display: "flex", alignItems: "center" }}>
+                <span
+                  onClick={() => navigate(item.to)}
+                  style={{
+                    cursor: "pointer",
+                    color: TOKENS.colors.textBody,
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.label}
+                </span>
+                {idx < arr.length - 1 && (
+                  <span
+                    style={{
+                      width: 1,
+                      height: 11,
+                      background: TOKENS.colors.borderDivider,
+                      margin: "0 10px",
+                    }}
+                  />
+                )}
+              </span>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4,
+              marginBottom: 20,
+              fontSize: 13,
+            }}
+          >
+            {[
+              { label: "회사소개", to: "/about" },
+              { label: "이용약관", to: "/terms" },
+              { label: "개인정보처리방침", to: "/privacy" },
+              { label: "이메일무단수집거부", to: "/email-policy" },
+              { label: "고객센터", to: "/notices" },
+            ].map((item, idx, arr) => (
               <span
-                key={label}
+                key={item.label}
                 style={{ display: "flex", alignItems: "center" }}
               >
                 <span
-                  onClick={() => navigate("/community")}
+                  onClick={() => navigate(item.to)}
                   style={{
                     cursor: "pointer",
                     color:
-                      label === "개인정보처리방침"
+                      item.label === "개인정보처리방침"
                         ? TOKENS.colors.textHeading
                         : TOKENS.colors.textMuted,
-                    fontWeight: label === "개인정보처리방침" ? 600 : 400,
+                    fontWeight: item.label === "개인정보처리방침" ? 600 : 400,
                   }}
                 >
-                  {label}
+                  {item.label}
                 </span>
                 {idx < arr.length - 1 && (
                   <span

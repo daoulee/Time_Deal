@@ -166,7 +166,7 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
 
       <nav style={{ width: "100%", background: "#ffffff", position: "sticky", top: 0, zIndex: 50, boxShadow: "0 2px 6px rgba(0,0,0,0.03)", padding: "16px 0" }}>
         <div style={{ maxWidth: 1050, margin: "0 auto", height: 48, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", boxSizing: "border-box", position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 32, flex: 1, minWidth: 0, position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 32, minWidth: 0, position: "relative" }}>
             <div onMouseEnter={() => setIsCategoryMenuOpen(true)} onMouseLeave={() => setIsCategoryMenuOpen(false)} style={{ position: "relative", flexShrink: 0, zIndex: 110 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 700, fontSize: 15, color: isCategoryMenuOpen ? TOKENS.primaryOrange : "#1a1a1a", paddingRight: 18, borderRight: `1px solid ${TOKENS.borderLight}`, height: 48, whiteSpace: "nowrap" }}>
                 <Menu size={19} strokeWidth={2.4} />
@@ -191,12 +191,12 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
                 </div>
               )}
             </div>
-            <ul ref={navScrollRef} style={{ display: "flex", alignItems: "center", gap: 32, listStyle: "none", margin: 0, padding: 0, overflowX: "auto", scrollbarWidth: "none", width: "100%" }}>
+            <ul ref={navScrollRef} style={{ display: "flex", alignItems: "center", gap: 38, listStyle: "none", margin: 0, marginLeft: 48, padding: 0, overflowX: "auto", scrollbarWidth: "none", maxWidth: "100%" }}>
               {MAIN_NAV_THEMES.map((tab) => {
                 const isSelected = activeTheme && THEME_ROUTE[tab] === activeTheme;
                 return (
-                  <li key={tab} style={{ flexShrink: 0 }}>
-                    <span onClick={() => handleNavThemeClick(tab)} style={{ display: "inline-block", fontSize: 15, fontWeight: isSelected ? 700 : 500, color: isSelected ? TOKENS.primaryOrange : "#222222", cursor: "pointer", letterSpacing: "-0.3px", lineHeight: "48px", borderBottom: isSelected ? `2.5px solid ${TOKENS.primaryOrange}` : "2.5px solid transparent", whiteSpace: "nowrap" }}>{tab}</span>
+                  <li key={tab} style={{ flexShrink: 0, display: "flex" }}>
+                    <span onClick={() => handleNavThemeClick(tab)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 36, padding: "0 4px", borderRadius: 18, fontSize: 15, fontWeight: isSelected ? 700 : 500, color: isSelected ? TOKENS.primaryOrange : "#333333", background: isSelected ? TOKENS.primaryLight : "transparent", cursor: "pointer", letterSpacing: "-0.3px", whiteSpace: "nowrap", boxSizing: "border-box" }}>{tab}</span>
                   </li>
                 );
               })}

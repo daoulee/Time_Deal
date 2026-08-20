@@ -9,7 +9,7 @@ import { SiteFooter } from "@/shared/layout/SiteFooter";
 import { ProductCard } from "@/shared/components/ProductCard";
 import { discountPercentOf, type Product } from "@/shared/catalog";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
-import { CATEGORY_GROUPS, THEME_DESCRIPTION, THEME_LABEL, type ThemeKey } from "@/shared/categoryData";
+import { CATEGORY_GROUPS, THEME_DESCRIPTION, THEME_LABEL, isMorningPick, type ThemeKey } from "@/shared/categoryData";
 
 type SortMode = "recommend" | "new" | "participation" | "discount" | "price-high" | "price-low";
 type PriceBucket = "all" | "under10" | "10to20" | "over20";
@@ -36,13 +36,6 @@ function endingSoonKey(product: Product) {
 
 function isThemeKey(value: string | null): value is ThemeKey {
   return !!value && value in THEME_LABEL;
-}
-
-const MORNING_CATEGORIES = ["베이커리·델리", "음료·우유"];
-const MORNING_KEYWORDS = ["달걀", "계란", "요거트", "샌드위치", "샐러드", "우유", "두유", "커피", "빵", "베이글", "그래놀라", "시리얼", "주스"];
-
-function isMorningPick(item: Product) {
-  return MORNING_CATEGORIES.includes(item.category) || MORNING_KEYWORDS.some((keyword) => item.name.includes(keyword));
 }
 
 export default function ProductsPage() {

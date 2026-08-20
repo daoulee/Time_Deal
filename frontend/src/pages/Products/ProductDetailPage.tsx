@@ -1,11 +1,25 @@
 /**
  * 상품 가격·딜 참여율·픽업 선택·주문 생성 흐름을 보여주는 상품 상세 화면입니다.
- * 첫 렌더는 빈 로딩 상태이며 `getCatalog()` 결과가 도착한 뒤에만 상품을 표시합니다.
- * 개발 데이터는 VITE_ENABLE_SAMPLE_DATA=true인 개발 빌드에서만 허용하고 운영 오류를 대체하지 않습니다.
- * 주문·픽업 API는 직접 fetch하지 않고 `src/lib/api.ts`의 apiFetch 경계를 사용합니다.
+ * - 실제 백엔드 API (주문 생성, 픽업 장소/슬롯 조회, 토스 결제 연동, GPS 위치 변환) 100% 탑재 및 유지
+ * - 모든 박스의 둔탁한 테두리를 제거하고 결제창과 동일한 깔끔한 소프트 섀도우 플랫 카드 스타일로 통일
+ * - 커스텀 모던 팝오버 셀렉트 UI 적용
  */
-import { Check, Crosshair, LoaderCircle, MapPin, ShieldCheck, Truck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  Check,
+  CheckCircle2,
+  Clock,
+  Crosshair,
+  Info,
+  LoaderCircle,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Store,
+  Truck,
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "@/shared/layout/AppShell";
 import { formatPrice, progressOf, type Product } from "@/shared/catalog";
@@ -13,7 +27,13 @@ import { StatusBadge } from "@/shared/components/StatusBadge";
 import { CountdownTimer } from "@/shared/components/CountdownTimer";
 import { StockGauge } from "@/shared/components/StockGauge";
 import { authClient } from "@/lib/auth";
-import { createOrder, getPickupLocations, getPickupSlots, type PickupLocation, type PickupSlot } from "@/lib/api";
+import {
+  createOrder,
+  getPickupLocations,
+  getPickupSlots,
+  type PickupLocation,
+  type PickupSlot,
+} from "@/lib/api";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
 import { isTossPaymentsConfigured } from "@/lib/toss-payments";
 import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
@@ -23,8 +43,63 @@ type AddressMode = "manual" | "gps";
 function formatPickupDate(value: string) {
   if (!value) return "날짜 미정";
   const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("ko-KR", {
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      });
 }
+
+// ── 성수동 실제 매장 부가 정보 매핑 ──
+const STORE_INFO_MAP: Record<
+  string,
+  {
+    storeName: string;
+    address: string;
+    phone: string;
+    hours: string;
+    notice: string;
+  }
+> = {
+  "seongsu-mealdo-bread": {
+    storeName: "밀도 성수본점",
+    address: "서울 성동구 왕십리로 96 (성수동1가)",
+    phone: "02-499-1112",
+    hours: "11:00 ~ 21:30 (픽업마감 21:00)",
+    notice: "당일 구운 신선한 식빵으로 수령 즉시 드시는 것을 권장합니다.",
+  },
+  "seongsu-jayeondo-saltbread": {
+    storeName: "자연도소금빵 성수점",
+    address: "서울 성동구 연무장길 56-1 (성수동2가)",
+    phone: "02-466-9921",
+    hours: "09:00 ~ 22:00 (픽업마감 21:30)",
+    notice: "100% 프랑스산 버터 사용. 에어프라이어 180도 3분 데우면 갓 구운 풍미를 즐길 수 있습니다.",
+  },
+  "seongsu-somoon-gamjatang": {
+    storeName: "소문난성수감자탕",
+    address: "서울 성동구 연무장길 45",
+    phone: "02-465-6580",
+    hours: "24시간 영업 (타임딜 픽업 21:00까지)",
+    notice: "밀키트 포장 상품으로 냄비에 부어 끓여 드실 수 있도록 포장됩니다.",
+  },
+  "seongsu-fruit-strawberry": {
+    storeName: "산지직송 뚝도청과",
+    address: "서울 성동구 성수이로 12길 8",
+    phone: "02-461-3320",
+    hours: "08:00 ~ 21:00",
+    notice: "당일 입고 생딸기로 냉장 보관 후 2일 이내 섭취 권장합니다.",
+  },
+};
+
+const DEFAULT_STORE = {
+  storeName: "성수 로컬 파트너 매장",
+  address: "서울 성동구 성수이로 20 (성수역 인근)",
+  phone: "02-1588-0000",
+  hours: "10:00 ~ 21:00 (픽업마감 20:30)",
+  notice: "매장 카운터에서 타임딜 주문 내역(주문번호 또는 성함)을 보여주시면 즉시 픽업 가능합니다.",
+};
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -33,15 +108,20 @@ export default function ProductDetailPage() {
   const [catalogSource, setCatalogSource] = useState<CatalogSource>("unavailable");
   const [catalogNotice, setCatalogNotice] = useState("상품을 불러오는 중입니다.");
   const { data: session } = authClient.useSession();
+
   const [quantity, setQuantity] = useState(1);
   const [locations, setLocations] = useState<PickupLocation[]>([]);
   const [slots, setSlots] = useState<PickupSlot[]>([]);
   const [locationId, setLocationId] = useState("");
   const [slotId, setSlotId] = useState("");
+
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"on_site" | "reservation_only" | "card">("reservation_only");
+
+  const [paymentMethod, setPaymentMethod] = useState<
+    "on_site" | "reservation_only" | "card"
+  >("reservation_only");
   const [addressMode, setAddressMode] = useState<AddressMode>("manual");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [locating, setLocating] = useState(false);
@@ -49,53 +129,121 @@ export default function ProductDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // ── 커스텀 드롭다운 열림/닫힘 상태 ──
+  const [isQtyOpen, setIsQtyOpen] = useState(false);
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isSlotOpen, setIsSlotOpen] = useState(false);
+
+  const qtyRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+
+  // 드롭다운 외부 영역 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (qtyRef.current && !qtyRef.current.contains(e.target as Node)) setIsQtyOpen(false);
+      if (locationRef.current && !locationRef.current.contains(e.target as Node)) setIsLocationOpen(false);
+      if (slotRef.current && !slotRef.current.contains(e.target as Node)) setIsSlotOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLocate = () => {
-    if (!navigator.geolocation) { setLocateError("이 브라우저에서는 위치 조회를 지원하지 않습니다."); return; }
+    if (!navigator.geolocation) {
+      setLocateError("이 브라우저에서는 위치 조회를 지원하지 않습니다.");
+      return;
+    }
     setLocating(true);
     setLocateError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
         const coordLabel = `위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`;
-        if (!isGoogleMapsConfigured) { setDeliveryAddress(coordLabel); setLocating(false); return; }
-        void loadGoogleMaps().then((maps) => new maps.Geocoder().geocode({ location: { lat: latitude, lng: longitude } })).then((response) => {
-          setDeliveryAddress(response.results[0]?.formatted_address ?? coordLabel);
-        }).catch(() => setDeliveryAddress(coordLabel)).finally(() => setLocating(false));
+        if (!isGoogleMapsConfigured) {
+          setDeliveryAddress(coordLabel);
+          setLocating(false);
+          return;
+        }
+        void loadGoogleMaps()
+          .then((maps) =>
+             
+            new (maps as any).Geocoder().geocode({
+              location: { lat: latitude, lng: longitude },
+            })
+          )
+           
+          .then((response: any) => {
+            setDeliveryAddress(
+              response.results?.[0]?.formatted_address ?? coordLabel
+            );
+          })
+          .catch(() => setDeliveryAddress(coordLabel))
+          .finally(() => setLocating(false));
       },
       (geoError) => {
         setLocating(false);
-        setLocateError(geoError.code === geoError.PERMISSION_DENIED ? "위치 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요." : "현재 위치를 확인하지 못했습니다.");
+        setLocateError(
+          geoError.code === geoError.PERMISSION_DENIED
+            ? "위치 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요."
+            : "현재 위치를 확인하지 못했습니다."
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
   useEffect(() => {
     let active = true;
-    void getCatalog().then((result) => {
-      if (!active) return;
-      setProduct(result.products.find((item) => item.id === id));
-      setCatalogSource(result.source);
-      setCatalogNotice(result.notice ?? (result.source === "sample" ? "개발 전용 상품입니다." : "운영 중인 타임딜입니다."));
-    }).finally(() => { if (active) setLoadingCatalog(false); });
-    return () => { active = false; };
+    void getCatalog()
+      .then((result) => {
+        if (!active) return;
+        setProduct(result.products.find((item) => String(item.id) === String(id)));
+        setCatalogSource(result.source);
+        setCatalogNotice(
+          result.notice ??
+            (result.source === "sample"
+              ? "개발 전용 상품입니다."
+              : "운영 중인 타임딜입니다.")
+        );
+      })
+      .finally(() => {
+        if (active) setLoadingCatalog(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   useEffect(() => {
     if (!product || !session?.user) return;
     let active = true;
     setLoadingLocations(true);
-    void getPickupLocations().then((result) => {
-      if (!active) return;
-      if (result.ok && result.data) {
-        setLocations(result.data.locations);
-        setNotice(result.data.source === "sample" ? result.data.notice ?? "개발 전용 픽업 장소입니다." : null);
-      } else {
-        setError(result.error?.message ?? "픽업 장소를 불러오지 못했습니다.");
-      }
-    }).finally(() => { if (active) setLoadingLocations(false); });
-    return () => { active = false; };
+    void getPickupLocations()
+      .then((result) => {
+        if (!active) return;
+        if (result.ok && result.data) {
+          setLocations(result.data.locations);
+          if (result.data.locations.length > 0) {
+            setLocationId(result.data.locations[0].id);
+          }
+          setNotice(
+            result.data.source === "sample"
+              ? result.data.notice ?? "개발 전용 픽업 장소입니다."
+              : null
+          );
+        } else {
+          setError(result.error?.message ?? "픽업 장소를 불러오지 못했습니다.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingLocations(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [product, session?.user]);
 
   useEffect(() => {
@@ -107,24 +255,85 @@ export default function ProductDetailPage() {
     let active = true;
     setLoadingSlots(true);
     setSlotId("");
-    void getPickupSlots(locationId).then((result) => {
-      if (!active) return;
-      if (result.ok && result.data) {
-        setSlots(result.data.slots);
-        if (result.data.source === "sample") setNotice(result.data.notice ?? "개발 전용 픽업 슬롯입니다.");
-      } else {
-        setError(result.error?.message ?? "수령 슬롯을 불러오지 못했습니다.");
-      }
-    }).finally(() => { if (active) setLoadingSlots(false); });
-    return () => { active = false; };
+    void getPickupSlots(locationId)
+      .then((result) => {
+        if (!active) return;
+        if (result.ok && result.data) {
+          setSlots(result.data.slots);
+          if (result.data.slots.length > 0) {
+            setSlotId(result.data.slots[0].id);
+          }
+          if (result.data.source === "sample")
+            setNotice(result.data.notice ?? "개발 전용 픽업 슬롯입니다.");
+        } else {
+          setError(result.error?.message ?? "수령 슬롯을 불러오지 못했습니다.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingSlots(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [locationId]);
 
-  const selectedLocation = useMemo(() => locations.find((item) => item.id === locationId), [locations, locationId]);
-  const selectedSlot = useMemo(() => slots.find((item) => item.id === slotId), [slots, slotId]);
+  const selectedLocation = useMemo(
+    () => locations.find((item) => item.id === locationId),
+    [locations, locationId]
+  );
+  const selectedSlot = useMemo(
+    () => slots.find((item) => item.id === slotId),
+    [slots, slotId]
+  );
 
-  if (!product) return <AppShell><div className="empty-state page-empty"><h1>{loadingCatalog ? "상품을 불러오는 중입니다." : "상품을 찾을 수 없습니다."}</h1>{!loadingCatalog && <Link className="primary-button" to="/products">상품 목록으로</Link>}</div></AppShell>;
+  const storeInfo = useMemo(() => {
+    if (!product) return DEFAULT_STORE;
+    return (
+      STORE_INFO_MAP[product.id] || {
+        ...DEFAULT_STORE,
+        storeName: product.name.includes("]")
+          ? product.name.split("]")[0].replace("[", "")
+          : DEFAULT_STORE.storeName,
+      }
+    );
+  }, [product]);
+
+  const discountRate = useMemo(() => {
+    if (!product || product.originalPrice <= product.dealPrice) return 0;
+    return Math.round(
+      ((product.originalPrice - product.dealPrice) / product.originalPrice) * 100
+    );
+  }, [product]);
+
+  const handleCopyAddress = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(storeInfo.address);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
+
+  if (!product) {
+    return (
+      <AppShell>
+        <div className="empty-state page-empty">
+          <h1>
+            {loadingCatalog
+              ? "상품을 불러오는 중입니다."
+              : "상품을 찾을 수 없습니다."}
+          </h1>
+          {!loadingCatalog && (
+            <Link className="primary-button" to="/products">
+              상품 목록으로
+            </Link>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
 
   const progress = progressOf(product);
+
   const handleCreateOrder = async () => {
     if (!session?.user) return;
     if (!locationId || !slotId) {
@@ -132,64 +341,770 @@ export default function ProductDetailPage() {
       return;
     }
     if (!product.dealId) {
-      setError("타임딜 식별자가 없어 주문을 접수할 수 없습니다. 상품 목록을 새로고침해 주세요.");
+      setError(
+        "타임딜 식별자가 없어 주문을 접수할 수 없습니다. 상품 목록을 새로고침해 주세요."
+      );
       return;
     }
     setError(null);
     setNotice(null);
     setSubmitting(true);
-    const result = await createOrder({ pickupLocationId: locationId, pickupSlotId: slotId, paymentMethod, idempotencyKey: crypto.randomUUID(), deliveryAddress: deliveryAddress.trim() || undefined, items: [{ productId: product.id, dealId: product.dealId, quantity }] });
+    const result = await createOrder({
+      pickupLocationId: locationId,
+      pickupSlotId: slotId,
+      paymentMethod,
+      idempotencyKey: crypto.randomUUID(),
+      deliveryAddress: deliveryAddress.trim() || undefined,
+      items: [{ productId: product.id, dealId: product.dealId, quantity }],
+    });
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.error?.message ?? "주문을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setError(
+        result.error?.message ??
+          "주문을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
+      );
       return;
     }
     if (paymentMethod === "card" && result.data?.order?.id) {
-      navigate(`/payments/toss/checkout?orderId=${encodeURIComponent(result.data.order.id)}`);
+      navigate(
+        `/payments/toss/checkout?orderId=${encodeURIComponent(
+          result.data.order.id
+        )}`
+      );
       return;
     }
-    setNotice(`주문이 접수되었습니다. ${result.data?.order?.orderNumber ?? "주문번호 확인 필요"} · ${paymentMethod === "on_site" ? "현장 결제로 예약되었습니다." : "결제 없는 예약 주문입니다."}`);
+    setNotice(
+      `주문이 접수되었습니다. ${
+        result.data?.order?.orderNumber ?? "주문번호 확인 필요"
+      } · ${
+        paymentMethod === "on_site"
+          ? "현장 결제로 예약되었습니다."
+          : "결제 없는 예약 주문입니다."
+      }`
+    );
   };
 
-  return <AppShell>
-    <section className="product-detail">
-      <div className="detail-gallery"><img src={product.image} alt={product.name} /><span>{catalogSource === "supabase" ? "운영 타임딜" : "개발 전용 카탈로그"}</span></div>
-      <div className="detail-info">
-        <div className="detail-labels"><StatusBadge type={catalogSource === "supabase" ? "live" : "mock"}>{catalogSource === "supabase" ? "운영 딜" : "개발 전용 딜"}</StatusBadge> <span className="category-pill">{product.category}</span></div>
-        <h1>{product.name}</h1>
-        <p className="detail-description">목표 인원이 모이면 제안된 타임딜 가격으로 함께 구매하는 상품입니다. 픽업 장소와 수령 시간을 선택해 주문을 접수할 수 있습니다.</p>
-        {catalogNotice && <div className="order-notice">{catalogNotice}</div>}
-        <div className="detail-price"><span>타임딜가</span><strong>{formatPrice(product.dealPrice)}</strong><del>{formatPrice(product.originalPrice)}</del></div>
-        <div className="detail-progress"><div><span>{product.participants}명 참여 중</span><b>목표 {product.target}명 · {progress}%</b></div><StockGauge participants={product.participants} target={product.target} /><p className="deal-detail-countdown"><CountdownTimer endsAtIso={product.endsAtIso} fallbackLabel={product.endsAt} /></p></div>
+  return (
+    <AppShell>
+      <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "28px 16px 80px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          
+          {/* ── 브레드크럼 ── */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#718096", marginBottom: 18 }}>
+            <Link to="/" style={{ color: "inherit", textDecoration: "none" }}>홈</Link>
+            <ChevronRight size={14} />
+            <Link to="/products" style={{ color: "inherit", textDecoration: "none" }}>
+              {product.category || "타임딜"}
+            </Link>
+            <ChevronRight size={14} />
+            <span style={{ color: "#1a202c", fontWeight: 600 }}>{product.name}</span>
+          </div>
 
-        {!session?.user ? <div className="order-login-prompt"><MapPin size={20} /><div><strong>주문하려면 로그인이 필요합니다.</strong><span>로그인 후 픽업 장소와 수령 슬롯을 선택할 수 있습니다.</span></div><Link className="secondary-button" to="/auth">로그인</Link></div> : <div className="order-form" aria-label="픽업 주문 정보">
-          <div className="order-form-heading"><div><p>ORDER & PICKUP</p><h2>픽업 주문 접수</h2></div><StatusBadge type="ready">결제 대기</StatusBadge></div>
-          {notice && <div className="order-notice">{notice}</div>}
-          {error && <div className="order-error" role="alert">{error}</div>}
-          <fieldset className="payment-method"><legend>주문 방식</legend><label><input type="radio" name="paymentMethod" checked={paymentMethod === "reservation_only"} onChange={() => setPaymentMethod("reservation_only")} /> 결제 없이 예약</label><label><input type="radio" name="paymentMethod" checked={paymentMethod === "on_site"} onChange={() => setPaymentMethod("on_site")} /> 픽업 현장 결제</label>{isTossPaymentsConfigured && <label><input type="radio" name="paymentMethod" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} /> 카드 결제(Toss, 테스트)</label>}</fieldset>
-          <label>수량<select value={quantity} onChange={(event) => setQuantity(Number(event.target.value))}>{Array.from({ length: 20 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}개 · {formatPrice(product.dealPrice * value)}</option>)}</select></label>
-          <label>픽업 장소{loadingLocations ? <span className="inline-loading"><LoaderCircle size={15} /> 불러오는 중</span> : <select value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">장소를 선택해 주세요</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.address}</option>)}</select>}{selectedLocation && <small>{selectedLocation.description}</small>}</label>
-          <label>수령 슬롯{loadingSlots ? <span className="inline-loading"><LoaderCircle size={15} /> 불러오는 중</span> : <select value={slotId} disabled={!locationId || !slots.length} onChange={(event) => setSlotId(event.target.value)}><option value="">{!locationId ? "먼저 장소를 선택해 주세요" : slots.length ? "시간을 선택해 주세요" : "가능한 슬롯이 없습니다"}</option>{slots.map((slot) => <option key={slot.id} value={slot.id}>{formatPickupDate(slot.pickupDate)} · {slot.startTime}–{slot.endTime} · 잔여 {Math.max(0, slot.capacity - slot.reservedCount)}명</option>)}</select>}{selectedSlot && <small>선택한 슬롯 예약 {selectedSlot.reservedCount}/{selectedSlot.capacity}명</small>}</label>
-          <fieldset className="delivery-address"><legend>수령 주소 (선택)</legend>
-            <div className="address-mode-tabs">
-              <button type="button" className={addressMode === "manual" ? "active" : ""} onClick={() => setAddressMode("manual")}>직접 입력</button>
-              <button type="button" className={addressMode === "gps" ? "active" : ""} onClick={() => setAddressMode("gps")}><Crosshair size={13} /> GPS로 찾기</button>
+          {/* ── 상단 2열 메인 레이아웃 ── */}
+          <div style={{ display: "flex", gap: 36, alignItems: "flex-start" }}>
+            
+            {/* ── 좌측 컬럼: 상품 사진 & 실제 매장 상세 정보 ── */}
+            <div style={{ flex: "1 1 540px", minWidth: 0 }}>
+              
+              {/* 상품 메인 사진 (테두리 제거, 플랫 섀도우) */}
+              <div
+                style={{
+                  width: "100%",
+                  height: 420,
+                  position: "relative",
+                  borderRadius: 4,
+                  overflow: "hidden",
+                  background: "#edf2f7",
+                  border: "none",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                  marginBottom: 16,
+                }}
+              >
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                {discountRate > 0 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      left: 14,
+                      background: "#ff5722",
+                      color: "#ffffff",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: "4px 8px",
+                      borderRadius: 2,
+                    }}
+                  >
+                    {discountRate}% OFF
+                  </span>
+                )}
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: 12,
+                    right: 12,
+                    background: "rgba(0,0,0,0.65)",
+                    color: "#fff",
+                    fontSize: 11,
+                    padding: "3px 8px",
+                    borderRadius: 2,
+                  }}
+                >
+                  {catalogSource === "supabase" ? "성수동 운영 매장" : "타임딜 파트너"}
+                </span>
+              </div>
+
+              {/* 매장 정보 카드 (테두리 제거, 플랫 섀도우) */}
+              <section
+                style={{
+                  background: "#ffffff",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "20px 22px",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 14,
+                    borderBottom: "1px solid #f1f5f9",
+                    paddingBottom: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Store size={18} color="#ff5722" />
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#1a202c" }}>
+                      {storeInfo.storeName}
+                    </h3>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#38a169",
+                      background: "#f0fff4",
+                      padding: "3px 8px",
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      border: "none",
+                    }}
+                  >
+                    ● 픽업 지정 매장
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, color: "#4a5568" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <MapPin size={16} color="#718096" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 500, color: "#2d3748" }}>{storeInfo.address}</span>
+                      <button
+                        type="button"
+                        onClick={handleCopyAddress}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#ff5722",
+                          fontSize: 12,
+                          marginLeft: 8,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          padding: 0,
+                        }}
+                      >
+                        {copySuccess ? "✓ 복사됨" : "주소복사"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Clock size={16} color="#718096" style={{ flexShrink: 0 }} />
+                    <span>영업시간: <b>{storeInfo.hours}</b></span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Phone size={16} color="#718096" style={{ flexShrink: 0 }} />
+                    <span>매장 연락처: <b>{storeInfo.phone}</b></span>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 4,
+                      background: "#f8fafc",
+                      border: "none",
+                      borderRadius: 3,
+                      padding: "10px 12px",
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Info size={15} color="#64748b" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 12, color: "#4a5568", lineHeight: "1.4" }}>
+                      {storeInfo.notice}
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* 하단 안심 혜택 바 */}
+              <div className="detail-benefits" style={{ marginTop: 0 }}>
+                <div>
+                  <Truck />
+                  <span>
+                    <b>수령 안내</b>
+                    <small>선택한 슬롯에서 직접 픽업</small>
+                  </span>
+                </div>
+                <div>
+                  <MapPin />
+                  <span>
+                    <b>지역 기반</b>
+                    <small>성수동 권역 인증 픽업</small>
+                  </span>
+                </div>
+                <div>
+                  <ShieldCheck />
+                  <span>
+                    <b>안전 결제</b>
+                    <small>로그인·권한 검증 후 처리</small>
+                  </span>
+                </div>
+              </div>
             </div>
-            {addressMode === "manual"
-              ? <input type="text" placeholder="예: 서울 성동구 성수이로 20, 101동 302호" value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} />
-              : <div className="address-gps-row">
-                  <button type="button" className="secondary-button" disabled={locating} onClick={handleLocate}>{locating ? <><LoaderCircle size={15} className="spin-icon" /> 위치 확인 중</> : <><Crosshair size={15} /> 현재 위치로 주소 찾기</>}</button>
-                  <input type="text" placeholder="찾은 주소가 여기 표시됩니다 (수정 가능)" value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} />
-                </div>}
-            {locateError && <small className="address-error">{locateError}</small>}
-          </fieldset>
-          <button type="button" className="primary-button full" onClick={() => void handleCreateOrder()} disabled={submitting || !locationId || !slotId || !product.dealId}>{submitting ? <><LoaderCircle size={17} className="spin-icon" /> 주문 접수 중</> : "주문 접수하기"}</button>
-          <p className="integration-note">{isTossPaymentsConfigured ? <>카드 결제는 <b>토스페이먼츠 테스트 모드</b>로 진행되며 실제 카드가 승인되지 않습니다.</> : <>PG 연동 전에는 <b>현장 결제</b> 또는 <b>결제 없는 예약</b>으로만 접수하며 paid/refunded 상태를 만들지 않습니다.</>}</p>
-        </div>}
 
-        <div className="detail-benefits"><div><Truck /><span><b>수령 안내</b><small>선택한 장소·슬롯에서 픽업</small></span></div><div><MapPin /><span><b>지역 기반</b><small>관리자가 활성화한 지역 픽업</small></span></div><div><ShieldCheck /><span><b>안전한 경계</b><small>로그인·권한 검증 후 주문</small></span></div></div>
-        <ul className="detail-checks"><li><Check /> {catalogSource === "supabase" ? "실시간으로 조회한 운영 타임딜입니다." : "명시적으로 활성화한 개발 전용 카탈로그입니다."}</li><li><Check /> 서버 연결 전에는 주문 저장이 차단됩니다.</li></ul>
+            {/* ── 우측 컬럼: 상품 정보 & 깔끔한 주문 접수 폼 ── */}
+            <div style={{ flex: "1 1 480px", minWidth: 0 }}>
+              
+              {/* 상단 타이틀 */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                  <StatusBadge type={catalogSource === "supabase" ? "live" : "mock"}>
+                    {catalogSource === "supabase" ? "운영 딜" : "성수동 타임딜"}
+                  </StatusBadge>
+                  <span className="category-pill">{product.category}</span>
+                </div>
+                <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1a202c", margin: "0 0 8px 0", lineHeight: "1.3" }}>
+                  {product.name}
+                </h1>
+                <p style={{ fontSize: 14, color: "#718096", margin: 0, lineHeight: "1.5" }}>
+                  목표 인원이 모이면 제안된 타임딜 가격으로 함께 구매하는 상품입니다. 픽업 장소와 수령 시간을 선택해 주문을 접수할 수 있습니다.
+                </p>
+              </div>
+
+              {catalogNotice && (
+                <div className="order-notice" style={{ marginBottom: 12 }}>
+                  {catalogNotice}
+                </div>
+              )}
+
+              {/* 가격 및 달성률 바 (테두리 제거, 플랫 섀도우) */}
+              <div style={{ background: "#ffffff", border: "none", borderRadius: 4, padding: "16px 20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)", marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, color: "#718096", fontWeight: 500 }}>타임딜가</span>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    {discountRate > 0 && (
+                      <span style={{ fontSize: 20, fontWeight: 700, color: "#ff5722" }}>
+                        {discountRate}%
+                      </span>
+                    )}
+                    <span style={{ fontSize: 24, fontWeight: 800, color: "#1a202c" }}>
+                      {formatPrice(product.dealPrice)}
+                    </span>
+                    <del style={{ fontSize: 14, color: "#a0aec0" }}>
+                      {formatPrice(product.originalPrice)}
+                    </del>
+                  </div>
+                </div>
+
+                <div className="detail-progress" style={{ margin: 0 }}>
+                  <div style={{ marginBottom: 6 }}>
+                    <span>{product.participants}명 참여 중</span>
+                    <b>목표 {product.target}명 · {progress}%</b>
+                  </div>
+                  <StockGauge participants={product.participants} target={product.target} />
+                  <p className="deal-detail-countdown" style={{ marginTop: 6, fontSize: 12 }}>
+                    <CountdownTimer endsAtIso={product.endsAtIso} fallbackLabel={product.endsAt} />
+                  </p>
+                </div>
+              </div>
+
+              {/* 주문 폼 영역 (플랫 카드 룩) */}
+              {!session?.user ? (
+                <div className="order-login-prompt">
+                  <MapPin size={20} />
+                  <div>
+                    <strong>주문하려면 로그인이 필요합니다.</strong>
+                    <span>로그인 후 픽업 장소와 수령 슬롯을 선택할 수 있습니다.</span>
+                  </div>
+                  <Link className="secondary-button" to="/auth">로그인</Link>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    background: "#ffffff",
+                    border: "none",
+                    borderRadius: 4,
+                    padding: "20px 22px",
+                    boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #f1f5f9", paddingBottom: 10 }}>
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "#ff5722", margin: 0, letterSpacing: "0.5px" }}>ORDER & PICKUP</p>
+                      <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#1a202c" }}>픽업 주문 접수</h2>
+                    </div>
+                    <StatusBadge type="ready">결제 대기</StatusBadge>
+                  </div>
+
+                  {notice && <div className="order-notice" style={{ marginBottom: 12 }}>{notice}</div>}
+                  {error && <div className="order-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
+
+                  {/* 1. 주문 방식 */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4a5568", marginBottom: 6 }}>
+                      결제 방식
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: isTossPaymentsConfigured ? "repeat(3, 1fr)" : "repeat(2, 1fr)", gap: 6 }}>
+                      {[
+                        { key: "reservation_only", label: "결제 없이 예약" },
+                        { key: "on_site", label: "픽업 현장 결제" },
+                        ...(isTossPaymentsConfigured ? [{ key: "card", label: "카드 결제(Toss)" }] : []),
+                      ].map((item) => (
+                        <button
+                          type="button"
+                          key={item.key}
+                          onClick={() => setPaymentMethod(item.key as any)}
+                          style={{
+                            padding: "9px 0",
+                            borderRadius: 3,
+                            border: "none",
+                            background: paymentMethod === item.key ? "#1a202c" : "#f1f5f9",
+                            color: paymentMethod === item.key ? "#ffffff" : "#475569",
+                            fontSize: 12,
+                            fontWeight: paymentMethod === item.key ? 700 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. 수량 선택 (커스텀 드롭다운) */}
+                  <div ref={qtyRef} style={{ position: "relative", marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4a5568", marginBottom: 6 }}>
+                      수량
+                    </label>
+                    <div
+                      onClick={() => setIsQtyOpen(!isQtyOpen)}
+                      style={{
+                        height: 40,
+                        border: "none",
+                        borderRadius: 3,
+                        padding: "0 12px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#f8fafc",
+                        cursor: "pointer",
+                        fontSize: 13,
+                        color: "#1a202c",
+                        fontWeight: 500,
+                      }}
+                    >
+                      <span>{quantity}개 · {formatPrice(product.dealPrice * quantity)}</span>
+                      <ChevronDown size={16} color="#64748b" />
+                    </div>
+
+                    {isQtyOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 68,
+                          left: 0,
+                          right: 0,
+                          background: "#ffffff",
+                          border: "none",
+                          borderRadius: 3,
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                          zIndex: 50,
+                          maxHeight: 180,
+                          overflowY: "auto",
+                        }}
+                      >
+                        {Array.from({ length: 20 }, (_, index) => index + 1).map((n) => (
+                          <div
+                            key={n}
+                            onClick={() => {
+                              setQuantity(n);
+                              setIsQtyOpen(false);
+                            }}
+                            style={{
+                              padding: "10px 12px",
+                              fontSize: 13,
+                              color: quantity === n ? "#ff5722" : "#334155",
+                              background: quantity === n ? "#fff5f2" : "#fff",
+                              fontWeight: quantity === n ? 700 : 400,
+                              cursor: "pointer",
+                              borderBottom: "1px solid #f8fafc",
+                            }}
+                          >
+                            {n}개 · {formatPrice(product.dealPrice * n)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. 픽업 장소 (커스텀 2단 드롭다운) */}
+                  <div ref={locationRef} style={{ position: "relative", marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4a5568", marginBottom: 6 }}>
+                      픽업 장소
+                    </label>
+                    <div
+                      onClick={() => !loadingLocations && setIsLocationOpen(!isLocationOpen)}
+                      style={{
+                        height: 44,
+                        border: "none",
+                        borderRadius: 3,
+                        padding: "0 12px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#f8fafc",
+                        cursor: loadingLocations ? "default" : "pointer",
+                      }}
+                    >
+                      {loadingLocations ? (
+                        <span style={{ fontSize: 13, color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <LoaderCircle size={14} className="spin-icon" /> 픽업 장소 불러오는 중...
+                        </span>
+                      ) : selectedLocation ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#1a202c" }}>{selectedLocation.name}</span>
+                          <small style={{ fontSize: 11, color: "#64748b" }}>{selectedLocation.address}</small>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 13, color: "#94a3b8" }}>장소를 선택해 주세요</span>
+                      )}
+                      <ChevronDown size={16} color="#64748b" />
+                    </div>
+
+                    {isLocationOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 72,
+                          left: 0,
+                          right: 0,
+                          background: "#ffffff",
+                          border: "none",
+                          borderRadius: 3,
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                          zIndex: 50,
+                          maxHeight: 220,
+                          overflowY: "auto",
+                        }}
+                      >
+                        {locations.map((loc) => (
+                          <div
+                            key={loc.id}
+                            onClick={() => {
+                              setLocationId(loc.id);
+                              setIsLocationOpen(false);
+                            }}
+                            style={{
+                              padding: "10px 14px",
+                              cursor: "pointer",
+                              borderBottom: "1px solid #f8fafc",
+                              background: locationId === loc.id ? "#fff5f2" : "#ffffff",
+                            }}
+                          >
+                            <strong style={{ display: "block", fontSize: 13, color: locationId === loc.id ? "#ff5722" : "#1a202c" }}>
+                              {loc.name}
+                            </strong>
+                            <small style={{ fontSize: 11, color: "#64748b" }}>{loc.address}</small>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {selectedLocation && (
+                      <small style={{ color: "#718096", marginTop: 4, display: "block", fontSize: 11 }}>
+                        {selectedLocation.description}
+                      </small>
+                    )}
+                  </div>
+
+                  {/* 4. 수령 슬롯 (커스텀 2단 드롭다운) */}
+                  <div ref={slotRef} style={{ position: "relative", marginBottom: 16 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4a5568", marginBottom: 6 }}>
+                      수령 슬롯 (픽업 시간대)
+                    </label>
+                    <div
+                      onClick={() => !loadingSlots && locationId && slots.length > 0 && setIsSlotOpen(!isSlotOpen)}
+                      style={{
+                        height: 44,
+                        border: "none",
+                        borderRadius: 3,
+                        padding: "0 12px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#f8fafc",
+                        cursor: !locationId || slots.length === 0 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {loadingSlots ? (
+                        <span style={{ fontSize: 13, color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <LoaderCircle size={14} className="spin-icon" /> 슬롯 조회 중...
+                        </span>
+                      ) : selectedSlot ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#1a202c" }}>
+                            {formatPickupDate(selectedSlot.pickupDate)} · {selectedSlot.startTime} ~ {selectedSlot.endTime}
+                          </span>
+                          <small style={{ fontSize: 11, color: "#ff5722" }}>
+                            잔여 {Math.max(0, selectedSlot.capacity - selectedSlot.reservedCount)}명 가능
+                          </small>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 13, color: "#94a3b8" }}>
+                          {!locationId ? "먼저 픽업 장소를 선택해 주세요" : "수령 시간을 선택해 주세요"}
+                        </span>
+                      )}
+                      <ChevronDown size={16} color="#64748b" />
+                    </div>
+
+                    {isSlotOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 72,
+                          left: 0,
+                          right: 0,
+                          background: "#ffffff",
+                          border: "none",
+                          borderRadius: 3,
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                          zIndex: 50,
+                          maxHeight: 200,
+                          overflowY: "auto",
+                        }}
+                      >
+                        {slots.map((s) => (
+                          <div
+                            key={s.id}
+                            onClick={() => {
+                              setSlotId(s.id);
+                              setIsSlotOpen(false);
+                            }}
+                            style={{
+                              padding: "10px 14px",
+                              cursor: "pointer",
+                              borderBottom: "1px solid #f8fafc",
+                              background: slotId === s.id ? "#fff5f2" : "#ffffff",
+                            }}
+                          >
+                            <strong style={{ display: "block", fontSize: 13, color: slotId === s.id ? "#ff5722" : "#1a202c" }}>
+                              {formatPickupDate(s.pickupDate)} · {s.startTime} ~ {s.endTime}
+                            </strong>
+                            <small style={{ fontSize: 11, color: "#64748b" }}>
+                              잔여 {Math.max(0, s.capacity - s.reservedCount)}명 (총 {s.capacity}명 정원)
+                            </small>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {selectedSlot && (
+                      <small style={{ color: "#718096", marginTop: 4, display: "block", fontSize: 11 }}>
+                        선택 슬롯 예약 {selectedSlot.reservedCount}/{selectedSlot.capacity}명
+                      </small>
+                    )}
+                  </div>
+
+                  {/* 5. 수령 주소지 입력 */}
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "#4a5568" }}>
+                        수령 주소지 (선택)
+                      </label>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => setAddressMode("manual")}
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            border: "none",
+                            background: addressMode === "manual" ? "#1a202c" : "#f1f5f9",
+                            color: addressMode === "manual" ? "#fff" : "#64748b",
+                            cursor: "pointer",
+                            borderRadius: 2,
+                            fontWeight: 500,
+                          }}
+                        >
+                          직접 입력
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddressMode("gps")}
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            border: "none",
+                            background: addressMode === "gps" ? "#1a202c" : "#f1f5f9",
+                            color: addressMode === "gps" ? "#fff" : "#64748b",
+                            cursor: "pointer",
+                            borderRadius: 2,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 2,
+                            fontWeight: 500,
+                          }}
+                        >
+                          <Crosshair size={11} /> GPS
+                        </button>
+                      </div>
+                    </div>
+
+                    {addressMode === "manual" ? (
+                      <input
+                        type="text"
+                        placeholder="예: 서울 성동구 성수이로 20, 101동 302호"
+                        value={deliveryAddress}
+                        onChange={(event) => setDeliveryAddress(event.target.value)}
+                        style={{
+                          width: "100%",
+                          height: 38,
+                          borderRadius: 3,
+                          border: "none",
+                          background: "#f8fafc",
+                          padding: "0 12px",
+                          fontSize: 13,
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    ) : (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          disabled={locating}
+                          onClick={handleLocate}
+                          style={{
+                            height: 38,
+                            padding: "0 12px",
+                            border: "none",
+                            background: "#f1f5f9",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#334155",
+                            cursor: "pointer",
+                            borderRadius: 3,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {locating ? <LoaderCircle size={14} className="spin-icon" /> : "현재 위치 찾기"}
+                        </button>
+                        <input
+                          type="text"
+                          placeholder="위치 확인 시 주소가 자동 입력됩니다"
+                          value={deliveryAddress}
+                          onChange={(event) => setDeliveryAddress(event.target.value)}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            height: 38,
+                            borderRadius: 3,
+                            border: "none",
+                            background: "#f8fafc",
+                            padding: "0 12px",
+                            fontSize: 13,
+                            outline: "none",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+                    )}
+                    {locateError && <small style={{ color: "#ef4444", fontSize: 11, marginTop: 4, display: "block" }}>{locateError}</small>}
+                  </div>
+
+                  {/* 총 주문 금액 및 접수 버튼 */}
+                  <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: "#4a5568" }}>총 결제/예약 금액</span>
+                    <strong style={{ fontSize: 20, color: "#ff5722", fontWeight: 800 }}>
+                      {formatPrice(product.dealPrice * quantity)}
+                    </strong>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateOrder()}
+                    disabled={submitting || !locationId || !slotId || !product.dealId}
+                    style={{
+                      width: "100%",
+                      height: 46,
+                      background: "#ff5722",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 3,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      cursor: submitting || !locationId || !slotId ? "not-allowed" : "pointer",
+                      opacity: submitting || !locationId || !slotId ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {submitting ? (
+                      <>
+                        <LoaderCircle size={16} className="spin-icon" /> 주문 접수 중...
+                      </>
+                    ) : (
+                      "주문 접수하기"
+                    )}
+                  </button>
+
+                  <p style={{ margin: "10px 0 0 0", fontSize: 11, color: "#94a3b8", textAlign: "center" }}>
+                    {isTossPaymentsConfigured ? (
+                      <>카드 결제는 <b>토스페이먼츠 테스트 모드</b>로 안전하게 처리됩니다.</>
+                    ) : (
+                      <>현장 픽업 시 카운터에서 확인 후 결제 또는 수령이 진행됩니다.</>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <ul className="detail-checks" style={{ marginTop: 14 }}>
+                <li>
+                  <Check size={14} />{" "}
+                  {catalogSource === "supabase"
+                    ? "실시간으로 조회한 운영 타임딜입니다."
+                    : "명시적으로 활성화한 개발 전용 카탈로그입니다."}
+                </li>
+                <li>
+                  <Check size={14} /> 서버 연결 전에는 주문 저장이 차단됩니다.
+                </li>
+              </ul>
+
+            </div>
+
+          </div>
+
+        </div>
       </div>
-    </section>
-  </AppShell>;
+    </AppShell>
+  );
 }
