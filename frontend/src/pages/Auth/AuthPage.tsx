@@ -4,11 +4,11 @@
  * 서비스 역할 키를 사용하지 않고 브라우저에는 access token만 저장합니다.
  */
 import { type FormEvent, useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, KeyRound, LockKeyhole, Mail, UserRound } from "lucide-react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, KeyRound, Mail, Store, UserRound } from "lucide-react";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient, setAuthToken } from "@/lib/auth";
-import { apiFetch, sendEmailOtp as requestEmailOtp } from "@/lib/api";
+import { apiFetch, applySellerAccount, sendEmailOtp as requestEmailOtp } from "@/lib/api";
 import { isSupabaseAuthConfigured, startKakaoAuth } from "@/lib/supabase-auth";
 import { normalizeApiError, readResponseBody } from "@/lib/api-error";
 import { useTheme } from "@/shared/theme/ThemeProvider";
@@ -20,10 +20,16 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { data: session, isPending } = authClient.useSession();
-  const [mode, setMode] = useState<Mode>("signin");
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get("mode");
+  const [mode, setMode] = useState<Mode>(initialMode === "signup" || initialMode === "otp" || initialMode === "forgot" ? initialMode : "signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [wantsSeller, setWantsSeller] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [businessNumber, setBusinessNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -88,11 +94,20 @@ export default function AuthPage() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mode === "forgot") { setSubmitting(true); try { const response = await apiFetch("/auth/forgot-password", { method: "POST", auth: false, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); if (!response.ok) throw new Error(normalizeApiError(await readResponseBody(response)).message); toast.success("비밀번호 초기화 메일을 보냈습니다."); setMode("signin"); } catch (error) { toast.error(error instanceof Error ? error.message : "초기화 요청에 실패했습니다."); } finally { setSubmitting(false); } return; }
+    if (mode === "signup" && !agreedToTerms) { toast.error("이용약관 및 개인정보 처리방침에 동의해야 가입할 수 있습니다."); return; }
     setSubmitting(true);
     try {
       const result = mode === "signup" ? await authClient.signUp.email({ name, email, password }) : await authClient.signIn.email({ email, password });
       if (result.error) throw new Error(result.error.message ?? "인증에 실패했습니다.");
-      if (mode === "signup") { if (!result.data?.token) { toast.success("Supabase 인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; } toast.success("회원가입과 로그인을 완료했습니다."); navigate("/", { replace: true }); return; }
+      if (mode === "signup") {
+        if (!result.data?.token) { toast.success(wantsSeller ? "Supabase 인증 메일을 확인한 뒤 로그인하고, 마이페이지에서 판매자 신청을 완료해 주세요." : "Supabase 인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; }
+        if (wantsSeller) {
+          const applyResult = await applySellerAccount({ businessName, businessNumber });
+          if (!applyResult.ok) toast.error(applyResult.error?.message ?? "회원가입은 완료됐지만 판매자 신청은 접수하지 못했습니다. 마이페이지에서 다시 시도해 주세요.");
+          else toast.success("회원가입과 판매자 신청을 완료했습니다. 관리자 승인 후 판매자 센터를 이용할 수 있습니다.");
+        } else toast.success("회원가입과 로그인을 완료했습니다.");
+        navigate("/", { replace: true }); return;
+      }
       toast.success("로그인했습니다."); navigate("/", { replace: true });
     } catch (error) { toast.error(error instanceof Error ? error.message : "인증에 실패했습니다."); }
     finally { setSubmitting(false); }
@@ -117,7 +132,7 @@ export default function AuthPage() {
       </aside>
       <main className="auth-panel">
         <div className="auth-card">
-          <Link to="/" className="brand auth-brand"><span className="brand-mark"><LockKeyhole size={18} /></span><strong>타임딜</strong></Link>
+          <Link to="/" className="brand auth-brand" aria-label="타임딜 홈"><img src="/images/deal-logo.png" alt="" className="brand-logo" /></Link>
           {verificationEmail ? (
             <><div className="auth-heading"><StatusBadge type="live">이메일 인증</StatusBadge><h2>인증 코드를 입력해 주세요.</h2><p>{verificationEmail}로 보낸 6자리 코드입니다.</p></div><form onSubmit={onVerify}><label><span>인증 코드</span><div className="input-wrap"><Mail /><input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></div></label><button className="primary-button full" disabled={submitting || verificationCode.length !== 6}>{submitting ? "확인 중..." : "이메일 인증 완료"}</button><button className="text-button" type="button" disabled={submitting || resendWaitSeconds > 0} onClick={() => void sendVerificationCode().then(() => toast.success("인증 코드를 다시 보냈습니다.")).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "재전송 실패"))}>{resendWaitSeconds > 0 ? `${resendWaitSeconds}초 후 재전송` : "인증 코드 다시 받기"}</button></form></>
           ) : (
@@ -127,7 +142,11 @@ export default function AuthPage() {
               {mode === "otp" ? (
                 <form onSubmit={onOtpSubmit}><label><span>이메일</span><div className="input-wrap"><Mail /><input type="email" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} placeholder="name@example.com" required /></div></label>{otpSent && <label><span>6자리 인증 코드</span><div className="input-wrap"><KeyRound /><input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></div></label>}<button className="primary-button full" disabled={submitting || (otpSent && otpCode.length !== 6)}>{submitting ? "처리 중..." : otpSent ? "인증하고 로그인" : "인증 코드 받기"}</button></form>
               ) : (
-                <><form onSubmit={onSubmit}>{mode === "signup" && <label><span>이름</span><div className="input-wrap"><UserRound /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름" required /></div></label>}<label><span>이메일</span><div className="input-wrap"><Mail /><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required /></div></label>{mode !== "forgot" && <label><span>비밀번호</span><div className="input-wrap"><KeyRound /><input type="password" minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상" required /></div></label>}<button className="primary-button full" disabled={submitting}>{submitting ? "처리 중..." : mode === "signup" ? "회원가입" : mode === "forgot" ? "재설정 메일 받기" : "로그인"}</button></form><button className="text-button" type="button" onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}>{mode === "forgot" ? "로그인으로 돌아가기" : "비밀번호를 잊으셨나요?"}</button></>
+                <><form onSubmit={onSubmit}>{mode === "signup" && <label><span>이름</span><div className="input-wrap"><UserRound /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름" required /></div></label>}<label><span>이메일</span><div className="input-wrap"><Mail /><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required /></div></label>{mode !== "forgot" && <label><span>비밀번호</span><div className="input-wrap"><KeyRound /><input type="password" minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상" required /></div></label>}
+                {mode === "signup" && <label className="check-label"><input type="checkbox" checked={wantsSeller} onChange={(event) => setWantsSeller(event.target.checked)} /> <Store size={15} /> 판매자로 가입합니다 (사업자 정보 제출, 관리자 승인 필요)</label>}
+                {mode === "signup" && wantsSeller && <><label><span>사업자명</span><div className="input-wrap"><Store /><input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="사업자명" required /></div></label><label><span>사업자등록번호</span><div className="input-wrap"><Store /><input value={businessNumber} onChange={(event) => setBusinessNumber(event.target.value)} placeholder="000-00-00000" required /></div></label></>}
+                {mode === "signup" && <label className="check-label"><input type="checkbox" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} required /> (필수) 이용약관 및 개인정보 처리방침에 동의합니다</label>}
+                <button className="primary-button full" disabled={submitting || (mode === "signup" && !agreedToTerms)}>{submitting ? "처리 중..." : mode === "signup" ? "회원가입" : mode === "forgot" ? "재설정 메일 받기" : "로그인"}</button></form><button className="text-button" type="button" onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}>{mode === "forgot" ? "로그인으로 돌아가기" : "비밀번호를 잊으셨나요?"}</button></>
               )}
               <div className="auth-social-actions"><button className="secondary-button full" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startKakaoAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "카카오 로그인에 실패했습니다."))}>카카오로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button><p className="integration-note">네이버 로그인은 별도 API 연결 후 활성화됩니다.</p>{mode !== "otp" && <button className="text-button" type="button" onClick={() => { setMode("otp"); setOtpSent(false); setOtpCode(""); }}>이메일 인증번호로 로그인</button>}</div>
             </>

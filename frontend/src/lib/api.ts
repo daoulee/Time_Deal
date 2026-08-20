@@ -104,6 +104,8 @@ export async function getAdminResearch() { return requestData<{ research: { gene
 
 export async function getMyProfile() { return requestData<{ profile: RawRecord }>("/me/profile"); }
 export async function updateMyProfile(input: { name?: string; phone?: string; preferredRegion?: string; marketingOptIn?: boolean }) { return requestData<{ profile: RawRecord }>("/me/profile", json("PATCH", input)); }
+export async function getMySellerApplication() { return requestData<{ application: RawRecord | null }>("/me/seller-application"); }
+export async function applySellerAccount(input: { businessName: string; businessNumber: string }) { return requestData<{ application: RawRecord }>("/me/seller-application", json("POST", input)); }
 export async function getMyParticipations() { return requestData<{ participations: RawRecord[] }>("/participations"); }
 export async function getMyReviews() { return requestData<{ reviews: RawRecord[] }>("/reviews"); }
 export async function createMyReview(input: { orderItemId: string; rating: number; content: string }) { return requestData<{ review: RawRecord }>("/reviews", json("POST", input)); }

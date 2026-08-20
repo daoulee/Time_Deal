@@ -4,12 +4,14 @@
  * 개발 데이터는 VITE_ENABLE_SAMPLE_DATA=true인 개발 빌드에서만 허용하고 운영 오류를 대체하지 않습니다.
  * 주문·픽업 API는 직접 fetch하지 않고 `src/lib/api.ts`의 apiFetch 경계를 사용합니다.
  */
-import { Check, Clock3, LoaderCircle, MapPin, ShieldCheck, Truck } from "lucide-react";
+import { Check, LoaderCircle, MapPin, ShieldCheck, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AppShell } from "@/shared/layout/AppShell";
 import { formatPrice, progressOf, type Product } from "@/shared/catalog";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import { CountdownTimer } from "@/shared/components/CountdownTimer";
+import { StockGauge } from "@/shared/components/StockGauge";
 import { authClient } from "@/lib/auth";
 import { createOrder, getPickupLocations, getPickupSlots, type PickupLocation, type PickupSlot } from "@/lib/api";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
@@ -124,7 +126,7 @@ export default function ProductDetailPage() {
         <p className="detail-description">목표 인원이 모이면 제안된 타임딜 가격으로 함께 구매하는 상품입니다. 픽업 장소와 수령 시간을 선택해 주문을 접수할 수 있습니다.</p>
         {catalogNotice && <div className="order-notice">{catalogNotice}</div>}
         <div className="detail-price"><span>타임딜가</span><strong>{formatPrice(product.dealPrice)}</strong><del>{formatPrice(product.originalPrice)}</del></div>
-        <div className="detail-progress"><div><span>{product.participants}명 참여 중</span><b>목표 {product.target}명 · {progress}%</b></div><div className="progress-track large"><span style={{ width: `${progress}%` }} /></div><p><Clock3 size={17} /> {product.endsAt}까지</p></div>
+        <div className="detail-progress"><div><span>{product.participants}명 참여 중</span><b>목표 {product.target}명 · {progress}%</b></div><StockGauge participants={product.participants} target={product.target} /><p className="deal-detail-countdown"><CountdownTimer endsAtIso={product.endsAtIso} fallbackLabel={product.endsAt} /></p></div>
 
         {!session?.user ? <div className="order-login-prompt"><MapPin size={20} /><div><strong>주문하려면 로그인이 필요합니다.</strong><span>로그인 후 픽업 장소와 수령 슬롯을 선택할 수 있습니다.</span></div><Link className="secondary-button" to="/auth">로그인</Link></div> : <div className="order-form" aria-label="픽업 주문 정보">
           <div className="order-form-heading"><div><p>ORDER & PICKUP</p><h2>픽업 주문 접수</h2></div><StatusBadge type="ready">결제 대기</StatusBadge></div>

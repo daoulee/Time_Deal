@@ -4,5 +4,6 @@
  * service role key 같은 서버 자격증명을 VITE 환경변수로 추가하면 안 됩니다.
  */
 export const publicKeys = {
-  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ""
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "",
+  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ""
 };

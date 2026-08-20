@@ -32,3 +32,4 @@ export const FEATURED_PRODUCT = PRODUCTS[0];
 export const INITIAL_PARTICIPANTS = PRODUCTS.reduce((total, product) => total + product.participants, 0);
 export const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 export const progressOf = (product: Product) => Math.min(100, Math.round((product.participants / product.target) * 100));
+export const discountPercentOf = (product: Product) => product.originalPrice > 0 ? Math.max(0, Math.round((1 - product.dealPrice / product.originalPrice) * 100)) : 0;

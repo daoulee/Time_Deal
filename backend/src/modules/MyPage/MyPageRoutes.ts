@@ -10,6 +10,20 @@ import { getAdminSupabase } from "../../supabase.js";
 
 export const myPageRouter = new Hono();
 myPageRouter.use("/me/*", requireAuth);
+const sellerApplicationInput = z.object({ businessName: z.string().min(2).max(120), businessNumber: z.string().regex(/^[0-9-]{10,20}$/, "사업자등록번호 형식을 확인하세요.") }).strict();
+myPageRouter.get("/me/seller-application", async (context) => {
+  const { data, error } = await getAdminSupabase().from("seller_applications").select("id,business_name,business_number,status,review_reason,reviewed_at,created_at").eq("user_id", context.var.currentUser!.id).maybeSingle();
+  return error ? context.json(apiFailure("QUERY_FAILED", "판매자 신청 상태를 조회하지 못했습니다."), 502) : context.json(apiSuccess({ application: data ?? null }));
+});
+myPageRouter.post("/me/seller-application", async (context) => {
+  const parsed = sellerApplicationInput.safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "사업자명과 사업자등록번호를 확인하세요.", parsed.error.flatten()), 400);
+  const supabase = getAdminSupabase();
+  const existing = await supabase.from("seller_applications").select("id,status").eq("user_id", context.var.currentUser!.id).maybeSingle();
+  if (existing.data && existing.data.status !== "rejected") return context.json(apiFailure("ALREADY_APPLIED", existing.data.status === "approved" ? "이미 승인된 판매자 계정입니다." : "이미 심사 중인 신청이 있습니다."), 409);
+  const { data, error } = await supabase.from("seller_applications").upsert({ user_id: context.var.currentUser!.id, business_name: parsed.data.businessName, business_number: parsed.data.businessNumber, status: "pending", review_reason: null, reviewed_by: null, reviewed_at: null }, { onConflict: "user_id" }).select("id,business_name,business_number,status,created_at").single();
+  return error ? context.json(apiFailure("SAVE_FAILED", "판매자 신청을 저장하지 못했습니다."), 400) : context.json(apiSuccess({ application: data }), 201);
+});
 myPageRouter.use("/participations", requireAuth);
 myPageRouter.use("/participations/*", requireAuth);
 myPageRouter.use("/reviews", requireAuth);

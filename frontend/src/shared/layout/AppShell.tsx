@@ -3,9 +3,10 @@
  * Home, Products, Community, Inquiry, MyPage가 같은 서비스 레이아웃을 사용합니다.
  * 인증 상태와 반응형 탐색 동작을 페이지마다 중복 구현하지 않게 합니다.
  */
-import { Menu, Moon, Search, ShoppingBag, Sun, UserRound, X } from "lucide-react";
+import { Menu, Moon, Search, Sun, UserRound, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useSession } from "@/hooks/useSession";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 
 const links = [
@@ -18,7 +19,10 @@ const links = [
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const { theme, toggleTheme, mounted } = useTheme();
+  const { isAuthenticated } = useSession();
   const navigate = useNavigate();
+  const accountPath = isAuthenticated ? "/mypage" : "/auth";
+  const accountLabel = isAuthenticated ? "마이페이지" : "로그인";
 
   return (
     <div className="site-frame">
@@ -27,8 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="site-header">
         <div className="header-inner">
           <Link to="/" className="brand" aria-label="타임딜 홈">
-            <span className="brand-mark"><ShoppingBag size={19} /></span>
-            <strong>타임딜</strong>
+            <img src="/images/deal-logo.png" alt="" className="brand-logo" />
           </Link>
           <nav className="desktop-nav" aria-label="주요 메뉴">
             {links.map(([to, label]) => (
@@ -52,11 +55,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="account-link"
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate(accountPath)}
               style={{ cursor: "pointer", background: "transparent", border: "none" }}
             >
               <UserRound size={18} />
-              <span>로그인</span>
+              <span>{accountLabel}</span>
             </button>
             <button
               className="icon-button mobile-menu-button"
@@ -76,12 +79,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {label}
               </NavLink>
             ))}
-            <Link
-              to="/auth"
-              onClick={() => setOpen(false)}
-            >
-              로그인 / 회원가입
-            </Link>
+            {!isAuthenticated && (
+              <Link
+                to="/auth"
+                onClick={() => setOpen(false)}
+              >
+                로그인 / 회원가입
+              </Link>
+            )}
             <Link to="/seller" onClick={() => setOpen(false)}>
               판매자 센터
             </Link>
@@ -91,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main id="main-content">{children}</main>
       <footer className="site-footer">
         <div>
-          <Link to="/" className="footer-brand">타임딜</Link>
+          <Link to="/" className="footer-brand"><img src="/images/deal-logo.png" alt="타임딜" /></Link>
           <p>이웃과 함께 만드는 합리적인 시간 한정 공동구매</p>
         </div>
         <div className="footer-links">

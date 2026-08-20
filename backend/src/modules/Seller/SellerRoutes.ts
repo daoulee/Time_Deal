@@ -10,7 +10,7 @@ import { requireRole } from "../../middleware/auth.js";
 import { getAdminSupabase } from "../../supabase.js";
 
 export const sellerRouter = new Hono();
-const sellerOnly = requireRole("seller");
+const sellerOnly = requireRole("seller", "admin");
 const imagePath = z.string().min(3).max(500).regex(/^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|webp)$/i);
 const productCreate = z.object({ name: z.string().min(2).max(120), description: z.string().min(2).max(3000), category: z.string().min(1).max(60), image: imagePath, regularPrice: z.number().int().min(0).max(100_000_000), inventory: z.number().int().min(0).max(1_000_000) }).strict();
 const productPatch = productCreate.partial().refine((input) => Object.keys(input).length > 0, "수정 필드가 필요합니다.");
