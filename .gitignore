@@ -1,0 +1,108 @@
+# 환경변수와 로컬 비밀값
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+*.env
+*.env.*
+!*.env.example
+!**/*.env.example
+
+# 의존성
+node_modules/
+**/node_modules/
+.pnpm-store/
+.yarn/
+
+# 빌드·테스트 산출물
+build/
+**/build/
+dist/
+**/dist/
+coverage/
+**/coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# 로그·프로세스 파일
+logs/
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+
+# 도구 캐시·임시 파일
+.cache/
+**/.cache/
+.vite/
+**/.vite/
+.turbo/
+.parcel-cache/
+.eslintcache
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.node_modules.trash.*/
+**/.node_modules.trash.*/
+
+# 로컬 데이터베이스와 런타임 데이터
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.local.db
+
+# Supabase CLI 로컬 상태·임시 파일
+.supabase/
+**/.supabase/
+supabase/.branches/
+supabase/.temp/
+**/supabase/.branches/
+**/supabase/.temp/
+
+# Render 및 로컬 배포 도구 상태
+.render/
+**/.render/
+.render.yaml.local
+render.local.yaml
+
+# 인증서·개인키·키스토어
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.der
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# OS 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE·에디터 로컬 설정
+.idea/
+.vscode/
+*.iml
+.history/
+
+# 로컬 Git 메타데이터
+.git/

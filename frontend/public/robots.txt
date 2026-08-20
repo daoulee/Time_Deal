@@ -1,0 +1,17 @@
+# 검색 로봇의 타임딜 공개 페이지 접근 정책과 사이트맵 위치를 안내합니다.
+# 배포 후 검색 엔진 크롤러가 정적 호스팅 주소에서 읽습니다.
+# 관리자·인증 화면 노출 정책과 실제 사이트맵 URL을 함께 점검해야 합니다.
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /

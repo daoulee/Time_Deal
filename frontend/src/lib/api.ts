@@ -1,0 +1,118 @@
+﻿/**
+ * 모든 프론트 비즈니스 API 요청을 통과시키는 네트워크 경계입니다.
+ * JSON·Bearer 토큰과 고객·판매자·관리자 CRUD 계약의 snake_case 정규화를 한곳에서 처리합니다.
+ */
+import { apiUrl } from "@/lib/api-base";
+import { notifyApiError } from "@/lib/api-error";
+import { getAuthToken, setAuthToken } from "@/lib/auth";
+import { supabaseAuthClient } from "@/lib/supabase-auth";
+
+export type ApiFetchInit = RequestInit & { auth?: boolean };
+export type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string; details?: unknown } };
+export type ApiCallResult<T> = { ok: boolean; status: number; data: T | null; error: { code: string; message: string } | null };
+export type RawRecord = Record<string, unknown>;
+
+export async function apiFetch(path: string, init?: ApiFetchInit) {
+  const { auth = true, ...requestInit } = init ?? {}; const token = auth ? getAuthToken() : "";
+  const response = await fetch(apiUrl(path), { ...requestInit, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...requestInit.headers } });
+  if (!response.ok) await notifyApiError(response); return response;
+}
+export async function requestData<T>(path: string, init?: ApiFetchInit): Promise<ApiCallResult<T>> {
+  try {
+    const response = await apiFetch(path, init); const payload = await response.json().catch(() => null) as ApiEnvelope<T> | null;
+    if (response.ok && payload?.ok) return { ok: true, status: response.status, data: payload.data, error: null };
+    const failure = payload && !payload.ok ? payload.error : null; return { ok: false, status: response.status, data: null, error: failure ?? { code: "REQUEST_FAILED", message: "요청을 처리하지 못했습니다." } };
+  } catch { return { ok: false, status: 0, data: null, error: { code: "NETWORK_ERROR", message: "백엔드에 연결할 수 없습니다." } }; }
+}
+const json = (method: string, body?: unknown): ApiFetchInit => ({ method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+const value = (record: RawRecord, camel: string, snake: string) => record[camel] ?? record[snake];
+const asString = (record: RawRecord, camel: string, snake: string, fallback = "") => { const item = value(record, camel, snake); return typeof item === "string" ? item : fallback; };
+const asNumber = (record: RawRecord, camel: string, snake: string, fallback = 0) => { const item = value(record, camel, snake); return typeof item === "number" ? item : Number(item ?? fallback); };
+const records = (items: unknown) => Array.isArray(items) ? items.filter((item): item is RawRecord => Boolean(item && typeof item === "object")) : [];
+
+export type PickupLocation = { id: string; name: string; address: string; description: string; isActive: boolean; createdAt?: string };
+export type PickupSlot = { id: string; locationId: string; pickupDate: string; startTime: string; endTime: string; pickupAt?: string; capacity: number; reservedCount: number; isActive: boolean };
+export type OrderItem = { id?: string; orderId?: string; productId: string; dealId?: string | null; productName: string; unitPrice: number; quantity: number; lineTotal: number };
+export type Fulfillment = { id: string; orderId: string; orderNumber: string; pickupLocationId: string; pickupSlotId: string; paymentMethod: string; status: OrderStatus; pickupStatus: PickupStatus; subtotal: number; createdAt?: string; items: OrderItem[] };
+export type Order = { id: string; orderNumber: string; userId?: string; pickupLocationId: string; pickupSlotId: string; subtotal: number; totalAmount: number; orderStatus: OrderStatus | string; paymentMethod: string; paymentStatus: string; pickupStatus: PickupStatus | string; createdAt?: string; cancelledAt?: string | null; order_items?: OrderItem[]; fulfillment_groups?: RawRecord[] };
+export type OrderStatus = "pending" | "confirmed" | "ready" | "completed" | "cancelled";
+export type PickupStatus = "pending" | "ready" | "collected" | "no_show" | "cancelled";
+export type CreateOrderInput = { pickupLocationId: string; pickupSlotId: string; paymentMethod: "on_site" | "reservation_only"; idempotencyKey: string; items: Array<{ productId: string; dealId?: string; quantity: number }> };
+export type ProductInput = { name: string; description: string; category: string; image: string; regularPrice: number; inventory: number };
+export type DealInput = { productId: string; dealPrice: number; target: number; startsAt: string; endsAt: string };
+export type InquiryMessage = { id: string; author_id: string; message: string; is_internal?: boolean; created_at: string };
+export type Inquiry = RawRecord & { id: string; subject: string; status: string; priority: string; inquiry_messages?: InquiryMessage[] };
+
+const normalizeLocation = (record: RawRecord): PickupLocation => ({ id: asString(record, "id", "id"), name: asString(record, "name", "name"), address: asString(record, "address", "address"), description: asString(record, "description", "description"), isActive: Boolean(value(record, "isActive", "is_active") ?? true), createdAt: asString(record, "createdAt", "created_at") || undefined });
+const normalizeSlot = (record: RawRecord): PickupSlot => ({ id: asString(record, "id", "id"), locationId: asString(record, "locationId", "location_id"), pickupDate: asString(record, "pickupDate", "pickup_date"), startTime: asString(record, "startTime", "start_time").slice(0, 5), endTime: asString(record, "endTime", "end_time").slice(0, 5), pickupAt: asString(record, "pickupAt", "pickup_at") || undefined, capacity: asNumber(record, "capacity", "capacity"), reservedCount: asNumber(record, "reservedCount", "reserved_count"), isActive: Boolean(value(record, "isActive", "is_active") ?? true) });
+const normalizeOrderItem = (record: RawRecord): OrderItem => ({ id: asString(record, "id", "id") || undefined, orderId: asString(record, "orderId", "order_id") || undefined, productId: asString(record, "productId", "product_id"), dealId: value(record, "dealId", "deal_id") as string | null | undefined, productName: asString(record, "productName", "product_name", "상품"), unitPrice: asNumber(record, "unitPrice", "unit_price"), quantity: asNumber(record, "quantity", "quantity", 1), lineTotal: asNumber(record, "lineTotal", "line_total") });
+const normalizeOrder = (record: RawRecord): Order => ({ id: asString(record, "id", "id"), orderNumber: asString(record, "orderNumber", "order_number", asString(record, "id", "id")), userId: asString(record, "userId", "user_id") || undefined, pickupLocationId: asString(record, "pickupLocationId", "pickup_location_id"), pickupSlotId: asString(record, "pickupSlotId", "pickup_slot_id"), subtotal: asNumber(record, "subtotal", "subtotal"), totalAmount: asNumber(record, "totalAmount", "total_amount"), orderStatus: asString(record, "orderStatus", "order_status", "pending"), paymentMethod: asString(record, "paymentMethod", "payment_method", "reservation_only"), paymentStatus: asString(record, "paymentStatus", "payment_status", "not_applicable"), pickupStatus: asString(record, "pickupStatus", "pickup_status", "pending"), createdAt: asString(record, "createdAt", "created_at") || undefined, cancelledAt: value(record, "cancelledAt", "cancelled_at") as string | null | undefined, order_items: records(value(record, "items", "order_items")).map(normalizeOrderItem), fulfillment_groups: records(value(record, "fulfillmentGroups", "fulfillment_groups")) });
+const normalizeFulfillment = (record: RawRecord): Fulfillment => ({ id: asString(record, "id", "id"), orderId: asString(record, "orderId", "order_id"), orderNumber: asString(record, "orderNumber", "order_number"), pickupLocationId: asString(record, "pickupLocationId", "pickup_location_id"), pickupSlotId: asString(record, "pickupSlotId", "pickup_slot_id"), paymentMethod: asString(record, "paymentMethod", "payment_method"), status: asString(record, "status", "status", "pending") as OrderStatus, pickupStatus: asString(record, "pickupStatus", "pickup_status", "pending") as PickupStatus, subtotal: asNumber(record, "subtotal", "subtotal"), createdAt: asString(record, "createdAt", "created_at") || undefined, items: records(value(record, "items", "order_items")).map(normalizeOrderItem) });
+
+export async function getPickupLocations() { const result = await requestData<{ locations?: RawRecord[]; source?: string; notice?: string }>("/pickup-locations", { auth: false }); return { ...result, data: result.data ? { ...result.data, locations: records(result.data.locations).map(normalizeLocation) } : null }; }
+export async function getPickupSlots(locationId: string) { const result = await requestData<{ slots?: RawRecord[]; source?: string; notice?: string }>(`/pickup-locations/${encodeURIComponent(locationId)}/slots`, { auth: false }); return { ...result, data: result.data ? { ...result.data, slots: records(result.data.slots).map(normalizeSlot) } : null }; }
+export async function createOrder(input: CreateOrderInput) { const result = await requestData<{ order?: RawRecord | null; items?: RawRecord[]; payment?: RawRecord; source?: string }>("/orders", json("POST", input)); return { ...result, data: result.data ? { ...result.data, order: result.data.order ? normalizeOrder(result.data.order) : null, items: records(result.data.items).map(normalizeOrderItem) } : null }; }
+export async function getMyOrders() { const result = await requestData<{ orders?: RawRecord[]; source?: string; notice?: string }>("/orders"); return { ...result, data: result.data ? { ...result.data, orders: records(result.data.orders).map(normalizeOrder) } : null }; }
+export async function getMyOrder(id: string) { const result = await requestData<{ order?: RawRecord | null; items?: RawRecord[] }>(`/orders/${encodeURIComponent(id)}`); return { ...result, data: result.data ? { ...result.data, order: result.data.order ? normalizeOrder({ ...result.data.order, items: result.data.items }) : null } : null }; }
+export async function cancelMyOrder(id: string) { const result = await requestData<{ order?: RawRecord | null }>(`/orders/${encodeURIComponent(id)}/cancel`, { method: "POST" }); return { ...result, data: result.data ? { ...result.data, order: result.data.order ? normalizeOrder(result.data.order) : null } : null }; }
+
+export async function getSellerFulfillments() { const result = await requestData<{ fulfillments?: RawRecord[] }>("/seller/orders"); return { ...result, data: result.data ? { fulfillments: records(result.data.fulfillments).map(normalizeFulfillment) } : null }; }
+export async function updateFulfillmentStatus(id: string, status: OrderStatus, pickupStatus?: PickupStatus, isAdmin = false) { const result = await requestData<{ fulfillment?: RawRecord }>(`/${isAdmin ? "admin" : "seller"}/fulfillments/${encodeURIComponent(id)}/status`, json("PATCH", { status, ...(pickupStatus ? { pickupStatus } : {}) })); return { ...result, data: result.data ? { fulfillment: result.data.fulfillment ? normalizeFulfillment(result.data.fulfillment) : null } : null }; }
+export async function getSellerDashboard() { return requestData<{ dashboard: Record<string, number | Record<string, number>> }>("/seller-dashboard"); }
+export async function getSellerProducts() { return requestData<{ products: RawRecord[] }>("/seller-products"); }
+export async function createSellerProduct(input: ProductInput) { return requestData<{ product: RawRecord }>("/seller-products", json("POST", input)); }
+export async function updateSellerProduct(id: string, input: Partial<ProductInput>) { return requestData<{ product: RawRecord }>(`/seller-products/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function submitSellerProduct(id: string) { return requestData<{ product: RawRecord }>(`/seller-products/${encodeURIComponent(id)}/submit`, { method: "POST" }); }
+export async function hideSellerProduct(id: string) { return requestData<{ product: RawRecord }>(`/seller-products/${encodeURIComponent(id)}/hide`, { method: "POST" }); }
+export async function getProductUploadUrl(id: string, file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>(`/seller-products/${encodeURIComponent(id)}/image-upload-url`, json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
+export async function uploadProductImage(bucket: string, objectPath: string, token: string, file: File) {
+  if (!supabaseAuthClient) return { ok: false, status: 0, error: "프론트 Supabase Storage 환경변수가 필요합니다." };
+  const { error } = await supabaseAuthClient.storage.from(bucket).uploadToSignedUrl(objectPath, token, file, { contentType: file.type });
+  return { ok: !error, status: error ? 400 : 200, error: error?.message };
+}
+export async function getSellerDeals() { return requestData<{ deals: RawRecord[] }>("/seller-deals"); }
+export async function createSellerDeal(input: DealInput) { return requestData<{ deal: RawRecord }>("/seller-deals", json("POST", input)); }
+export async function updateSellerDeal(id: string, input: Partial<Omit<DealInput, "productId">>) { return requestData<{ deal: RawRecord }>(`/seller-deals/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function endSellerDeal(id: string) { return requestData<{ deal: RawRecord }>(`/seller-deals/${encodeURIComponent(id)}/end`, { method: "POST" }); }
+export async function getInventoryHistory(productId: string) { return requestData<{ inventory: number; movements: RawRecord[] }>(`/seller-products/${encodeURIComponent(productId)}/inventory`); }
+export async function adjustInventory(productId: string, quantityDelta: number, reason: "manual" | "restock") { return requestData<{ product: RawRecord; movement: RawRecord }>(`/seller-products/${encodeURIComponent(productId)}/inventory`, json("POST", { quantityDelta, reason })); }
+export async function getSellerPickupLocations() { const result = await requestData<{ locations: RawRecord[] }>("/seller/pickup-locations"); return { ...result, data: result.data ? { locations: records(result.data.locations).map(normalizeLocation) } : null }; }
+export async function getSellerPickupSlots() { const result = await requestData<{ slots: RawRecord[] }>("/seller/pickup-slots"); return { ...result, data: result.data ? { slots: records(result.data.slots).map(normalizeSlot) } : null }; }
+export async function getSellerInquiries() { return requestData<{ inquiries: Inquiry[] }>("/seller/inquiries"); }
+export async function replySellerInquiry(id: string, message: string) { return requestData<{ message: InquiryMessage }>(`/seller/inquiries/${encodeURIComponent(id)}/messages`, json("POST", { message })); }
+
+export async function getAdminOrders() { const result = await requestData<{ orders?: RawRecord[] }>("/admin/orders"); return { ...result, data: result.data ? { orders: records(result.data.orders).map(normalizeOrder) } : null }; }
+export async function getAdminDashboard() { return requestData<{ dashboard: Record<string, number>; generatedAt: string }>("/admin-dashboard"); }
+export async function getAdminUsers() { return requestData<{ users: RawRecord[] }>("/admin-users"); }
+export async function updateAdminUser(id: string, input: { role?: string; isSuspended?: boolean; reason: string }) { return requestData<{ user: RawRecord }>(`/admin-users/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function getSellerApplications() { return requestData<{ applications: RawRecord[] }>("/admin/seller-applications"); }
+export async function reviewSellerApplication(id: string, status: "approved" | "rejected", reason: string) { return requestData<{ application: RawRecord }>(`/admin/seller-applications/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
+export async function getAdminItems(resource: "products" | "deals" | "reviews" | "community" | "community-reports" | "pickup-locations" | "pickup-slots" | "audit-logs") { return requestData<{ items: RawRecord[] }>(`/admin/${resource}`); }
+export async function moderateProduct(id: string, status: "active" | "rejected" | "hidden", reason: string) { return requestData<{ product: RawRecord }>(`/admin/products/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
+export async function moderateDeal(id: string, status: "draft" | "active" | "ended" | "cancelled", reason: string) { return requestData<{ deal: RawRecord }>(`/admin/deals/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
+export async function moderateContent(resource: "reviews" | "community" | "reports", id: string, status: string, reason: string) { return requestData<{ item: RawRecord }>(`/admin/moderation/${resource}/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
+export async function createPickupLocation(input: { name: string; address: string; description: string }) { return requestData<{ location: RawRecord }>("/admin/pickup-locations", json("POST", input)); }
+export async function updatePickupLocation(id: string, input: Partial<{ name: string; address: string; description: string; isActive: boolean }> & { reason: string }) { return requestData<{ location: RawRecord }>(`/admin/pickup-locations/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function closePickupLocation(id: string, reason: string) { return requestData<{ location: RawRecord }>(`/admin/pickup-locations/${encodeURIComponent(id)}`, json("DELETE", { reason })); }
+export async function createPickupSlot(input: { locationId: string; pickupDate: string; startTime: string; endTime: string; pickupAt: string; capacity: number }) { return requestData<{ slot: RawRecord }>("/admin/pickup-slots", json("POST", input)); }
+export async function updatePickupSlot(id: string, input: Partial<{ locationId: string; pickupDate: string; startTime: string; endTime: string; pickupAt: string; capacity: number; isActive: boolean }> & { reason: string }) { return requestData<{ slot: RawRecord }>(`/admin/pickup-slots/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function closePickupSlot(id: string, reason: string) { return requestData<{ slot: RawRecord }>(`/admin/pickup-slots/${encodeURIComponent(id)}`, json("DELETE", { reason })); }
+export async function getAdminInquiries() { return requestData<{ inquiries: Inquiry[] }>("/admin/inquiries"); }
+export async function updateAdminInquiry(id: string, input: { status?: string; priority?: string; assignedTo?: string | null }) { return requestData<{ inquiry: Inquiry }>(`/admin/inquiries/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function replyAdminInquiry(id: string, message: string, isInternal = false) { return requestData<{ message: InquiryMessage }>(`/admin/inquiries/${encodeURIComponent(id)}/messages`, json("POST", { message, isInternal })); }
+export async function getAdminResearch() { return requestData<{ research: { generatedAt: string; source: string; categories: Array<{ category: string; productCount: number; averagePrice: number }> } }>("/admin-research"); }
+
+export async function getMyProfile() { return requestData<{ profile: RawRecord }>("/me/profile"); }
+export async function updateMyProfile(input: { name?: string; phone?: string; preferredRegion?: string; marketingOptIn?: boolean }) { return requestData<{ profile: RawRecord }>("/me/profile", json("PATCH", input)); }
+export async function getMyParticipations() { return requestData<{ participations: RawRecord[] }>("/participations"); }
+export async function getMyReviews() { return requestData<{ reviews: RawRecord[] }>("/reviews"); }
+export async function createMyReview(input: { orderItemId: string; rating: number; content: string }) { return requestData<{ review: RawRecord }>("/reviews", json("POST", input)); }
+export async function updateMyReview(id: string, input: { rating?: number; content?: string }) { return requestData<{ review: RawRecord }>(`/reviews/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function deleteMyReview(id: string) { return requestData<{ deleted: boolean }>(`/reviews/${encodeURIComponent(id)}`, { method: "DELETE" }); }
+export async function getMyInquiries() { return requestData<{ inquiries: Inquiry[] }>("/inquiries"); }
+export async function replyMyInquiry(id: string, message: string) { return requestData<{ message: InquiryMessage }>(`/inquiries/${encodeURIComponent(id)}/messages`, json("POST", { message })); }
+
+export async function sendEmailOtp(email: string, redirectTo = `${window.location.origin}/auth`) { return apiFetch("/auth/email-otp/send", { ...json("POST", { email, redirectTo }), auth: false }); }
+export async function verifyEmailOtp(email: string, token: string) { return apiFetch("/auth/email-otp/verify", { ...json("POST", { email, token, type: "email" }), auth: false }); }
+export async function startThirdPartyGoogleAuth(landingPath = window.location.pathname) { const response = await apiFetch("/third-party-google-auth/start", { ...json("POST", { origin: window.location.origin, landing_path: landingPath }), auth: false }); const payload = await response.json() as { ok: boolean; data?: { authUrl?: string; auth_url?: string } }; const authUrl = payload.data?.authUrl ?? payload.data?.auth_url; if (!response.ok || !authUrl) throw new Error("Third-party Google auth start failed"); window.location.assign(authUrl); }
+export async function syncAuthTokenFromUrl() { const url = new URL(window.location.href); const token = url.searchParams.get("login_token"); const ts = url.searchParams.get("ts"); const sig = url.searchParams.get("sig"); if (!token || !ts || !sig) return false; const response = await apiFetch("/third-party-google-auth/verify", { ...json("POST", { path: url.pathname, token, ts, sig }), auth: false }).catch(() => null); if (!response?.ok) return false; setAuthToken(token); url.searchParams.delete("login_token"); url.searchParams.delete("ts"); url.searchParams.delete("sig"); window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`); return true; }
