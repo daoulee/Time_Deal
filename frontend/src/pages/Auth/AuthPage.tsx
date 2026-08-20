@@ -100,7 +100,7 @@ export default function AuthPage() {
       const result = mode === "signup" ? await authClient.signUp.email({ name, email, password }) : await authClient.signIn.email({ email, password });
       if (result.error) throw new Error(result.error.message ?? "인증에 실패했습니다.");
       if (mode === "signup") {
-        if (!result.data?.token) { toast.success(wantsSeller ? "Supabase 인증 메일을 확인한 뒤 로그인하고, 마이페이지에서 판매자 신청을 완료해 주세요." : "Supabase 인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; }
+        if (!result.data?.token) { toast.success(wantsSeller ? "인증 메일을 확인한 뒤 로그인하고, 마이페이지에서 판매자 신청을 완료해 주세요." : "인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; }
         if (wantsSeller) {
           const applyResult = await applySellerAccount({ businessName, businessNumber });
           if (!applyResult.ok) toast.error(applyResult.error?.message ?? "회원가입은 완료됐지만 판매자 신청은 접수하지 못했습니다. 마이페이지에서 다시 시도해 주세요.");
@@ -128,7 +128,7 @@ export default function AuthPage() {
       <aside className="auth-visual">
         <Link to="/" className="auth-back"><ArrowLeft size={17} /> 홈으로</Link>
         <div><p>TIMEDEAL ACCOUNT</p><h1>함께 사는 경험을<br />계정 하나로 이어가세요.</h1><span>참여 딜, 리뷰, 문의, 주문 내역을 안전한 세션으로 관리합니다.</span></div>
-        <ul><li><CheckCircle2 /> Supabase Auth 세션 구조 적용</li><li><CheckCircle2 /> Supabase 인증 메일 연결</li><li><CheckCircle2 /> Bearer 토큰 저장 로직 재사용</li></ul>
+        <ul><li><CheckCircle2 /> 안전한 로그인 세션 유지</li><li><CheckCircle2 /> 이메일 인증으로 안전하게 가입</li><li><CheckCircle2 /> 자동 로그인 상태 유지</li></ul>
       </aside>
       <main className="auth-panel">
         <div className="auth-card">

@@ -4,7 +4,7 @@
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { config, isSupabaseConfigured } from "./config.js";
+import { config, isSupabaseConfigured, isTossConfigured } from "./config.js";
 import { apiFailure, apiSuccess } from "./http.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { requestSecurity } from "./middleware/security.js";
@@ -18,6 +18,7 @@ import { myPageRouter } from "./modules/MyPage/MyPageRoutes.js";
 import { catalogRouter } from "./modules/Products/ProductsRoutes.js";
 import { sellerRouter } from "./modules/Seller/SellerRoutes.js";
 import { ordersRouter } from "./modules/Orders/OrdersRoutes.js";
+import { paymentsRouter } from "./modules/Payments/PaymentsRoutes.js";
 import { getAdminSupabase } from "./supabase.js";
 
 const app = new Hono({ strict: false });
@@ -43,7 +44,7 @@ app.get("/health", (context) => context.json(apiSuccess({ status: "ok", supabase
 app.get("/ready", async (context) => {
   if (!isSupabaseConfigured()) return context.json(apiFailure("NOT_READY", "필수 Supabase 환경변수가 설정되지 않았습니다."), 503);
   const { error } = await getAdminSupabase().from("profiles").select("id", { head: true, count: "exact" }).limit(1);
-  return error ? context.json(apiFailure("NOT_READY", "Supabase 연결을 확인할 수 없습니다."), 503) : context.json(apiSuccess({ status: "ready", paymentModes: ["on_site", "reservation_only"], naverAuth: "external-setup-required" }));
+  return error ? context.json(apiFailure("NOT_READY", "Supabase 연결을 확인할 수 없습니다."), 503) : context.json(apiSuccess({ status: "ready", paymentModes: isTossConfigured() ? ["on_site", "reservation_only", "card"] : ["on_site", "reservation_only"], naverAuth: "external-setup-required" }));
 });
 
 app.use("/api/*", optionalAuth);
@@ -57,6 +58,7 @@ app.route("/api", communityRouter);
 app.route("/api", sellerRouter);
 app.route("/api", adminRouter);
 app.route("/api", ordersRouter);
+app.route("/api", paymentsRouter);
 app.notFound((context) => context.json(apiFailure("NOT_FOUND", "요청한 API를 찾을 수 없습니다."), 404));
 app.onError((error, context) => { console.error(JSON.stringify({ level: "error", requestId: context.res.headers.get("x-request-id"), message: error.message })); return context.json(apiFailure("INTERNAL_ERROR", "서버 오류가 발생했습니다."), 500); });
 

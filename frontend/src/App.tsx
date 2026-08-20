@@ -16,6 +16,9 @@ import ResetPasswordPage from "@/pages/Auth/ResetPasswordPage";
 import ProductsPage from "@/pages/Products/ProductsPage";
 import ProductDetailPage from "@/pages/Products/ProductDetailPage";
 import MapPage from "@/pages/Map/MapPage";
+import TossCheckoutPage from "@/pages/Payments/TossCheckoutPage";
+import TossSuccessPage from "@/pages/Payments/TossSuccessPage";
+import TossFailPage from "@/pages/Payments/TossFailPage";
 import CommunityPage from "@/pages/Community/CommunityPage";
 import InquiryPage from "@/pages/Inquiry/InquiryPage";
 import MyPage from "@/pages/MyPage/MyPage";
@@ -28,6 +31,7 @@ const sellerPaths = ["/seller", "/seller/products", "/seller/products/new", "/se
 const adminPaths = ["/admin", "/admin/orders", "/admin/users", "/admin/sellers", "/admin/products", "/admin/inquiries", "/admin/reviews", "/admin/community", "/admin/pickups", "/admin/audit-logs", "/admin/research"];
 const App = () => <QueryClientProvider client={queryClient}><TooltipProvider><ThemeProvider><Sonner position="top-center" richColors /><BrowserRouter><Routes>
   <Route path="/" element={<HomePage />} /><Route path="/products" element={<ProductsPage />} /><Route path="/products/:id" element={<ProductDetailPage />} /><Route path="/map" element={<MapPage />} /><Route path="/community" element={<CommunityPage />} /><Route path="/inquiry" element={<InquiryPage />} /><Route path="/auth" element={<AuthPage />} /><Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+  <Route path="/payments/toss/checkout" element={<RequireAuth><TossCheckoutPage /></RequireAuth>} /><Route path="/payments/toss/success" element={<RequireAuth><TossSuccessPage /></RequireAuth>} /><Route path="/payments/toss/fail" element={<RequireAuth><TossFailPage /></RequireAuth>} />
   {myPagePaths.map((path) => <Route key={path} path={path} element={<RequireAuth><MyPage /></RequireAuth>} />)}
   {sellerPaths.map((path) => <Route key={path} path={path} element={<RequireSeller><SellerPage /></RequireSeller>} />)}
   {adminPaths.map((path) => <Route key={path} path={path} element={<RequireAdmin><AdminPage /></RequireAdmin>} />)}

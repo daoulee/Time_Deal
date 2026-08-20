@@ -5,5 +5,6 @@
  */
 export const publicKeys = {
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "",
-  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ""
+  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
+  tossClientKey: import.meta.env.VITE_TOSS_CLIENT_KEY ?? ""
 };

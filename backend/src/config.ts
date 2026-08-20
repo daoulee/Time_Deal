@@ -23,8 +23,10 @@ export const config = {
   naverClientSecret: read("NAVER_CLIENT_SECRET"),
   naverRedirectUri: read("NAVER_REDIRECT_URI"),
   paymentProvider: read("PAYMENT_PROVIDER") || "not_configured",
+  tossSecretKey: read("TOSS_SECRET_KEY"),
 } as const;
 
 export const isSupabaseConfigured = (): boolean => Boolean(config.supabaseUrl && config.supabaseAnonKey && config.supabaseServiceRoleKey);
+export const isTossConfigured = (): boolean => Boolean(config.tossSecretKey);
 export const isAllowedRedirectOrigin = (origin: string): boolean => config.authRedirectOrigins.includes(origin);
 export const passwordResetRedirect = (): string => `${config.authRedirectOrigins[0] ?? "http://localhost:3100"}/auth/reset-password`;

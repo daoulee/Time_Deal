@@ -27,7 +27,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="site-frame">
       <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
-      <div className="service-policy-bar"><span>TIMEDEAL</span> 온라인 PG 도입 전에는 현장 결제 또는 결제 없는 예약으로 주문합니다.</div>
       <header className="site-header">
         <div className="header-inner">
           <Link to="/" className="brand" aria-label="타임딜 홈">

@@ -6,7 +6,7 @@ import { ArrowLeft, BarChart3, Boxes, ClipboardList, FileClock, HelpCircle, MapP
 import { Link, NavLink } from "react-router-dom";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
-const sellerLinks = [["/seller", "대시보드", BarChart3], ["/seller/products", "상품 관리", Boxes], ["/seller/products/new", "상품 등록", PackagePlus], ["/seller/orders", "주문 현황", ClipboardList], ["/seller/analytics", "딜·통계·픽업", BarChart3], ["/seller/inquiries", "판매자 문의", HelpCircle]] as const;
+const sellerLinks = [["/seller", "대시보드", BarChart3], ["/seller/products", "상품 관리", Boxes], ["/seller/products/new", "상품 등록", PackagePlus], ["/seller/orders", "주문 현황", ClipboardList], ["/seller/analytics", "통계·픽업", BarChart3], ["/seller/inquiries", "판매자 문의", HelpCircle]] as const;
 const adminLinks = [["/admin", "운영 현황", ShieldCheck], ["/admin/orders", "주문 운영", ClipboardList], ["/admin/users", "사용자 관리", Users], ["/admin/sellers", "판매자 신청", Store], ["/admin/products", "상품·딜", Boxes], ["/admin/inquiries", "문의 관리", HelpCircle], ["/admin/reviews", "리뷰 관리", Star], ["/admin/community", "커뮤니티", MessageSquareWarning], ["/admin/pickups", "픽업 운영", MapPinned], ["/admin/audit-logs", "감사 로그", FileClock], ["/admin/research", "통계", SearchCheck]] as const;
 
 export function DashboardShell({ type, children }: { type: "seller" | "admin"; children: React.ReactNode }) {

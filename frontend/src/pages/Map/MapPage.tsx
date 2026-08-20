@@ -9,16 +9,16 @@ import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/shared/layout/AppShell";
 import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
 
-type MapStore = { id: string; name: string; deal: string; price: number; discountRate: number; deadline: string; address: string; lat: number; lng: number };
+type MapStore = { id: string; name: string; deal: string; price: number; discountRate: number; deadline: string; address: string; lat: number; lng: number; image: string };
 
 const SEONGSU_CENTER = { lat: 37.5445, lng: 127.0562 };
 const STORES: MapStore[] = [
-  { id: "1", name: "성수 수제 함박스테이크", deal: "함박스테이크 & 구운 채소", price: 12900, discountRate: 28, deadline: "오늘 21:00 마감", address: "서울 성동구 성수이로 20", lat: 37.5443, lng: 127.0557 },
-  { id: "2", name: "산지직송 청과", deal: "논산 딸기 2팩", price: 8500, discountRate: 29, deadline: "오늘 21:00 마감", address: "서울 성동구 성수이로 12길 8", lat: 37.5461, lng: 127.0549 },
-  { id: "3", name: "성수 생활마트", deal: "롤화장지 32롤", price: 16900, discountRate: 32, deadline: "오늘 22:00 마감", address: "서울 성동구 아차산로 17길 22", lat: 37.5428, lng: 127.0578 },
-  { id: "4", name: "동네 정육·계란 상회", deal: "특란 30구", price: 9900, discountRate: 34, deadline: "오늘 20:00 마감", address: "서울 성동구 성수일로4길 13", lat: 37.5452, lng: 127.0591 },
-  { id: "5", name: "성수 명품 베이커리", deal: "버터 소금빵 4개 세트", price: 7900, discountRate: 34, deadline: "오늘 21:30 마감", address: "서울 성동구 연무장길 9", lat: 37.5436, lng: 127.0540 },
-  { id: "6", name: "샐러드 공방", deal: "닭가슴살 샐러드 팩", price: 4900, discountRate: 35, deadline: "오늘 20:30 마감", address: "서울 성동구 왕십리로 96", lat: 37.5417, lng: 127.0565 },
+  { id: "1", name: "성수 수제 함박스테이크", deal: "함박스테이크 & 구운 채소", price: 12900, discountRate: 28, deadline: "오늘 21:00 마감", address: "서울 성동구 성수이로 20", lat: 37.5443, lng: 127.0557, image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80" },
+  { id: "2", name: "산지직송 청과", deal: "논산 딸기 2팩", price: 8500, discountRate: 29, deadline: "오늘 21:00 마감", address: "서울 성동구 성수이로 12길 8", lat: 37.5461, lng: 127.0549, image: "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=600&q=80" },
+  { id: "3", name: "성수 생활마트", deal: "롤화장지 32롤", price: 16900, discountRate: 32, deadline: "오늘 22:00 마감", address: "서울 성동구 아차산로 17길 22", lat: 37.5428, lng: 127.0578, image: "https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=600&q=80" },
+  { id: "4", name: "동네 정육·계란 상회", deal: "특란 30구", price: 9900, discountRate: 34, deadline: "오늘 20:00 마감", address: "서울 성동구 성수일로4길 13", lat: 37.5452, lng: 127.0591, image: "https://images.unsplash.com/photo-1582722872446-47e2ef309252?auto=format&fit=crop&w=600&q=80" },
+  { id: "5", name: "성수 명품 베이커리", deal: "버터 소금빵 4개 세트", price: 7900, discountRate: 34, deadline: "오늘 21:30 마감", address: "서울 성동구 연무장길 9", lat: 37.5436, lng: 127.0540, image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" },
+  { id: "6", name: "샐러드 공방", deal: "닭가슴살 샐러드 팩", price: 4900, discountRate: 35, deadline: "오늘 20:30 마감", address: "서울 성동구 왕십리로 96", lat: 37.5417, lng: 127.0565, image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80" },
 ];
 
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
@@ -62,7 +62,7 @@ export default function MapPage() {
     if (!store || !map || !infoWindow || !marker) return;
     setSelectedId(id);
     map.panTo({ lat: store.lat, lng: store.lng });
-    infoWindow.setContent(`<div style="font-family:inherit;min-width:200px"><strong style="display:block;margin-bottom:4px">${store.name}</strong><span style="display:block;color:#666;font-size:12px;margin-bottom:6px">${store.deal}</span><b style="color:#ff5722">${store.discountRate}% OFF</b> <span>${formatPrice(store.price)}</span></div>`);
+    infoWindow.setContent(`<div style="font-family:inherit;min-width:220px"><img src="${store.image}" alt="${store.name}" style="width:100%;height:110px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block" /><strong style="display:block;margin-bottom:4px">${store.name}</strong><span style="display:block;color:#666;font-size:12px;margin-bottom:6px">${store.deal}</span><b style="color:#ff5722">${store.discountRate}% OFF</b> <span>${formatPrice(store.price)}</span></div>`);
     infoWindow.open({ map, anchor: marker });
   }
 
@@ -94,6 +94,7 @@ export default function MapPage() {
                 className={`map-store-card${selectedId === store.id ? " active" : ""}`}
                 onClick={() => selectStore(store.id)}
               >
+                <img src={store.image} alt={store.name} className="map-store-thumb" />
                 <div>
                   <strong>{store.name}</strong>
                   <span className="map-store-deal">{store.deal}</span>
