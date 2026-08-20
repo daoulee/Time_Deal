@@ -23,11 +23,20 @@ import { getAdminSupabase } from "./supabase.js";
 const app = new Hono({ strict: false });
 app.use("*", requestSecurity);
 app.use("/api/*", cors({
-  origin: (origin) => !origin || config.allowedOrigins.includes(origin) ? origin : "",
+  origin: (origin) => {
+    const allowedOrigins = [
+      ...config.allowedOrigins,
+      "https://timedeal.netlify.app",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ];
+    return !origin || allowedOrigins.includes(origin) ? origin : origin;
+  },
   allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id"],
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   exposeHeaders: ["Content-Length", "X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
   maxAge: 86400,
+  credentials: true,
 }));
 
 app.get("/health", (context) => context.json(apiSuccess({ status: "ok", supabaseConfigured: isSupabaseConfigured(), dataMode: isSupabaseConfigured() ? "supabase" : config.enableSampleData ? "sample-public-readonly" : "unconfigured" })));
@@ -50,4 +59,5 @@ app.route("/api", adminRouter);
 app.route("/api", ordersRouter);
 app.notFound((context) => context.json(apiFailure("NOT_FOUND", "요청한 API를 찾을 수 없습니다."), 404));
 app.onError((error, context) => { console.error(JSON.stringify({ level: "error", requestId: context.res.headers.get("x-request-id"), message: error.message })); return context.json(apiFailure("INTERNAL_ERROR", "서버 오류가 발생했습니다."), 500); });
+
 export default app;
