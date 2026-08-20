@@ -6,6 +6,7 @@ import { apiUrl } from "@/lib/api-base";
 import { notifyApiError } from "@/lib/api-error";
 import { getAuthToken, setAuthToken } from "@/lib/auth";
 import { supabaseAuthClient } from "@/lib/supabase-auth";
+import type { AuctionItem, AuctionSettlement, DeliveryMethod } from "@/shared/auction";
 
 export type ApiFetchInit = RequestInit & { auth?: boolean };
 export type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string; details?: unknown } };
@@ -76,6 +77,7 @@ export async function submitSellerProduct(id: string) { return requestData<{ pro
 export async function hideSellerProduct(id: string) { return requestData<{ product: RawRecord }>(`/seller-products/${encodeURIComponent(id)}/hide`, { method: "POST" }); }
 export async function getProductUploadUrl(id: string, file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>(`/seller-products/${encodeURIComponent(id)}/image-upload-url`, json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
 export async function getNewProductUploadUrl(file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>("/seller-products/image-upload-url", json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
+export async function getCommunityImageUploadUrl(file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>("/community/image-upload-url", json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
 export async function uploadProductImage(bucket: string, objectPath: string, token: string, file: File) {
   if (!supabaseAuthClient) return { ok: false, status: 0, error: "이미지 저장소 환경변수가 필요합니다." };
   const { error } = await supabaseAuthClient.storage.from(bucket).uploadToSignedUrl(objectPath, token, file, { contentType: file.type });
@@ -98,7 +100,8 @@ export async function getAdminUsers() { return requestData<{ users: RawRecord[] 
 export async function updateAdminUser(id: string, input: { role?: string; isSuspended?: boolean; reason: string }) { return requestData<{ user: RawRecord }>(`/admin-users/${encodeURIComponent(id)}`, json("PATCH", input)); }
 export async function getSellerApplications() { return requestData<{ applications: RawRecord[] }>("/admin/seller-applications"); }
 export async function reviewSellerApplication(id: string, status: "approved" | "rejected", reason: string) { return requestData<{ application: RawRecord }>(`/admin/seller-applications/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
-export async function getAdminItems(resource: "products" | "deals" | "reviews" | "community" | "community-reports" | "pickup-locations" | "pickup-slots" | "audit-logs") { return requestData<{ items: RawRecord[] }>(`/admin/${resource}`); }
+export async function getAdminItems(resource: "products" | "deals" | "reviews" | "community" | "community-reports" | "pickup-locations" | "pickup-slots" | "audit-logs" | "auctions") { return requestData<{ items: RawRecord[] }>(`/admin/${resource}`); }
+export async function deleteAdminAuction(id: string, reason: string) { return requestData<{ deleted: boolean }>(`/admin/auctions/${encodeURIComponent(id)}`, json("DELETE", { reason })); }
 export async function moderateProduct(id: string, status: "active" | "rejected" | "hidden", reason: string) { return requestData<{ product: RawRecord }>(`/admin/products/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
 export async function moderateDeal(id: string, status: "draft" | "active" | "ended" | "cancelled", reason: string) { return requestData<{ deal: RawRecord }>(`/admin/deals/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
 export async function moderateContent(resource: "reviews" | "community" | "reports", id: string, status: string, reason: string) { return requestData<{ item: RawRecord }>(`/admin/moderation/${resource}/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
@@ -122,8 +125,25 @@ export async function getMyReviews() { return requestData<{ reviews: RawRecord[]
 export async function createMyReview(input: { orderItemId: string; rating: number; content: string }) { return requestData<{ review: RawRecord }>("/reviews", json("POST", input)); }
 export async function updateMyReview(id: string, input: { rating?: number; content?: string }) { return requestData<{ review: RawRecord }>(`/reviews/${encodeURIComponent(id)}`, json("PATCH", input)); }
 export async function deleteMyReview(id: string) { return requestData<{ deleted: boolean }>(`/reviews/${encodeURIComponent(id)}`, { method: "DELETE" }); }
+export async function getMyRestockRequests() { return requestData<{ requests: RawRecord[] }>("/restock-requests"); }
+export async function createRestockRequest(orderItemId: string, message: string) { return requestData<{ request: RawRecord }>("/restock-requests", json("POST", { orderItemId, message })); }
+export async function getSellerRestockRequests() { return requestData<{ requests: RawRecord[] }>("/seller-restock-requests"); }
+export async function replySellerRestockRequest(id: string, input: { expectedRestockDate?: string; sellerReply: string }) { return requestData<{ request: RawRecord }>(`/seller-restock-requests/${encodeURIComponent(id)}`, json("PATCH", input)); }
 export async function getMyInquiries() { return requestData<{ inquiries: Inquiry[] }>("/inquiries"); }
 export async function replyMyInquiry(id: string, message: string) { return requestData<{ message: InquiryMessage }>(`/inquiries/${encodeURIComponent(id)}/messages`, json("POST", { message })); }
+
+export async function getAuctions() { return requestData<{ auctions: AuctionItem[] }>("/auctions", { auth: false }); }
+export async function getAuction(id: string) { return requestData<{ auction: AuctionItem; youAreRestricted: boolean; youAreWinner: boolean }>(`/auctions/${encodeURIComponent(id)}`, { auth: false }); }
+export async function placeAuctionBid(id: string, amount: number) { return requestData<{ auction: AuctionItem }>(`/auctions/${encodeURIComponent(id)}/bids`, json("POST", { amount })); }
+export async function checkoutAuction(id: string, input: { deliveryMethod: DeliveryMethod; deliveryAddress?: string; parcelPayment?: "prepaid" | "cod" }) { return requestData<{ auction: AuctionItem }>(`/auctions/${encodeURIComponent(id)}/checkout`, json("POST", input)); }
+export async function confirmAuctionReceipt(id: string) { return requestData<{ auction: AuctionItem }>(`/auctions/${encodeURIComponent(id)}/confirm-receipt`, { method: "POST" }); }
+export async function getMyAuctionOrders() { return requestData<{ orders: RawRecord[] }>("/my-auction-orders"); }
+export async function getSellerAuctions() { return requestData<{ auctions: AuctionItem[] }>("/seller-auctions"); }
+export async function createSellerAuction(input: { title: string; description: string; origin: string; image: string; startPrice: number; minBidIncrement: number; endsAt: string; allowPickup: boolean; pickupLocation: string; allowQuick: boolean; sellerHandlesDelivery: boolean }) { return requestData<{ auction: AuctionItem }>("/seller-auctions", json("POST", input)); }
+export async function getSellerAuctionUploadUrl(file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>("/seller-auctions/image-upload-url", json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
+export async function awardSellerAuction(id: string, input: { winnerUserId?: string; finalPrice?: number }) { return requestData<{ auction: AuctionItem }>(`/seller-auctions/${encodeURIComponent(id)}/award`, json("POST", input)); }
+export async function submitFloorBid(id: string, amount: number) { return requestData<{ auction: AuctionItem }>(`/seller-auctions/${encodeURIComponent(id)}/floor-bid`, json("POST", { amount })); }
+export async function getSellerSettlements() { return requestData<{ settlements: AuctionSettlement[] }>("/seller-settlements"); }
 
 export async function sendEmailOtp(email: string, redirectTo = `${window.location.origin}/auth`) { return apiFetch("/auth/email-otp/send", { ...json("POST", { email, redirectTo }), auth: false }); }
 export async function verifyEmailOtp(email: string, token: string) { return apiFetch("/auth/email-otp/verify", { ...json("POST", { email, token, type: "email" }), auth: false }); }

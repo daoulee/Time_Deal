@@ -20,20 +20,81 @@ import {
   ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth";
-import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
+import {
+  isGoogleMapsConfigured,
+  loadGoogleMaps,
+} from "@/lib/google-maps-loader";
+import { THEME_ROUTE } from "@/shared/categoryData";
 
 // ── 마켓컬리 스타일 2단 카테고리 데이터 ──
 const categoryData: Record<string, string[]> = {
-  "채소·과일": ["친환경", "제철과일", "국산과일", "수입과일", "간편과일", "냉동·견과일"],
-  "신선식품": ["정육·가공육", "달걀·알류", "수산·해산물", "건어물", "반찬·메인요리"],
-  "베이커리·델리": ["식빵·모닝빵", "베이글·식사빵", "케이크·타르트", "쿠키·스콘", "샌드위치·샐러드"],
-  "간편식·밀키트": ["국·탕·찌개", "볶음·찜요리", "파스타·면류", "냉동볶음밥", "떡볶이·분식"],
-  "면·양념·오일": ["라면·국수", "파스타면·소스", "오일·식초", "설탕·소금·조미료", "장류·가루"],
-  "음료·우유": ["우유·두유", "생수·탄산수", "과일·채소즙", "커피·티백", "요거트·디저트"],
-  "생활용품·뷰티": ["화장지·물티슈", "세탁세제·섬유유연제", "주방세제", "스킨케어", "헤어·바디케어"],
+  "채소·과일": [
+    "친환경",
+    "제철과일",
+    "국산과일",
+    "수입과일",
+    "간편과일",
+    "냉동·견과일",
+  ],
+  신선식품: [
+    "정육·가공육",
+    "달걀·알류",
+    "수산·해산물",
+    "건어물",
+    "반찬·메인요리",
+  ],
+  "베이커리·델리": [
+    "식빵·모닝빵",
+    "베이글·식사빵",
+    "케이크·타르트",
+    "쿠키·스콘",
+    "샌드위치·샐러드",
+  ],
+  "간편식·밀키트": [
+    "국·탕·찌개",
+    "볶음·찜요리",
+    "파스타·면류",
+    "냉동볶음밥",
+    "떡볶이·분식",
+  ],
+  "면·양념·오일": [
+    "라면·국수",
+    "파스타면·소스",
+    "오일·식초",
+    "설탕·소금·조미료",
+    "장류·가루",
+  ],
+  "음료·우유": [
+    "우유·두유",
+    "생수·탄산수",
+    "과일·채소즙",
+    "커피·티백",
+    "요거트·디저트",
+  ],
+  "생활용품·뷰티": [
+    "화장지·물티슈",
+    "세탁세제·섬유유연제",
+    "주방세제",
+    "스킨케어",
+    "헤어·바디케어",
+  ],
 };
+
+// ── 검색어 순위 높은 순서대로 정확히 10개 키워드 리스트 ──
+const POPULAR_SEARCH_KEYWORDS = [
+  "신선식품",
+  "베이커리",
+  "딸기",
+  "소금빵",
+  "샐러드",
+  "샤인머스캣",
+  "함박스테이크",
+  "특란",
+  "닭가슴살",
+  "순대",
+];
 
 // ── 상단 메인 네비게이션 주제 ──
 const MAIN_NAV_THEMES = [
@@ -43,9 +104,7 @@ const MAIN_NAV_THEMES = [
   "지도찾기",
   "신규오픈",
   "특가/공구",
-  "재오픈",
-  "모닝픽",
-  "내 주변 픽업",
+  "모닝픽"
 ];
 
 // ── 좌측 카테고리 메뉴 목록 ──
@@ -71,21 +130,35 @@ const HERO_SLIDES = [
     tag: "",
     title: "신선함을 먼저 생각하는 \n우리 동네 타임딜",
     desc: "성수동 소상공인 마감 재고 최대 70% 타임딜 오픈!\n이웃들과 함께 모여 확정 할인가로 당일 픽업하세요.",
-    img: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1600&q=80",
+    img: "https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "5",
     tag: "",
     title: "갓 구운 빵을\n오늘 바로 반값에",
     desc: "성수 명품 베이커리 당일 식빵·소금빵 반값 할인!\n골든 타임 한정으로 갓 구운 풍미 그대로 만납니다.",
-    img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1600&q=80",
+    img: "https://images.unsplash.com/photo-1663904460424-91895028aa9e?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "2",
     tag: "",
     title: "퇴근길 도보 5분,\n우리 동네 픽업 특가",
     desc: "도보 5분 내 매장 픽업 퇴근길 전 품목 균일가 특가!\n동네 이웃과 함께 바로 픽업하는 초간편 공구.",
-    img: "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=1600&q=80",
+    img: "https://images.unsplash.com/photo-1628689469838-524a4a973b8e?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    id: "4",
+    tag: "",
+    title: "오늘 아침 산란,\n특란 30구 신선특가",
+    desc: "당일 산란한 신선란만 골라 담은 타임딜!\n아침 든든하게 채우는 신선식품을 지금 만나보세요.",
+    img: "https://images.unsplash.com/photo-1690983329845-638ec321647d?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    id: "9",
+    tag: "",
+    title: "친환경 제철 야채,\n오늘만 이 가격",
+    desc: "산지에서 바로 온 친환경 방울토마토 타임딜!\n건강한 한 끼를 동네 이웃과 함께 나눠보세요.",
+    img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1600&q=80",
   },
 ];
 
@@ -160,7 +233,7 @@ const INITIAL_REOPEN_ITEMS = [
     requestedCount: 128,
     targetCount: 150,
     image:
-      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1666013942642-b7b54ecafd7d?auto=format&fit=crop&w=800&q=80",
     tags: ["품절 대란", "재오픈 임박"],
   },
   {
@@ -173,7 +246,7 @@ const INITIAL_REOPEN_ITEMS = [
     requestedCount: 94,
     targetCount: 100,
     image:
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1558745010-d2a3c21762ab?auto=format&fit=crop&w=800&q=80",
     tags: ["달성률 94%", "요청 폭주"],
   },
   {
@@ -186,7 +259,7 @@ const INITIAL_REOPEN_ITEMS = [
     requestedCount: 67,
     targetCount: 80,
     image:
-      "https://images.unsplash.com/photo-1537640538966-79f369143f8f?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1641642399576-487909d0ddbc?auto=format&fit=crop&w=800&q=80",
     tags: ["신선보장", "골목 특가"],
   },
 ];
@@ -199,7 +272,7 @@ const MORNING_PREORDER_ITEMS = [
     originalPrice: 4200,
     pickupTime: "07:00 ~ 09:00 픽업",
     image:
-      "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1607292819104-c54624be6bc2?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "m2",
@@ -208,7 +281,7 @@ const MORNING_PREORDER_ITEMS = [
     originalPrice: 8500,
     pickupTime: "07:00 ~ 09:00 픽업",
     image:
-      "https://images.unsplash.com/photo-1582722872446-47e2ef309252?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1598965675045-45c5e72c7d05?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "m3",
@@ -217,7 +290,7 @@ const MORNING_PREORDER_ITEMS = [
     originalPrice: 9800,
     pickupTime: "07:00 ~ 09:00 픽업",
     image:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1571230389215-b34a89739ef1?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
@@ -279,7 +352,7 @@ const PRODUCTS_DATA: DealProduct[] = [
     originalPrice: 15000,
     discountRate: 34,
     image:
-      "https://images.unsplash.com/photo-1582722872446-47e2ef309252?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1690983329845-638ec321647d?auto=format&fit=crop&w=600&q=80",
     deadline: "오늘 마감",
   },
   {
@@ -339,7 +412,7 @@ const PRODUCTS_DATA: DealProduct[] = [
     originalPrice: 8900,
     discountRate: 34,
     image:
-      "https://images.unsplash.com/photo-1546094324-6ac6d0f9b3a5?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
     deadline: "오늘 마감",
   },
   {
@@ -351,19 +424,25 @@ const PRODUCTS_DATA: DealProduct[] = [
     originalPrice: 8500,
     discountRate: 31,
     image:
-      "https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1584872238332-fe2b75566ab5?auto=format&fit=crop&w=600&q=80",
     deadline: "오늘 마감",
   },
 ];
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
 
+  // ── 검색 상태 및 ref ──
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [rankingCategoryTab, setRankingCategoryTab] = useState("전체");
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [isCustomerMenuOpen, setIsCustomerMenuOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string>("채소·과일");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [currentLocation, setCurrentLocation] = useState("성수동 2가");
@@ -394,8 +473,59 @@ export default function HomePage() {
   const [canScrollWalkLeft, setCanScrollWalkLeft] = useState(false);
 
   const RANKING_TABS = useMemo(() => {
-    const defaultTabs = ["전체", "신선식품", "과일·야채", "생활용품", "베이커리", "음식·반찬"];
-    return Array.from(new Set([...defaultTabs, ...DROPDOWN_CATEGORIES])).slice(0, 6);
+    const defaultTabs = [
+      "전체",
+      "신선식품",
+      "과일·야채",
+      "생활용품",
+      "베이커리",
+      "음식·반찬",
+    ];
+    return Array.from(new Set([...defaultTabs, ...DROPDOWN_CATEGORIES])).slice(
+      0,
+      6,
+    );
+  }, []);
+
+  // ── 검색어 순위 높은 순서대로 정확히 10개 필터링 ──
+  const searchSuggestions = useMemo(() => {
+    const trimmed = searchTerm.trim().toLowerCase();
+    if (!trimmed) {
+      return POPULAR_SEARCH_KEYWORDS.slice(0, 10);
+    }
+    const matched = POPULAR_SEARCH_KEYWORDS.filter((kw) =>
+      kw.toLowerCase().includes(trimmed),
+    );
+    return matched.length > 0 ? matched.slice(0, 10) : [trimmed];
+  }, [searchTerm]);
+
+  // ── 검색 실행 함수 (엔터 / 클릭 공통) ──
+  const executeSearch = (keyword: string) => {
+    const target = keyword.trim();
+    if (!target) return;
+    setIsSearchFocused(false);
+    navigate(`/products?q=${encodeURIComponent(target)}`);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      executeSearch(searchTerm);
+    }
+  };
+
+  // ── 검색창 외부 클릭 시 추천 레이어 닫기 ──
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -404,6 +534,15 @@ export default function HomePage() {
     }, 5500);
     return () => clearInterval(bannerTimer);
   }, []);
+
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (focus === "reopen") {
+      reopenSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else if (focus === "morning") {
+      morningSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [searchParams]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -415,10 +554,10 @@ export default function HomePage() {
     setSearchTerm("");
     if (theme === "재오픈" && reopenSectionRef.current) {
       reopenSectionRef.current.scrollIntoView({ behavior: "smooth" });
-    } else if (theme === "모닝픽" && morningSectionRef.current) {
-      morningSectionRef.current.scrollIntoView({ behavior: "smooth" });
     } else if (theme === "지도찾기" || theme === "내 주변 픽업") {
       navigate("/map");
+    } else if (THEME_ROUTE[theme]) {
+      navigate(`/products?theme=${THEME_ROUTE[theme]}`);
     }
   };
 
@@ -521,7 +660,9 @@ export default function HomePage() {
         if (item.id === id) {
           return {
             ...item,
-            requestedCount: isVoted ? item.requestedCount - 1 : item.requestedCount + 1,
+            requestedCount: isVoted
+              ? item.requestedCount - 1
+              : item.requestedCount + 1,
           };
         }
         return item;
@@ -531,7 +672,7 @@ export default function HomePage() {
     if (isVoted) {
       showToast(`[${name}] 재오픈 요청이 취소되었습니다.`);
     } else {
-      showToast(`🔥 [${name}] 재오픈 요청 투표 완료! 사장님께 알림이 전송됩니다.`);
+      showToast(`🔔 [${name}] 재오픈 알림 요청이 완료되었습니다!`);
     }
   };
 
@@ -577,8 +718,6 @@ export default function HomePage() {
     return (matched.length > 0 ? matched : PRODUCTS_DATA).slice(0, 9);
   }, [rankingCategoryTab]);
 
-  const activeHero = HERO_SLIDES[currentHeroIndex];
-
   const renderProductCard = (item: DealProduct) => {
     return (
       <article
@@ -586,7 +725,8 @@ export default function HomePage() {
         onClick={() => navigate(`/products/${item.id}`)}
         style={{
           background: "#ffffff",
-          borderRadius: 6,
+          borderRadius: 0,
+          border: "none",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -600,7 +740,7 @@ export default function HomePage() {
             height: 330,
             position: "relative",
             background: "#f4f4f4",
-            borderRadius: 6,
+            borderRadius: 12,
             overflow: "hidden",
           }}
         >
@@ -623,7 +763,7 @@ export default function HomePage() {
               fontSize: 12,
               fontWeight: 700,
               padding: "4px 8px",
-              borderRadius: 4,
+              borderRadius: 0,
             }}
           >
             {item.discountRate}% OFF
@@ -651,7 +791,9 @@ export default function HomePage() {
               color={
                 likedIds.has(item.id) ? TOKENS.colors.primaryOrange : "#888888"
               }
-              fill={likedIds.has(item.id) ? TOKENS.colors.primaryOrange : "none"}
+              fill={
+                likedIds.has(item.id) ? TOKENS.colors.primaryOrange : "none"
+              }
             />
           </button>
         </div>
@@ -832,12 +974,56 @@ export default function HomePage() {
             display: "inline-block",
           }}
         />
-        <span
-          style={{ cursor: "pointer", color: "#333333" }}
-          onClick={() => navigate("/inquiry")}
+        <div
+          onMouseEnter={() => setIsCustomerMenuOpen(true)}
+          onMouseLeave={() => setIsCustomerMenuOpen(false)}
+          style={{ position: "relative" }}
         >
-          고객센터 ▾
-        </span>
+          <span style={{ cursor: "pointer", color: "#333333" }}>
+            고객센터 ▾
+          </span>
+          {isCustomerMenuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: 20,
+                right: 0,
+                width: 160,
+                background: "#ffffff",
+                border: `1px solid ${TOKENS.colors.borderMedium}`,
+                boxShadow: TOKENS.shadows.floating,
+                borderRadius: 8,
+                zIndex: 210,
+                padding: "6px 0",
+                textAlign: "left",
+              }}
+            >
+              {[
+                { label: "공지사항", to: "/notices" },
+                { label: "자주하는 질문", to: "/faq" },
+                { label: "1:1 문의", to: "/inquiry" },
+                { label: "대량주문 문의", to: "/inquiry?category=bulk" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  onClick={() => {
+                    setIsCustomerMenuOpen(false);
+                    navigate(item.to);
+                  }}
+                  style={{
+                    padding: "9px 16px",
+                    fontSize: 13,
+                    color: "#333333",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── 3. 메인 헤더 ── */}
@@ -851,6 +1037,8 @@ export default function HomePage() {
           justifyContent: "space-between",
           alignItems: "center",
           boxSizing: "border-box",
+          position: "relative",
+          zIndex: 100,
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
@@ -865,7 +1053,11 @@ export default function HomePage() {
               marginRight: 16,
             }}
           >
-            <img src="/images/deal-logo.png" alt="타임딜" style={{ height: 30, width: "auto", display: "block" }} />
+            <img
+              src="/images/deal-logo.png"
+              alt="타임딜"
+              style={{ height: 30, width: "auto", display: "block" }}
+            />
           </Link>
           <div
             style={{
@@ -908,49 +1100,155 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* ── 검색창 + 회색 테두리 연관검색어 10개 레이어 ── */}
         <div
-          style={{
-            width: 400,
-            height: 44,
-            border: `1.5px solid ${TOKENS.colors.navy}`,
-            borderRadius: 6,
-            display: "flex",
-            alignItems: "center",
-            padding: "0 14px",
-            background: "#ffffff",
-            position: "relative",
-          }}
+          ref={searchContainerRef}
+          style={{ position: "relative", width: 400 }}
         >
-          <input
-            type="text"
-            placeholder="마감 임박 신선식품, 계란, 샐러드 검색"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          <div
             style={{
               width: "100%",
-              border: "none",
-              outline: "none",
-              fontSize: 14,
-              color: TOKENS.colors.textBody,
-              letterSpacing: "-0.3px",
+              height: 44,
+              border: `1.5px solid ${isSearchFocused ? TOKENS.colors.primaryOrange : TOKENS.colors.navy}`,
+              borderRadius: isSearchFocused ? "6px 6px 0 0" : 6,
+              display: "flex",
+              alignItems: "center",
+              padding: "0 14px",
+              background: "#ffffff",
+              boxSizing: "border-box",
+              transition: "border-color 0.15s ease",
             }}
-          />
-          {searchTerm ? (
+          >
+            <input
+              type="text"
+              placeholder="마감 임박 신선식품, 계란, 샐러드 검색"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setIsSearchFocused(true);
+              }}
+              onFocus={() => setIsSearchFocused(true)}
+              onKeyDown={handleSearchKeyDown}
+              style={{
+                width: "100%",
+                border: "none",
+                outline: "none",
+                fontSize: 14,
+                color: TOKENS.colors.textBody,
+                letterSpacing: "-0.3px",
+              }}
+            />
+            {searchTerm ? (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: TOKENS.colors.textSubtle,
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 4px",
+                }}
+              >
+                <X size={18} />
+              </button>
+            ) : null}
             <button
-              onClick={() => setSearchTerm("")}
+              type="button"
+              onClick={() => executeSearch(searchTerm)}
               style={{
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                color: TOKENS.colors.textSubtle,
                 display: "flex",
                 alignItems: "center",
+                padding: "0 0 0 4px",
               }}
             >
-              <X size={18} />
+              <Search
+                size={22}
+                color={
+                  isSearchFocused
+                    ? TOKENS.colors.primaryOrange
+                    : TOKENS.colors.navy
+                }
+              />
             </button>
-          ) : (
-            <Search size={22} color={TOKENS.colors.navy} />
+          </div>
+
+          {/* 회색 테두리 연관 검색어 레이어 */}
+          {isSearchFocused && (
+            <div
+              style={{
+                position: "absolute",
+                top: 44,
+                left: 0,
+                right: 0,
+                background: "#ffffff",
+                border: "1.5px solid #cbd5e1",
+                borderTop: "none",
+                borderRadius: "0 0 6px 6px",
+                boxShadow: "0 12px 24px rgba(0,0,0,0.08)",
+                zIndex: 200,
+                maxHeight: 380,
+                overflowY: "auto",
+                padding: "8px 0",
+              }}
+            >
+              <div
+                onClick={() => executeSearch("이벤트")}
+                style={{
+                  padding: "10px 18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  color: "#222222",
+                  borderBottom: "1px solid #f1f5f9",
+                  background: "#fafafa",
+                }}
+              >
+                <span>
+                  타임딜 이웃 오픈 특가{" "}
+                  <b style={{ color: TOKENS.colors.primaryOrange }}>이벤트</b>
+                </span>
+                <ChevronRightIcon size={14} color="#999" />
+              </div>
+
+              {searchSuggestions.map((kw, idx) => (
+                <div
+                  key={`${kw}-${idx}`}
+                  onClick={() => {
+                    setSearchTerm(kw);
+                    executeSearch(kw);
+                  }}
+                  style={{
+                    padding: "10px 18px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    color: "#333333",
+                    transition: "background 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f8f9fa";
+                    e.currentTarget.style.color = TOKENS.colors.primaryOrange;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = "#333333";
+                  }}
+                >
+                  <Search size={15} color="#999999" />
+                  <span style={{ flex: 1 }}>{kw}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -968,7 +1266,11 @@ export default function HomePage() {
             onClick={() => setIsLocationModalOpen(true)}
             title="동네 설정"
           >
-            <MapPin size={22} strokeWidth={1.7} color={TOKENS.colors.primaryOrange} />
+            <MapPin
+              size={22}
+              strokeWidth={1.7}
+              color={TOKENS.colors.primaryOrange}
+            />
             <span
               style={{
                 fontSize: 13,
@@ -1082,7 +1384,6 @@ export default function HomePage() {
               position: "relative",
             }}
           >
-            {/* 좌측 카테고리 드롭다운 토글 버튼 */}
             <div
               onMouseEnter={() => setIsCategoryMenuOpen(true)}
               onMouseLeave={() => setIsCategoryMenuOpen(false)}
@@ -1096,7 +1397,9 @@ export default function HomePage() {
                   cursor: "pointer",
                   fontWeight: 700,
                   fontSize: 15,
-                  color: isCategoryMenuOpen ? TOKENS.colors.primaryOrange : "#1a1a1a",
+                  color: isCategoryMenuOpen
+                    ? TOKENS.colors.primaryOrange
+                    : "#1a1a1a",
                   paddingRight: 18,
                   borderRight: `1px solid ${TOKENS.colors.borderLight}`,
                   height: 48,
@@ -1212,7 +1515,6 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* 가로 스크롤 메뉴 리스트 영역 */}
             <div
               style={{
                 position: "relative",
@@ -1344,32 +1646,32 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div
+          <button
+            type="button"
+            onClick={() => navigate("/auction")}
             style={{
-              border: `1.5px solid #d9e2ec`,
+              border: `1.5px solid ${TOKENS.colors.primaryOrange}`,
               borderRadius: 24,
               padding: "7px 16px",
               fontSize: 13,
-              fontWeight: 500,
-              color: "#666666",
+              fontWeight: 700,
+              color: TOKENS.colors.primaryOrange,
               display: "flex",
               alignItems: "center",
               gap: 6,
               flexShrink: 0,
-              background: "#ffffff",
+              background: TOKENS.colors.primaryLight,
               marginLeft: 16,
+              cursor: "pointer",
               userSelect: "none",
             }}
           >
-            <span style={{ color: TOKENS.colors.primaryOrange, fontWeight: 700 }}>
-              당일 픽업
-            </span>{" "}
-            서비스 운영 중
-          </div>
+            🐟 직판장 경매
+          </button>
         </div>
       </nav>
 
-      {/* ── 5. 사진 풀블리드 히어로 배너 ── */}
+      {/* ── 5. 사진 풀블리드 히어로 배너 (직각 복원) ── */}
       <section
         style={{
           width: "100vw",
@@ -1379,107 +1681,126 @@ export default function HomePage() {
           height: 460,
           overflow: "hidden",
           marginBottom: 48,
+          borderRadius: 0, // 직각 복원
         }}
       >
-        <img
-          src={activeHero.img}
-          alt={activeHero.title}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            transition: "opacity 0.5s ease",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.42) 45%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0) 100%)",
-          }}
-        />
+        {HERO_SLIDES.map((slide, idx) => {
+          const isActive = idx === currentHeroIndex;
+          return (
+            <div
+              key={slide.id}
+              aria-hidden={!isActive}
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: isActive ? 1 : 0,
+                transition: "opacity 0.9s ease",
+                pointerEvents: isActive ? "auto" : "none",
+              }}
+            >
+              <img
+                src={slide.img}
+                alt={slide.title}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.42) 45%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0) 100%)",
+                }}
+              />
 
-        <div
-          style={{
-            maxWidth: 1050,
-            margin: "0 auto",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            position: "relative",
-            padding: "0 16px",
-            boxSizing: "border-box",
-          }}
-        >
-          <div style={{ maxWidth: 470, zIndex: 2 }}>
-            <span
-              style={{
-                fontSize: 14,
-                color: "#ffb199",
-                fontWeight: 600,
-                letterSpacing: "0.5px",
-                display: "inline-block",
-                marginBottom: 8,
-              }}
-            >
-              {activeHero.tag}
-            </span>
-            <h1
-              style={{
-                fontSize: 42,
-                fontWeight: 700,
-                color: "#ffffff",
-                lineHeight: "1.18",
-                margin: "0 0 14px 0",
-                letterSpacing: "-1px",
-                whiteSpace: "pre-line",
-                textShadow: "0 2px 12px rgba(0,0,0,0.25)",
-              }}
-            >
-              {activeHero.title}
-            </h1>
-            <p
-              style={{
-                fontSize: 15,
-                color: "rgba(255,255,255,0.88)",
-                lineHeight: "1.5",
-                margin: "0 0 28px 0",
-                fontWeight: 400,
-                whiteSpace: "pre-line",
-              }}
-            >
-              {activeHero.desc}
-            </p>
+              <div
+                style={{
+                  maxWidth: 1050,
+                  margin: "0 auto",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  position: "relative",
+                  padding: "0 16px",
+                  boxSizing: "border-box",
+                }}
+              >
+                <div style={{ maxWidth: 470, zIndex: 2 }}>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: "#ffb199",
+                      fontWeight: 600,
+                      letterSpacing: "0.5px",
+                      display: "inline-block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {slide.tag}
+                  </span>
+                  <h1
+                    style={{
+                      fontSize: 42,
+                      fontWeight: 700,
+                      color: "#ffffff",
+                      lineHeight: "1.18",
+                      margin: "0 0 14px 0",
+                      letterSpacing: "-1px",
+                      whiteSpace: "pre-line",
+                      textShadow: "0 2px 12px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    {slide.title}
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: 15,
+                      color: "rgba(255,255,255,0.88)",
+                      lineHeight: "1.5",
+                      margin: "0 0 28px 0",
+                      fontWeight: 400,
+                      whiteSpace: "pre-line",
+                    }}
+                  >
+                    {slide.desc}
+                  </p>
 
-            <button
-              onClick={() => navigate(`/products/${activeHero.id}`)}
-              style={{
-                backgroundColor: TOKENS.colors.navy,
-                color: "#ffffff",
-                border: "none",
-                borderRadius: 30,
-                padding: "14px 34px",
-                fontSize: 14,
-                fontWeight: 600,
-                letterSpacing: "0.8px",
-                cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = TOKENS.colors.navyDark)
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = TOKENS.colors.navy)
-              }
-            >
-              지금 바로 특가 보러가기
-            </button>
-          </div>
-        </div>
+                  <button
+                    onClick={() => navigate(`/products/${slide.id}`)}
+                    style={{
+                      backgroundColor: TOKENS.colors.navy,
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 30,
+                      padding: "14px 34px",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      letterSpacing: "0.8px",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor =
+                        TOKENS.colors.navyDark)
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.backgroundColor =
+                        TOKENS.colors.navy)
+                    }
+                  >
+                    지금 바로 특가 보러가기
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
 
         <div
           style={{
@@ -1587,7 +1908,7 @@ export default function HomePage() {
           style={{
             marginBottom: 80,
             background: "#ffffff",
-            borderRadius: 12,
+            borderRadius: 0,
             padding: "24px 0",
           }}
         >
@@ -1627,7 +1948,8 @@ export default function HomePage() {
                   lineHeight: "1.5",
                 }}
               >
-                오늘 밤 미리 예약하고 내일 아침 7시부터 신선하게 픽업하세요. 망설이면 늦어요!
+                오늘 밤 미리 예약하고 내일 아침 7시부터 신선하게 픽업하세요.
+                망설이면 늦어요!
               </p>
             </div>
 
@@ -1641,7 +1963,8 @@ export default function HomePage() {
                   style={{
                     position: "relative",
                     background: "#ffffff",
-                    borderRadius: 8,
+                    borderRadius: 0,
+                    border: "none",
                     overflow: "hidden",
                     cursor: "pointer",
                     display: "flex",
@@ -1654,12 +1977,12 @@ export default function HomePage() {
                       height: 380,
                       position: "relative",
                       background: "#f4f4f4",
-                      borderRadius: 8,
+                      borderRadius: 12,
                       overflow: "hidden",
                     }}
                   >
                     <img
-                      src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                      src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"
                       alt="신선한 샐러드"
                       style={{
                         width: "100%",
@@ -1677,7 +2000,7 @@ export default function HomePage() {
                         fontSize: 13,
                         fontWeight: 700,
                         padding: "5px 10px",
-                        borderRadius: 4,
+                        borderRadius: 0,
                       }}
                     >
                       모닝특가
@@ -1726,7 +2049,13 @@ export default function HomePage() {
                     >
                       [모닝특가] 신선 유기농 아침 샐러드 & 그래놀라 세트
                     </h3>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 8,
+                      }}
+                    >
                       <strong
                         style={{
                           fontSize: 20,
@@ -1745,7 +2074,12 @@ export default function HomePage() {
                       >
                         6,500원
                       </strong>
-                      <del style={{ fontSize: 14, color: TOKENS.colors.textSubtle }}>
+                      <del
+                        style={{
+                          fontSize: 14,
+                          color: TOKENS.colors.textSubtle,
+                        }}
+                      >
                         9,800원
                       </del>
                     </div>
@@ -1769,7 +2103,9 @@ export default function HomePage() {
         </section>
 
         {/* [순서 2] 실시간 인기 공구 TOP 10 */}
-        <section style={{ marginBottom: 80, position: "relative", width: "100%" }}>
+        <section
+          style={{ marginBottom: 80, position: "relative", width: "100%" }}
+        >
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <h2
               style={{
@@ -1786,7 +2122,13 @@ export default function HomePage() {
               <Trophy size={24} color={TOKENS.colors.primaryOrange} />{" "}
               {currentLocation} 실시간 인기 공구 TOP 10
             </h2>
-            <p style={{ fontSize: 15, color: TOKENS.colors.textSubtle, margin: 0 }}>
+            <p
+              style={{
+                fontSize: 15,
+                color: TOKENS.colors.textSubtle,
+                margin: 0,
+              }}
+            >
               지금 우리 동네 이웃들이 가장 많이 참여하고 있는 타임딜이에요
             </p>
           </div>
@@ -1869,7 +2211,7 @@ export default function HomePage() {
                       position: "relative",
                       width: "100%",
                       height: 330,
-                      borderRadius: 6,
+                      borderRadius: 0,
                       overflow: "hidden",
                       background: "#f4f4f4",
                     }}
@@ -1893,7 +2235,7 @@ export default function HomePage() {
                         fontSize: 12,
                         fontWeight: 700,
                         padding: "4px 8px",
-                        borderRadius: 4,
+                        borderRadius: 0,
                       }}
                     >
                       {item.discountRate}% OFF
@@ -1915,7 +2257,7 @@ export default function HomePage() {
                           idx === 0
                             ? TOKENS.colors.primaryOrange
                             : "rgba(0,0,0,0.65)",
-                        borderTopRightRadius: 8,
+                        borderTopRightRadius: 0,
                       }}
                     >
                       {idx + 1}
@@ -2034,16 +2376,14 @@ export default function HomePage() {
                 onClick={() => setRankingCategoryTab(cat)}
                 style={{
                   padding: "11px 0",
-                  borderRadius: 22,
+                  borderRadius: 0,
                   border: `1px solid ${
                     rankingCategoryTab === cat
                       ? TOKENS.colors.navy
                       : TOKENS.colors.borderLight
                   }`,
                   background:
-                    rankingCategoryTab === cat
-                      ? TOKENS.colors.navy
-                      : "#ffffff",
+                    rankingCategoryTab === cat ? TOKENS.colors.navy : "#ffffff",
                   color:
                     rankingCategoryTab === cat
                       ? "#ffffff"
@@ -2086,7 +2426,7 @@ export default function HomePage() {
                     position: "relative",
                     width: 140,
                     height: 160,
-                    borderRadius: 6,
+                    borderRadius: 0,
                     overflow: "hidden",
                     flexShrink: 0,
                     background: "#f4f4f4",
@@ -2195,7 +2535,9 @@ export default function HomePage() {
         </section>
 
         {/* [순서 4] 걸어서 5분 거리! 퇴근길 픽업 특가 */}
-        <section style={{ marginBottom: 80, position: "relative", width: "100%" }}>
+        <section
+          style={{ marginBottom: 80, position: "relative", width: "100%" }}
+        >
           <div
             style={{
               display: "flex",
@@ -2219,7 +2561,13 @@ export default function HomePage() {
                 <Footprints size={22} color={TOKENS.colors.primaryOrange} />{" "}
                 걸어서 5분 거리! 퇴근길 픽업 특가
               </h2>
-              <p style={{ fontSize: 14, color: TOKENS.colors.textSubtle, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: TOKENS.colors.textSubtle,
+                  margin: 0,
+                }}
+              >
                 퇴근길에 바로 들러 픽업 가능한 가장 가까운 가게
               </p>
             </div>
@@ -2229,7 +2577,7 @@ export default function HomePage() {
                 background: "none",
                 border: `1.5px solid ${TOKENS.colors.navy}`,
                 padding: "8px 16px",
-                borderRadius: 4,
+                borderRadius: 0,
                 fontSize: 13,
                 fontWeight: 500,
                 color: TOKENS.colors.navy,
@@ -2316,9 +2664,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ───────────────────────────────────────────────────────────
-            [순서 5] 💡 이 딜 다시 열어주세요! (마켓컬리 ORIGINAL 스타일 2열 와이드 매거진 카드)
-        ─────────────────────────────────────────────────────────── */}
+        {/* [순서 5] 이 딜 다시 열어주세요! */}
         <section
           ref={reopenSectionRef}
           style={{
@@ -2327,22 +2673,23 @@ export default function HomePage() {
             width: "100%",
           }}
         >
-          {/* 중앙 정렬 헤더 */}
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <h2
               style={{
                 fontSize: 26,
-                fontWeight: 700,
+                fontWeight: 600,
                 margin: "0 0 8px 0",
-                color: TOKENS.colors.textHeading,
-                cursor: "pointer",
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                gap: 6,
+                justifyContent: "center",
+                gap: 8,
+                color: TOKENS.colors.navy,
+                cursor: "pointer",
               }}
               onClick={() => showToast("재오픈 요청 전체 목록으로 이동합니다.")}
             >
-              이 딜 다시 열어주세요! &gt;
+              <Flame size={24} color={TOKENS.colors.primaryOrange} /> 이 딜 다시
+              열어주세요! &gt;
             </h2>
             <p
               style={{
@@ -2351,12 +2698,12 @@ export default function HomePage() {
                 margin: 0,
               }}
             >
-              품절되어 아쉬웠던 인기 타임딜, 투표가 모이면 사장님께 타임딜 오픈 요청이 전달돼요!
+              품절되어 아쉬웠던 인기 타임딜, 투표가 모이면 사장님께 타임딜 오픈
+              요청이 전달돼요!
             </p>
           </div>
 
           <div style={{ position: "relative", width: "100%" }}>
-            {/* 좌측 스크롤 화살표 */}
             {canScrollReopenLeft && (
               <button
                 onClick={() => handleScroll(reopenScrollRef, "left", 530)}
@@ -2382,7 +2729,6 @@ export default function HomePage() {
               </button>
             )}
 
-            {/* 우측 스크롤 화살표 (마켓컬리 원형 화살표) */}
             <button
               onClick={() => handleScroll(reopenScrollRef, "right", 530)}
               style={{
@@ -2406,7 +2752,6 @@ export default function HomePage() {
               <ChevronRight size={22} color={TOKENS.colors.textBody} />
             </button>
 
-            {/* 2열 와이드 매거진 카드 컨테이너 */}
             <div
               ref={reopenScrollRef}
               onScroll={(e) => checkScrollLeft(e, setCanScrollReopenLeft)}
@@ -2432,23 +2777,24 @@ export default function HomePage() {
                     style={{
                       flex: "0 0 calc((100% - 20px) / 2)",
                       minWidth: 480,
-                      borderRadius: 8,
+                      borderRadius: 0,
                       overflow: "hidden",
                       display: "flex",
                       flexDirection: "column",
                       cursor: "pointer",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                      background: "#ffffff",
+                      border: `1px solid ${TOKENS.colors.borderLight}`,
+                      boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
                     }}
                     onClick={(e) => toggleReopenVote(e, item.id, item.name)}
                   >
-                    {/* 상단 와이드 이미지 영역 */}
                     <div
                       style={{
                         position: "relative",
                         width: "100%",
                         height: 270,
                         overflow: "hidden",
-                        background: "#f0f0f0",
+                        background: "#f4f4f4",
                       }}
                     >
                       <img
@@ -2462,105 +2808,121 @@ export default function HomePage() {
                         }}
                       />
 
-                      {/* 좌측 상단 태그 뱃지 */}
                       <div
                         style={{
                           position: "absolute",
                           top: 14,
                           left: 14,
                           display: "flex",
-                          gap: 6,
+                          gap: 10,
+                          alignItems: "center",
                         }}
                       >
                         {item.tags.map((tag) => (
                           <span
                             key={tag}
                             style={{
-                              background: "rgba(0,0,0,0.65)",
                               color: "#ffffff",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              padding: "4px 8px",
-                              borderRadius: 4,
-                              backdropFilter: "blur(4px)",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+                              letterSpacing: "-0.2px",
                             }}
                           >
-                            {tag}
+                            #{tag}
                           </span>
                         ))}
                       </div>
-
-                      {/* 우측 상단 투표 뱃지 */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 14,
-                          right: 14,
-                          background: isVoted
-                            ? TOKENS.colors.primaryOrange
-                            : "rgba(255,255,255,0.92)",
-                          color: isVoted ? "#ffffff" : TOKENS.colors.primaryOrange,
-                          padding: "6px 12px",
-                          borderRadius: 20,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        {isVoted ? "✓ 요청완료" : "🔥 나도 요청 (+1)"}
-                      </div>
                     </div>
 
-                    {/* 하단 웜 베이지 톤 텍스트 박스 */}
                     <div
                       style={{
-                        background: "#fdf8f0",
+                        background: "#ffffff",
                         padding: "24px 26px",
                         display: "flex",
                         flexDirection: "column",
                         gap: 12,
                       }}
                     >
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: TOKENS.colors.primaryOrange,
-                            marginBottom: 4,
-                          }}
-                        >
-                          {item.storeName}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: TOKENS.colors.primaryOrange,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {item.storeName}
+                          </div>
+                          <h3
+                            style={{
+                              fontSize: 19,
+                              fontWeight: 600,
+                              color: TOKENS.colors.textHeading,
+                              margin: "0 0 6px 0",
+                              lineHeight: "26px",
+                              letterSpacing: "-0.4px",
+                            }}
+                          >
+                            {item.name}
+                          </h3>
+                          <p
+                            style={{
+                              fontSize: 14,
+                              color: TOKENS.colors.textMuted,
+                              margin: 0,
+                              lineHeight: "20px",
+                            }}
+                          >
+                            {item.subtitle}
+                          </p>
                         </div>
-                        <h3
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleReopenVote(e, item.id, item.name);
+                          }}
                           style={{
-                            fontSize: 20,
+                            background: "transparent",
+                            border: "none",
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            color: isVoted
+                              ? TOKENS.colors.primaryOrange
+                              : "#555555",
                             fontWeight: 700,
-                            color: TOKENS.colors.textHeading,
-                            margin: "0 0 6px 0",
-                            lineHeight: "28px",
-                            letterSpacing: "-0.4px",
-                          }}
-                        >
-                          {item.name}
-                        </h3>
-                        <p
-                          style={{
                             fontSize: 14,
-                            color: TOKENS.colors.textMuted,
-                            margin: 0,
-                            lineHeight: "20px",
+                            whiteSpace: "nowrap",
                           }}
                         >
-                          {item.subtitle}
-                        </p>
+                          <BellRing
+                            size={17}
+                            color={
+                              isVoted ? TOKENS.colors.primaryOrange : "#555555"
+                            }
+                          />
+                          <span>{isVoted ? "요청완료" : "요청하기"}</span>
+                        </button>
                       </div>
 
-                      {/* 가격 및 달성 프로그레스 바 */}
-                      <div style={{ paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                      <div
+                        style={{
+                          paddingTop: 10,
+                          borderTop: `1px solid ${TOKENS.colors.borderLight}`,
+                        }}
+                      >
                         <div
                           style={{
                             display: "flex",
@@ -2569,8 +2931,19 @@ export default function HomePage() {
                             marginBottom: 8,
                           }}
                         >
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                            <span style={{ fontSize: 13, color: TOKENS.colors.textSubtle }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "baseline",
+                              gap: 6,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 13,
+                                color: TOKENS.colors.textSubtle,
+                              }}
+                            >
                               예상 특가
                             </span>
                             <strong
@@ -2582,22 +2955,32 @@ export default function HomePage() {
                             >
                               {formatPriceNum(item.expectedPrice)}
                             </strong>
-                            <del style={{ fontSize: 13, color: TOKENS.colors.textSubtle }}>
+                            <del
+                              style={{
+                                fontSize: 13,
+                                color: TOKENS.colors.textSubtle,
+                              }}
+                            >
                               {formatPriceNum(item.originalPrice)}
                             </del>
                           </div>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: TOKENS.colors.primaryOrange }}>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: TOKENS.colors.primaryOrange,
+                            }}
+                          >
                             {item.requestedCount}명 요청 ({progressPercent}%)
                           </span>
                         </div>
 
-                        {/* 프로그레스 게이지 */}
                         <div
                           style={{
                             width: "100%",
                             height: 6,
-                            background: "rgba(0,0,0,0.08)",
-                            borderRadius: 3,
+                            background: "#eaeaea",
+                            borderRadius: 0,
                             overflow: "hidden",
                           }}
                         >
@@ -2606,7 +2989,7 @@ export default function HomePage() {
                               width: `${progressPercent}%`,
                               height: "100%",
                               background: TOKENS.colors.primaryOrange,
-                              borderRadius: 3,
+                              borderRadius: 0,
                               transition: "width 0.3s ease",
                             }}
                           />
@@ -2665,7 +3048,7 @@ export default function HomePage() {
                       position: "relative",
                       width: "100%",
                       height: 330,
-                      borderRadius: 6,
+                      borderRadius: 0,
                       overflow: "hidden",
                       cursor: "pointer",
                       background: "#f4f4f4",
@@ -2690,7 +3073,7 @@ export default function HomePage() {
                         fontSize: 12,
                         fontWeight: 700,
                         padding: "4px 8px",
-                        borderRadius: 4,
+                        borderRadius: 0,
                       }}
                     >
                       최대 {item.discountRate}% 쿠폰

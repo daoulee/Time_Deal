@@ -8,7 +8,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Store, UserRound } from "lucid
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient, setAuthToken } from "@/lib/auth";
-import { apiFetch, applySellerAccount, sendEmailOtp as requestEmailOtp } from "@/lib/api";
+import { apiFetch, applySellerAccount, sendEmailOtp as requestEmailOtp, updateMyProfile } from "@/lib/api";
 import { isSupabaseAuthConfigured, startKakaoAuth } from "@/lib/supabase-auth";
 import { normalizeApiError, readResponseBody } from "@/lib/api-error";
 import { useTheme } from "@/shared/theme/ThemeProvider";
@@ -26,7 +26,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreements, setAgreements] = useState({ age: true, terms: true, privacy: true, marketing: false });
   const [wantsSeller, setWantsSeller] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [businessNumber, setBusinessNumber] = useState("");
@@ -94,13 +94,14 @@ export default function AuthPage() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mode === "forgot") { setSubmitting(true); try { const response = await apiFetch("/auth/forgot-password", { method: "POST", auth: false, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); if (!response.ok) throw new Error(normalizeApiError(await readResponseBody(response)).message); toast.success("비밀번호 초기화 메일을 보냈습니다."); setMode("signin"); } catch (error) { toast.error(error instanceof Error ? error.message : "초기화 요청에 실패했습니다."); } finally { setSubmitting(false); } return; }
-    if (mode === "signup" && !agreedToTerms) { toast.error("이용약관 및 개인정보 처리방침에 동의해야 가입할 수 있습니다."); return; }
+    if (mode === "signup" && !(agreements.age && agreements.terms && agreements.privacy)) { toast.error("필수 약관에 모두 동의해야 가입할 수 있습니다."); return; }
     setSubmitting(true);
     try {
       const result = mode === "signup" ? await authClient.signUp.email({ name, email, password }) : await authClient.signIn.email({ email, password });
       if (result.error) throw new Error(result.error.message ?? "인증에 실패했습니다.");
       if (mode === "signup") {
         if (!result.data?.token) { toast.success(wantsSeller ? "인증 메일을 확인한 뒤 로그인하고, 마이페이지에서 판매자 신청을 완료해 주세요." : "인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; }
+        if (agreements.marketing) void updateMyProfile({ marketingOptIn: true }).catch(() => {});
         if (wantsSeller) {
           const applyResult = await applySellerAccount({ businessName, businessNumber });
           if (!applyResult.ok) toast.error(applyResult.error?.message ?? "회원가입은 완료됐지만 판매자 신청은 접수하지 못했습니다. 마이페이지에서 다시 시도해 주세요.");
@@ -142,13 +143,12 @@ export default function AuthPage() {
               {mode === "otp" ? (
                 <form onSubmit={onOtpSubmit}><label><span>이메일</span><div className="input-wrap"><Mail /><input type="email" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} placeholder="name@example.com" required /></div></label>{otpSent && <label><span>6자리 인증 코드</span><div className="input-wrap"><KeyRound /><input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></div></label>}<button className="primary-button full" disabled={submitting || (otpSent && otpCode.length !== 6)}>{submitting ? "처리 중..." : otpSent ? "인증하고 로그인" : "인증 코드 받기"}</button></form>
               ) : (
-                <><form onSubmit={onSubmit}>{mode === "signup" && <label><span>이름</span><div className="input-wrap"><UserRound /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름" required /></div></label>}<label><span>이메일</span><div className="input-wrap"><Mail /><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required /></div></label>{mode !== "forgot" && <label><span>비밀번호</span><div className="input-wrap"><KeyRound /><input type="password" minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상" required /></div></label>}
-                {mode === "signup" && <label className="check-label"><input type="checkbox" checked={wantsSeller} onChange={(event) => setWantsSeller(event.target.checked)} /> <Store size={15} /> 판매자로 가입합니다 (사업자 정보 제출, 관리자 승인 필요)</label>}
-                {mode === "signup" && wantsSeller && <><label><span>사업자명</span><div className="input-wrap"><Store /><input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="사업자명" required /></div></label><label><span>사업자등록번호</span><div className="input-wrap"><Store /><input value={businessNumber} onChange={(event) => setBusinessNumber(event.target.value)} placeholder="000-00-00000" required /></div></label></>}
-                {mode === "signup" && <label className="check-label"><input type="checkbox" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} required /> (필수) 이용약관 및 개인정보 처리방침에 동의합니다</label>}
-                <button className="primary-button full" disabled={submitting || (mode === "signup" && !agreedToTerms)}>{submitting ? "처리 중..." : mode === "signup" ? "회원가입" : mode === "forgot" ? "재설정 메일 받기" : "로그인"}</button></form><button className="text-button" type="button" onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}>{mode === "forgot" ? "로그인으로 돌아가기" : "비밀번호를 잊으셨나요?"}</button></>
+                <><form onSubmit={onSubmit}>{mode === "signup" && <div className="role-toggle" role="group" aria-label="회원 유형"><button type="button" className={!wantsSeller ? "active" : ""} onClick={() => setWantsSeller(false)}><UserRound size={15} /> 일반</button><button type="button" className={wantsSeller ? "active" : ""} onClick={() => setWantsSeller(true)}><Store size={15} /> 판매자</button></div>}{mode === "signup" && <label><span>이름</span><div className="input-wrap"><UserRound /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름" required /></div></label>}<label><span>이메일</span><div className="input-wrap"><Mail /><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" required /></div></label>{mode !== "forgot" && <label><span>비밀번호</span><div className="input-wrap"><KeyRound /><input type="password" minLength={8} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상" required /></div></label>}
+                {mode === "signup" && wantsSeller && <><label><span>사업자명</span><div className="input-wrap"><Store /><input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="사업자명" required /></div></label><label><span>사업자등록번호</span><div className="input-wrap"><Store /><input value={businessNumber} onChange={(event) => setBusinessNumber(event.target.value)} placeholder="000-00-00000" required /></div></label><p className="integration-note">판매자 가입은 제출 후 관리자 승인이 필요합니다.</p></>}
+                {mode === "signup" && <div className="terms-group"><label className="check-label"><input type="checkbox" checked={agreements.age} onChange={(event) => setAgreements({ ...agreements, age: event.target.checked })} required /> (필수) 만 14세 이상입니다</label><label className="check-label"><input type="checkbox" checked={agreements.terms} onChange={(event) => setAgreements({ ...agreements, terms: event.target.checked })} required /> (필수) 이용약관에 동의합니다</label><label className="check-label"><input type="checkbox" checked={agreements.privacy} onChange={(event) => setAgreements({ ...agreements, privacy: event.target.checked })} required /> (필수) 개인정보 수집 및 이용에 동의합니다</label><label className="check-label"><input type="checkbox" checked={agreements.marketing} onChange={(event) => setAgreements({ ...agreements, marketing: event.target.checked })} /> (선택) 이벤트·혜택 정보 수신에 동의합니다</label></div>}
+                <button className="primary-button full" disabled={submitting || (mode === "signup" && !(agreements.age && agreements.terms && agreements.privacy))}>{submitting ? "처리 중..." : mode === "signup" ? "회원가입" : mode === "forgot" ? "재설정 메일 받기" : "로그인"}</button></form><button className="text-button" type="button" onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}>{mode === "forgot" ? "로그인으로 돌아가기" : "비밀번호를 잊으셨나요?"}</button></>
               )}
-              <div className="auth-social-actions"><button className="secondary-button full" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startKakaoAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "카카오 로그인에 실패했습니다."))}>카카오로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button><p className="integration-note">네이버 로그인은 별도 API 연결 후 활성화됩니다.</p>{mode !== "otp" && <button className="text-button" type="button" onClick={() => { setMode("otp"); setOtpSent(false); setOtpCode(""); }}>이메일 인증번호로 로그인</button>}</div>
+              <div className="auth-social-actions"><button className="secondary-button full kakao-button" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startKakaoAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "카카오 로그인에 실패했습니다."))}>카카오로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button><button className="secondary-button full naver-button" type="button" onClick={() => toast("네이버 로그인은 아직 연결 전입니다. 백엔드 연동이 완료되면 바로 활성화돼요.")}>네이버로 로그인 · 준비 중</button>{mode !== "otp" && <button className="text-button" type="button" onClick={() => { setMode("otp"); setOtpSent(false); setOtpCode(""); }}>이메일 인증번호로 로그인</button>}</div>
             </>
           )}
         </div>

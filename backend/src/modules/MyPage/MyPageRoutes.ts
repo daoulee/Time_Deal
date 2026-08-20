@@ -66,3 +66,21 @@ myPageRouter.delete("/reviews/:id", async (context) => {
   const { data } = await getAdminSupabase().from("reviews").update({ status: "deleted", updated_at: new Date().toISOString() }).eq("id", context.req.param("id")).eq("user_id", context.var.currentUser!.id).select("id").maybeSingle();
   return data ? context.json(apiSuccess({ deleted: true })) : context.json(apiFailure("NOT_FOUND", "리뷰를 찾을 수 없습니다."), 404);
 });
+
+myPageRouter.use("/restock-requests", requireAuth);
+myPageRouter.use("/restock-requests/*", requireAuth);
+myPageRouter.get("/restock-requests", async (context) => {
+  const { data, error } = await getAdminSupabase().from("restock_requests").select("*,products(name,image)").eq("user_id", context.var.currentUser!.id).order("created_at", { ascending: false });
+  return error ? context.json(apiFailure("QUERY_FAILED", "재입고 요청을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ requests: data ?? [] }));
+});
+myPageRouter.post("/restock-requests", async (context) => {
+  const parsed = z.object({ orderItemId: z.string().uuid(), message: z.string().max(500).default("") }).strict().safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "재입고 요청 정보를 확인하세요."), 400);
+  const supabase = getAdminSupabase();
+  const { data: item } = await supabase.from("order_items").select("id,product_id,orders!inner(user_id)").eq("id", parsed.data.orderItemId).eq("orders.user_id", context.var.currentUser!.id).maybeSingle();
+  if (!item) return context.json(apiFailure("NOT_ELIGIBLE", "본인이 주문한 상품만 재입고를 요청할 수 있습니다."), 403);
+  const { data: pending } = await supabase.from("restock_requests").select("id").eq("product_id", item.product_id).eq("user_id", context.var.currentUser!.id).eq("status", "pending").maybeSingle();
+  if (pending) return context.json(apiFailure("ALREADY_REQUESTED", "이미 답변 대기 중인 재입고 요청이 있습니다."), 409);
+  const { data, error } = await supabase.from("restock_requests").insert({ product_id: item.product_id, user_id: context.var.currentUser!.id, order_item_id: item.id, message: parsed.data.message }).select().single();
+  return error ? context.json(apiFailure("SAVE_FAILED", "재입고 요청을 저장하지 못했습니다."), 400) : context.json(apiSuccess({ request: data }), 201);
+});

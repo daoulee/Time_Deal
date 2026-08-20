@@ -5,11 +5,17 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { apiFailure, apiSuccess } from "../../http.js";
+import { config } from "../../config.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { getAdminSupabase } from "../../supabase.js";
 export const communityRouter = new Hono();
-const postInput = z.object({ title: z.string().min(2).max(120), content: z.string().min(2).max(3000), purchaseIntent: z.boolean().default(false) }).strict();
+const imagePath = z.string().min(3).max(500).regex(/^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|webp)$/i);
+const imageRef = z.union([imagePath, z.string().url().max(2000)]);
+const publicImageUrl = (objectPath: string) => getAdminSupabase().storage.from(config.productImageBucket).getPublicUrl(objectPath).data.publicUrl;
+const resolveImageRef = (ref: string) => (ref.startsWith("http://") || ref.startsWith("https://") ? ref : publicImageUrl(ref));
+const postInput = z.object({ title: z.string().min(2).max(120), content: z.string().min(2).max(3000), purchaseIntent: z.boolean().default(false), images: z.array(imageRef).max(5, "사진은 최대 5장까지 첨부할 수 있습니다.").optional() }).strict();
 const commentInput = z.object({ content: z.string().min(1).max(2000) }).strict();
+const imageUploadRequest = z.object({ fileName: z.string().min(1).max(120).regex(/\.(?:jpe?g|png|webp)$/i), contentType: z.enum(["image/jpeg", "image/png", "image/webp"]), size: z.number().int().positive().max(config.maxImageBytes) }).strict();
 
 communityRouter.get("/community", async (context) => {
   const page = Math.max(1, Number(context.req.query("page") ?? 1)); const limit = Math.min(50, Math.max(1, Number(context.req.query("limit") ?? 20)));
@@ -17,19 +23,32 @@ communityRouter.get("/community", async (context) => {
   return error ? context.json(apiFailure("QUERY_FAILED", "게시글을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ posts: data ?? [], page, limit, total: count ?? 0 }));
 });
 communityRouter.get("/community/:id", async (context) => {
-  const { data, error } = await getAdminSupabase().from("community_posts").select("*,community_comments(*),community_reactions(count)").eq("id", context.req.param("id")).eq("status", "visible").is("deleted_at", null).maybeSingle();
+  const { data, error } = await getAdminSupabase().from("community_posts").select("*,community_comments(count),community_reactions(count)").eq("id", context.req.param("id")).eq("status", "visible").is("deleted_at", null).maybeSingle();
   return error || !data ? context.json(apiFailure("NOT_FOUND", "게시글을 찾을 수 없습니다."), 404) : context.json(apiSuccess({ post: data }));
+});
+communityRouter.get("/community/:id/comments", async (context) => {
+  const { data, error } = await getAdminSupabase().from("community_comments").select("*,profiles(name)").eq("post_id", context.req.param("id")).eq("status", "visible").order("created_at", { ascending: true });
+  return error ? context.json(apiFailure("QUERY_FAILED", "댓글을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ comments: data ?? [] }));
 });
 communityRouter.post("/community", requireAuth, async (context) => {
   const parsed = postInput.safeParse(await context.req.json().catch(() => null)); if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "게시글을 확인하세요."), 400);
-  const { data, error } = await getAdminSupabase().from("community_posts").insert({ user_id: context.var.currentUser!.id, title: parsed.data.title, content: parsed.data.content, purchase_intent: parsed.data.purchaseIntent }).select().single();
+  const imageUrls = (parsed.data.images ?? []).map(resolveImageRef);
+  const { data, error } = await getAdminSupabase().from("community_posts").insert({ user_id: context.var.currentUser!.id, title: parsed.data.title, content: parsed.data.content, purchase_intent: parsed.data.purchaseIntent, image_url: imageUrls[0] ?? null, image_urls: imageUrls }).select().single();
   return error ? context.json(apiFailure("SAVE_FAILED", "게시글을 저장하지 못했습니다."), 400) : context.json(apiSuccess({ post: data }), 201);
 });
 communityRouter.patch("/community/:id", requireAuth, async (context) => {
   const parsed = postInput.partial().refine((value) => Object.keys(value).length > 0).safeParse(await context.req.json().catch(() => null)); if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "수정 내용을 확인하세요."), 400);
-  const update = { ...(parsed.data.title ? { title: parsed.data.title } : {}), ...(parsed.data.content ? { content: parsed.data.content } : {}), ...(parsed.data.purchaseIntent !== undefined ? { purchase_intent: parsed.data.purchaseIntent } : {}), updated_at: new Date().toISOString() };
+  const patchedImageUrls = parsed.data.images !== undefined ? parsed.data.images.map(resolveImageRef) : undefined;
+  const update = { ...(parsed.data.title ? { title: parsed.data.title } : {}), ...(parsed.data.content ? { content: parsed.data.content } : {}), ...(parsed.data.purchaseIntent !== undefined ? { purchase_intent: parsed.data.purchaseIntent } : {}), ...(patchedImageUrls !== undefined ? { image_url: patchedImageUrls[0] ?? null, image_urls: patchedImageUrls } : {}), updated_at: new Date().toISOString() };
   const { data } = await getAdminSupabase().from("community_posts").update(update).eq("id", context.req.param("id")).eq("user_id", context.var.currentUser!.id).is("deleted_at", null).select().maybeSingle();
   return data ? context.json(apiSuccess({ post: data })) : context.json(apiFailure("NOT_FOUND", "수정할 게시글을 찾을 수 없습니다."), 404);
+});
+communityRouter.post("/community/image-upload-url", requireAuth, async (context) => {
+  const parsed = imageUploadRequest.safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_IMAGE", "JPG·PNG·WEBP 이미지만 제한 크기 내에서 업로드할 수 있습니다."), 400);
+  const objectPath = `community/${context.var.currentUser!.id}/${crypto.randomUUID()}-${parsed.data.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+  const { data, error } = await getAdminSupabase().storage.from(config.productImageBucket).createSignedUploadUrl(objectPath);
+  return error ? context.json(apiFailure("UPLOAD_URL_FAILED", "이미지 업로드 URL을 만들지 못했습니다."), 502) : context.json(apiSuccess({ bucket: config.productImageBucket, objectPath, signedUrl: data.signedUrl, token: data.token }));
 });
 communityRouter.delete("/community/:id", requireAuth, async (context) => {
   const { data } = await getAdminSupabase().from("community_posts").update({ status: "deleted", deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", context.req.param("id")).eq("user_id", context.var.currentUser!.id).select("id").maybeSingle();

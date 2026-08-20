@@ -1,26 +1,59 @@
 /**
- * 진행 중인 타임딜을 운영 API에서 조회하고 검색·카테고리·정렬 기능을 제공하는 상품 목록 화면입니다.
- * 개발 데이터는 VITE_ENABLE_SAMPLE_DATA=true인 개발 빌드에서만 서비스 계층을 통해 명시적으로 허용합니다.
+ * 카테고리·소분류·테마(베스트/골든타임 등)로 실제 필터링되는 독립 상품 목록 페이지입니다.
+ * 직각 테두리 및 4열 중앙 정렬 스타일을 확실하게 강제 적용했습니다.
  */
-import { Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AppShell } from "@/shared/layout/AppShell";
+import { useSearchParams } from "react-router-dom";
+import { StoreHeader } from "@/shared/layout/StoreHeader";
+import { SiteFooter } from "@/shared/layout/SiteFooter";
 import { ProductCard } from "@/shared/components/ProductCard";
-import { type Product } from "@/shared/catalog";
-import { StatusBadge } from "@/shared/components/StatusBadge";
+import { discountPercentOf, type Product } from "@/shared/catalog";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
+import { CATEGORY_GROUPS, THEME_DESCRIPTION, THEME_LABEL, type ThemeKey } from "@/shared/categoryData";
 
-type SortMode = "closing" | "price-low" | "price-high" | "participation";
+type SortMode = "recommend" | "new" | "participation" | "discount" | "price-high" | "price-low";
+type PriceBucket = "all" | "under10" | "10to20" | "over20";
+
+const SORT_LABELS: Record<SortMode, string> = {
+  recommend: "추천순",
+  new: "신상품순",
+  participation: "판매량순",
+  discount: "혜택순",
+  "price-high": "높은가격순",
+  "price-low": "낮은가격순",
+};
+
+const PRICE_LABELS: Record<PriceBucket, string> = {
+  all: "전체",
+  under10: "1만원 미만",
+  "10to20": "1~2만원",
+  over20: "2만원 이상",
+};
+
+function endingSoonKey(product: Product) {
+  return product.endsAtIso ?? product.endsAt;
+}
+
+function isThemeKey(value: string | null): value is ThemeKey {
+  return !!value && value in THEME_LABEL;
+}
+
+const MORNING_CATEGORIES = ["베이커리·델리", "음료·우유"];
+const MORNING_KEYWORDS = ["달걀", "계란", "요거트", "샌드위치", "샐러드", "우유", "두유", "커피", "빵", "베이글", "그래놀라", "시리얼", "주스"];
+
+function isMorningPick(item: Product) {
+  return MORNING_CATEGORIES.includes(item.category) || MORNING_KEYWORDS.some((keyword) => item.name.includes(keyword));
+}
 
 export default function ProductsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [source, setSource] = useState<CatalogSource>("unavailable");
   const [notice, setNotice] = useState("상품 목록을 불러오는 중입니다.");
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("전체");
-  const [sortMode, setSortMode] = useState<SortMode>("closing");
-  const categories = useMemo(() => ["전체", ...Array.from(new Set(products.map((item) => item.category)))], [products]);
+  const [sortMode, setSortMode] = useState<SortMode>("recommend");
+  const [priceBucket, setPriceBucket] = useState<PriceBucket>("all");
+
   useEffect(() => {
     let active = true;
     void getCatalog().then((result) => {
@@ -31,10 +64,248 @@ export default function ProductsPage() {
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
-  useEffect(() => { if (category !== "전체" && !categories.includes(category)) setCategory("전체"); }, [category, categories]);
+
+  const query = searchParams.get("q")?.trim() ?? "";
+  const category = searchParams.get("category") ?? "";
+  const sub = searchParams.get("sub") ?? "";
+  const themeParam = searchParams.get("theme");
+  const theme = isThemeKey(themeParam) ? themeParam : null;
+  const subcategories = category && category in CATEGORY_GROUPS ? CATEGORY_GROUPS[category] : null;
+
+  useEffect(() => { setSortMode("recommend"); }, [category, sub, theme]);
+
   const filtered = useMemo(() => {
-    const result = products.filter((item) => (category === "전체" || item.category === category) && item.name.includes(query.trim()));
-    return [...result].sort((a, b) => sortMode === "price-low" ? a.dealPrice - b.dealPrice : sortMode === "price-high" ? b.dealPrice - a.dealPrice : sortMode === "participation" ? b.participants - a.participants : (a.endsAtIso ?? a.endsAt).localeCompare(b.endsAtIso ?? b.endsAt, "ko"));
-  }, [category, products, query, sortMode]);
-  return <AppShell><section className="page-hero compact"><div><p>PRODUCTS</p><h1>진행 중인 타임딜</h1><span>생활에 필요한 상품을 카테고리와 상품명으로 찾아보세요.</span></div><StatusBadge type={source === "supabase" ? "live" : source === "sample" ? "mock" : "ready"}>{source === "supabase" ? "운영 딜" : source === "sample" ? "개발 전용 딜" : "조회 결과 없음"}</StatusBadge></section><section className="section-wrap products-page"><div className="order-notice">{notice}</div><div className="catalog-toolbar"><label className="search-field"><Search size={19} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="상품명을 검색하세요" aria-label="상품 검색" /></label><div className="category-tabs" aria-label="카테고리 필터">{categories.map((item) => <button type="button" key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div><label className="filter-button"><SlidersHorizontal size={18} /><span>정렬</span><select aria-label="상품 정렬" value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}><option value="closing">마감순</option><option value="price-low">낮은 가격순</option><option value="price-high">높은 가격순</option><option value="participation">참여 많은순</option></select></label></div><div className="result-count"><b>{filtered.length}</b>개의 상품</div>{loading ? <div className="empty-state">상품을 불러오는 중입니다.</div> : filtered.length ? <div className="product-grid">{filtered.map((item) => <ProductCard key={`${item.id}-${item.dealId ?? "catalog"}`} product={item} />)}</div> : <div className="empty-state"><h2>표시할 상품이 없습니다.</h2><p>{products.length ? "다른 상품명이나 카테고리를 선택해 보세요." : notice}</p></div>}</section></AppShell>;
+    let list = products;
+    if (query) list = list.filter((item) => item.name.includes(query));
+    if (category) {
+      const byCategory = list.filter((item) => item.category === category);
+      if (sub) {
+        const bySub = byCategory.filter((item) => item.name.includes(sub) || item.category.includes(sub));
+        list = bySub.length ? bySub : byCategory;
+      } else {
+        list = byCategory;
+      }
+    }
+    if (theme === "morning") list = list.filter(isMorningPick);
+
+    if (priceBucket === "under10") list = list.filter((item) => item.dealPrice < 10000);
+    else if (priceBucket === "10to20") list = list.filter((item) => item.dealPrice >= 10000 && item.dealPrice < 20000);
+    else if (priceBucket === "over20") list = list.filter((item) => item.dealPrice >= 20000);
+
+    const effectiveSort: SortMode = sortMode !== "recommend" ? sortMode : theme === "best" ? "participation" : theme === "discount" ? "discount" : theme === "new" ? "new" : "recommend";
+
+    const sorted = [...list].sort((a, b) => {
+      if (effectiveSort === "price-low") return a.dealPrice - b.dealPrice;
+      if (effectiveSort === "price-high") return b.dealPrice - a.dealPrice;
+      if (effectiveSort === "participation") return b.participants - a.participants;
+      if (effectiveSort === "discount") return discountPercentOf(b) - discountPercentOf(a);
+      if (effectiveSort === "new") return a.participants - b.participants;
+      if (theme === "goldentime") {
+        const discountDiff = discountPercentOf(b) - discountPercentOf(a);
+        return discountDiff !== 0 ? discountDiff : endingSoonKey(a).localeCompare(endingSoonKey(b), "ko");
+      }
+      return endingSoonKey(a).localeCompare(endingSoonKey(b), "ko");
+    });
+    return sorted;
+  }, [products, query, category, sub, priceBucket, sortMode, theme]);
+
+  const title = category || (theme ? THEME_LABEL[theme] : "전체 상품");
+  const description = sub ? `${category} > ${sub}` : theme ? THEME_DESCRIPTION[theme] : "생활에 필요한 상품을 카테고리와 상품명으로 찾아보세요.";
+
+  const goToChip = (nextSub?: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextSub) next.set("sub", nextSub); else next.delete("sub");
+    setSearchParams(next);
+  };
+
+  return (
+    <div style={{ width: "100%", background: "#ffffff", minHeight: "100vh" }}>
+      {/* ── 강제 직각 테두리 & 카드 스타일 오버라이드 ── */}
+      <style>{`
+        .custom-square-box,
+        .custom-square-box * {
+          border-radius: 0px !important;
+        }
+        .product-card,
+        .product-card-thumb,
+        .product-card img,
+        article,
+        article div,
+        article img {
+          border-radius: 0px !important;
+        }
+      `}</style>
+
+      <StoreHeader activeTheme={theme ?? undefined} />
+      
+      {/* ── 본문 컨테이너 (정확히 1050px 기준) ── */}
+      <section style={{ width: "100%", maxWidth: "1050px", margin: "0 auto", padding: "0 16px 100px", boxSizing: "border-box" }}>
+        
+        {/* 상단 타이틀 */}
+        <div style={{ textAlign: "center", margin: "40px 0 28px" }}>
+          <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#1a1a1a", margin: "0 0 8px 0" }}>{title}</h1>
+          <p style={{ fontSize: "14px", color: "#888888", margin: 0 }}>{description}</p>
+        </div>
+
+        {/* ── 1. 상단 소분류 카테고리 박스 (완벽한 직각 사각 테두리 + 4열 분할) ── */}
+        {subcategories && (
+          <div
+            className="custom-square-box"
+            style={{
+              width: "100%",
+              margin: "0 auto 36px",
+              padding: "24px 32px",
+              border: "1px solid #e2e8f0",
+              borderRadius: "0px",
+              background: "#ffffff",
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                rowGap: "18px",
+                columnGap: "16px",
+                alignItems: "center",
+                width: "100%",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => goToChip()}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: "0px",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  fontSize: "15px",
+                  fontWeight: sub ? 500 : 700,
+                  color: sub ? "#333333" : "#ff5722",
+                  padding: "6px 0",
+                  transition: "color 0.15s ease",
+                }}
+              >
+                전체보기
+              </button>
+              {subcategories.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => goToChip(item)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: "0px",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    fontSize: "15px",
+                    fontWeight: sub === item ? 700 : 500,
+                    color: sub === item ? "#ff5722" : "#333333",
+                    padding: "6px 0",
+                    transition: "color 0.15s ease",
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {source !== "supabase" && (
+          <div style={{ background: "#f8f9fa", padding: "12px 16px", fontSize: "13px", color: "#666", marginBottom: "20px", border: "1px solid #e2e8f0", borderRadius: "0px" }}>
+            {notice}
+          </div>
+        )}
+
+        {/* ── 2. 메인 컨텐츠 영역 ── */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "28px", width: "100%", boxSizing: "border-box" }}>
+          
+          {/* 좌측 가격 필터 (완벽한 직각 사각 테두리) */}
+          <aside
+            className="custom-square-box"
+            style={{
+              width: "220px",
+              flexShrink: 0,
+              border: "1px solid #e2e8f0",
+              borderRadius: "0px",
+              padding: "24px 20px",
+              background: "#ffffff",
+              boxSizing: "border-box",
+            }}
+          >
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1a1a1a", margin: "0 0 16px 0", paddingBottom: "12px", borderBottom: "1px solid #e2e8f0" }}>
+              가격
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {(Object.keys(PRICE_LABELS) as PriceBucket[]).map((bucket) => (
+                <label key={bucket} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px", color: "#333333" }}>
+                  <input
+                    type="radio"
+                    name="price-bucket"
+                    checked={priceBucket === bucket}
+                    onChange={() => setPriceBucket(bucket)}
+                    style={{ accentColor: "#ff5722", cursor: "pointer", width: "16px", height: "16px" }}
+                  />
+                  <span>{PRICE_LABELS[bucket]}</span>
+                </label>
+              ))}
+            </div>
+          </aside>
+
+          {/* 우측 상품 목록 */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", paddingBottom: "12px", borderBottom: "1px solid #f1f5f9" }}>
+              <span style={{ fontSize: "14px", color: "#666666" }}>
+                총 <b style={{ color: "#1a1a1a", fontWeight: 700 }}>{filtered.length}</b>건의 상품
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                {(Object.keys(SORT_LABELS) as SortMode[]).map((mode, idx) => (
+                  <div key={mode} style={{ display: "flex", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => setSortMode(mode)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        fontSize: "13px",
+                        fontWeight: sortMode === mode ? 700 : 400,
+                        color: sortMode === mode ? "#ff5722" : "#888888",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      {SORT_LABELS[mode]}
+                    </button>
+                    {idx < Object.keys(SORT_LABELS).length - 1 && (
+                      <span style={{ width: 1, height: 11, background: "#e2e8f0", margin: "0 8px", display: "inline-block" }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "80px 0", color: "#888888", fontSize: "15px" }}>상품을 불러오는 중입니다.</div>
+            ) : filtered.length ? (
+              <div className="custom-square-box" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 20px" }}>
+                {filtered.map((item) => (
+                  <ProductCard key={`${item.id}-${item.dealId ?? "catalog"}`} product={item} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "80px 0" }}>
+                <h2 style={{ fontSize: "18px", color: "#333", marginBottom: "8px" }}>표시할 상품이 없습니다.</h2>
+                <p style={{ fontSize: "14px", color: "#888" }}>{products.length ? "다른 카테고리나 가격대를 선택해 보세요." : notice}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
 }

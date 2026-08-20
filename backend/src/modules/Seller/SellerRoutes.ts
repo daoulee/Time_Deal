@@ -165,6 +165,24 @@ sellerRouter.get("/seller-reopen-requests", sellerOnly, async (context) => {
   const requests = Array.from(summary.values()).sort((a, b) => b.requestCount - a.requestCount);
   return context.json(apiSuccess({ requests }));
 });
+sellerRouter.get("/seller-restock-requests", sellerOnly, async (context) => {
+  const supabase = getAdminSupabase(); const sellerId = context.var.currentUser!.id;
+  const { data: products, error: productError } = await supabase.from("products").select("id").eq("seller_id", sellerId);
+  if (productError) return context.json(apiFailure("QUERY_FAILED", "상품을 조회하지 못했습니다."), 502);
+  const productIds = (products ?? []).map((item) => item.id);
+  if (!productIds.length) return context.json(apiSuccess({ requests: [] }));
+  const { data, error } = await supabase.from("restock_requests").select("*,products(name,image),profiles(name)").in("product_id", productIds).order("created_at", { ascending: false });
+  return error ? context.json(apiFailure("QUERY_FAILED", "재입고 요청을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ requests: data ?? [] }));
+});
+sellerRouter.patch("/seller-restock-requests/:id", sellerOnly, async (context) => {
+  const parsed = z.object({ expectedRestockDate: z.string().date().optional(), sellerReply: z.string().min(1).max(500) }).strict().safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "답변 내용을 확인하세요."), 400);
+  const supabase = getAdminSupabase(); const sellerId = context.var.currentUser!.id;
+  const { data: request } = await supabase.from("restock_requests").select("id,product_id,products!inner(seller_id)").eq("id", context.req.param("id")).eq("products.seller_id", sellerId).maybeSingle();
+  if (!request) return context.json(apiFailure("NOT_FOUND", "본인 상품의 재입고 요청을 찾을 수 없습니다."), 404);
+  const { data, error } = await supabase.from("restock_requests").update({ status: "answered", expected_restock_date: parsed.data.expectedRestockDate ?? null, seller_reply: parsed.data.sellerReply, replied_at: new Date().toISOString() }).eq("id", request.id).select().single();
+  return error ? context.json(apiFailure("SAVE_FAILED", "답변을 저장하지 못했습니다."), 400) : context.json(apiSuccess({ request: data }));
+});
 sellerRouter.get("/seller-dashboard", sellerOnly, async (context) => {
   const supabase = getAdminSupabase(); const sellerId = context.var.currentUser!.id;
   const [products, groups, inquiries, movements] = await Promise.all([supabase.from("products").select("*", { count: "exact", head: true }).eq("seller_id", sellerId), supabase.from("fulfillment_groups").select("subtotal,status,created_at").eq("seller_id", sellerId), supabase.from("inquiries").select("status,created_at").eq("assigned_to", sellerId), supabase.from("inventory_movements").select("quantity_delta").eq("seller_id", sellerId)]);

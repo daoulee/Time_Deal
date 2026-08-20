@@ -2,12 +2,12 @@
  * 판매자·관리자 화면의 사이드바와 대시보드 본문 구조를 제공합니다.
  * 보호 라우트의 실제 역할 검증을 통과한 사용자에게만 운영 메뉴와 API 연결 상태를 표시합니다.
  */
-import { ArrowLeft, BarChart3, Boxes, ClipboardList, FileClock, HelpCircle, MapPinned, MessageSquareWarning, PackagePlus, SearchCheck, ShieldCheck, Star, Store, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, Boxes, ClipboardList, FileClock, Gavel, HelpCircle, MapPinned, MessageSquareWarning, PackagePlus, SearchCheck, ShieldCheck, Star, Store, Users, Wallet } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
-const sellerLinks = [["/seller", "대시보드", BarChart3], ["/seller/products", "상품 관리", Boxes], ["/seller/products/new", "상품 등록", PackagePlus], ["/seller/orders", "주문 현황", ClipboardList], ["/seller/analytics", "통계·픽업", BarChart3], ["/seller/inquiries", "판매자 문의", HelpCircle]] as const;
-const adminLinks = [["/admin", "운영 현황", ShieldCheck], ["/admin/orders", "주문 운영", ClipboardList], ["/admin/users", "사용자 관리", Users], ["/admin/sellers", "판매자 신청", Store], ["/admin/products", "상품·딜", Boxes], ["/admin/inquiries", "문의 관리", HelpCircle], ["/admin/reviews", "리뷰 관리", Star], ["/admin/community", "커뮤니티", MessageSquareWarning], ["/admin/pickups", "픽업 운영", MapPinned], ["/admin/audit-logs", "감사 로그", FileClock], ["/admin/research", "통계", SearchCheck]] as const;
+const sellerLinks = [["/seller", "대시보드", BarChart3], ["/seller/products", "상품 관리", Boxes], ["/seller/products/new", "상품 등록", PackagePlus], ["/seller/orders", "주문 현황", ClipboardList], ["/seller/analytics", "통계·픽업", BarChart3], ["/seller/auction", "🐟 직판장 경매", Gavel], ["/seller/settlement", "경매 정산", Wallet], ["/seller/restock-requests", "재입고 요청", PackagePlus], ["/seller/inquiries", "판매자 문의", HelpCircle]] as const;
+const adminLinks = [["/admin", "운영 현황", ShieldCheck], ["/admin/orders", "주문 운영", ClipboardList], ["/admin/users", "사용자 관리", Users], ["/admin/sellers", "판매자 신청", Store], ["/admin/products", "상품·딜", Boxes], ["/admin/auctions", "🐟 직판장 경매", Gavel], ["/admin/inquiries", "문의 관리", HelpCircle], ["/admin/reviews", "리뷰 관리", Star], ["/admin/community", "커뮤니티", MessageSquareWarning], ["/admin/pickups", "픽업 운영", MapPinned], ["/admin/audit-logs", "감사 로그", FileClock], ["/admin/research", "통계", SearchCheck]] as const;
 
 export function DashboardShell({ type, children }: { type: "seller" | "admin"; children: React.ReactNode }) {
   const links = type === "seller" ? sellerLinks : adminLinks; const title = type === "seller" ? "판매자 센터" : "관리자 콘솔";
