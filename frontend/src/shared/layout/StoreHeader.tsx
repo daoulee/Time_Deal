@@ -4,12 +4,13 @@
  * 홈 화면 자체는 별도 파일에서 계속 독자적으로 관리하며, 이 컴포넌트는 홈이 아닌 화면 전용입니다.
  */
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Crosshair, Heart, LoaderCircle, Menu, MapPin, Search, ShoppingCart, X } from "lucide-react";
+import { Bell, ChevronRight, Crosshair, Heart, LoaderCircle, Menu, MapPin, Search, ShoppingCart, X } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth";
 import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
 import { CATEGORY_GROUPS, THEME_ROUTE, type ThemeKey } from "@/shared/categoryData";
+import { getCart, getMyNotifications, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
 
 const TOKENS = {
   navy: "#1a1a1a",
@@ -31,7 +32,10 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") ?? "");
-  const [likedCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
+  const [notifications, setNotifications] = useState<RawRecord[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [isCustomerMenuOpen, setIsCustomerMenuOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string>(Object.keys(CATEGORY_GROUPS)[0]);
@@ -43,6 +47,34 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
   const navScrollRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => { setSearchTerm(searchParams.get("q") ?? ""); }, [searchParams]);
+
+  useEffect(() => {
+    if (!session?.user) { setCartCount(0); setNotifications([]); setUnreadCount(0); return; }
+    let active = true;
+    const refresh = () => {
+      void getCart().then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });
+      void getMyNotifications().then((result) => { if (active && result.ok) { setNotifications(result.data?.notifications ?? []); setUnreadCount(result.data?.unreadCount ?? 0); } });
+    };
+    refresh();
+    const timer = setInterval(refresh, 30000);
+    return () => { active = false; clearInterval(timer); };
+  }, [session?.user]);
+
+  const openNotification = async (item: RawRecord) => {
+    setIsNotifOpen(false);
+    if (!item.read_at) {
+      await markNotificationRead(String(item.id));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setNotifications((prev) => prev.map((row) => (row.id === item.id ? { ...row, read_at: new Date().toISOString() } : row)));
+    }
+    if (item.link) navigate(String(item.link));
+  };
+
+  const readAllNotifications = async () => {
+    await markAllNotificationsRead();
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((row) => ({ ...row, read_at: row.read_at ?? new Date().toISOString() })));
+  };
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -154,13 +186,43 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
             <MapPin size={22} strokeWidth={1.7} color={TOKENS.primaryOrange} />
             <span style={{ fontSize: 13, fontWeight: 600, color: TOKENS.navy, whiteSpace: "nowrap" }}>{currentLocation}</span>
           </div>
-          <div style={{ width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => navigate("/mypage")} title="찜한 상품">
+          <div style={{ width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => navigate("/mypage/wishlist")} title="찜한 상품">
             <Heart size={24} strokeWidth={1.5} color={TOKENS.navy} />
           </div>
-          <div style={{ width: 36, height: 36, position: "relative", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => navigate("/mypage/orders")} title="장바구니/예약">
+          <div style={{ width: 36, height: 36, position: "relative", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => navigate("/cart")} title="장바구니">
             <ShoppingCart size={24} strokeWidth={1.5} color={TOKENS.navy} />
-            {likedCount > 0 && <span style={{ position: "absolute", top: 0, right: -2, background: TOKENS.primaryOrange, color: "#ffffff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>{likedCount}</span>}
+            {cartCount > 0 && <span style={{ position: "absolute", top: 0, right: -2, background: TOKENS.primaryOrange, color: "#ffffff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>{cartCount}</span>}
           </div>
+          {session?.user && (
+            <div style={{ position: "relative" }} onMouseEnter={() => setIsNotifOpen(true)} onMouseLeave={() => setIsNotifOpen(false)}>
+              <div style={{ width: 36, height: 36, position: "relative", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="알림">
+                <Bell size={24} strokeWidth={1.5} color={TOKENS.navy} />
+                {unreadCount > 0 && <span style={{ position: "absolute", top: 0, right: -2, background: TOKENS.primaryOrange, color: "#ffffff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>{unreadCount}</span>}
+              </div>
+              {isNotifOpen && (
+                <div style={{ position: "absolute", top: 36, right: 0, width: 320, maxHeight: 400, overflowY: "auto", background: "#ffffff", border: `1px solid ${TOKENS.borderMedium}`, boxShadow: TOKENS.floatingShadow, borderRadius: 8, zIndex: 210 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${TOKENS.borderLight}` }}>
+                    <strong style={{ fontSize: 13 }}>알림</strong>
+                    {unreadCount > 0 && <span style={{ fontSize: 12, color: TOKENS.primaryOrange, cursor: "pointer" }} onClick={() => void readAllNotifications()}>모두 읽음</span>}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: "24px 14px", fontSize: 13, color: TOKENS.textSubtle, textAlign: "center" }}>알림이 없습니다.</div>
+                  ) : (
+                    notifications.map((item) => (
+                      <div
+                        key={String(item.id)}
+                        onClick={() => void openNotification(item)}
+                        style={{ padding: "10px 14px", borderBottom: `1px solid ${TOKENS.borderLight}`, cursor: "pointer", background: item.read_at ? "#ffffff" : "#fff8f6" }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{String(item.title)}</div>
+                        <div style={{ fontSize: 12, color: TOKENS.textSubtle, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(item.body ?? "")}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

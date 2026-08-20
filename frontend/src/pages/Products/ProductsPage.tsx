@@ -10,6 +10,8 @@ import { ProductCard } from "@/shared/components/ProductCard";
 import { discountPercentOf, type Product } from "@/shared/catalog";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
 import { CATEGORY_GROUPS, THEME_DESCRIPTION, THEME_LABEL, isMorningPick, type ThemeKey } from "@/shared/categoryData";
+import { authClient } from "@/lib/auth";
+import { getWishlistIds, toggleWishlist } from "@/lib/api";
 
 type SortMode = "recommend" | "new" | "participation" | "discount" | "price-high" | "price-low";
 type PriceBucket = "all" | "under10" | "10to20" | "over20";
@@ -46,6 +48,8 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("recommend");
   const [priceBucket, setPriceBucket] = useState<PriceBucket>("all");
+  const { data: session } = authClient.useSession();
+  const [wishlistIds, setWishlistIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -57,6 +61,23 @@ export default function ProductsPage() {
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!session?.user) { setWishlistIds(null); return; }
+    let active = true;
+    void getWishlistIds().then((result) => { if (active && result.ok) setWishlistIds(new Set(result.data?.productIds ?? [])); });
+    return () => { active = false; };
+  }, [session?.user]);
+
+  const handleToggleWishlist = (productId: string) => {
+    if (!session?.user) return;
+    setWishlistIds((prev) => {
+      const next = new Set(prev ?? []);
+      if (next.has(productId)) next.delete(productId); else next.add(productId);
+      return next;
+    });
+    void toggleWishlist(productId);
+  };
 
   const query = searchParams.get("q")?.trim() ?? "";
   const category = searchParams.get("category") ?? "";
@@ -285,7 +306,12 @@ export default function ProductsPage() {
             ) : filtered.length ? (
               <div className="custom-square-box" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 20px" }}>
                 {filtered.map((item) => (
-                  <ProductCard key={`${item.id}-${item.dealId ?? "catalog"}`} product={item} />
+                  <ProductCard
+                    key={`${item.id}-${item.dealId ?? "catalog"}`}
+                    product={item}
+                    isWishlisted={wishlistIds?.has(item.id) ?? false}
+                    onToggleWishlist={session?.user ? handleToggleWishlist : undefined}
+                  />
                 ))}
               </div>
             ) : (

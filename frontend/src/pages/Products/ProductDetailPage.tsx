@@ -9,11 +9,13 @@ import {
   CheckCircle2,
   Clock,
   Crosshair,
+  Heart,
   Info,
   LoaderCircle,
   MapPin,
   Phone,
   ShieldCheck,
+  ShoppingCart,
   Store,
   Truck,
   ChevronRight,
@@ -28,11 +30,16 @@ import { CountdownTimer } from "@/shared/components/CountdownTimer";
 import { StockGauge } from "@/shared/components/StockGauge";
 import { authClient } from "@/lib/auth";
 import {
+  addToCart,
   createOrder,
   getPickupLocations,
   getPickupSlots,
+  getProductReviews,
+  getWishlistIds,
+  toggleWishlist,
   type PickupLocation,
   type PickupSlot,
+  type RawRecord,
 } from "@/lib/api";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
 import { isTossPaymentsConfigured } from "@/lib/toss-payments";
@@ -128,6 +135,9 @@ export default function ProductDetailPage() {
   const [locateError, setLocateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [reviews, setReviews] = useState<RawRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -216,6 +226,20 @@ export default function ProductDetailPage() {
       active = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    void getProductReviews(id).then((result) => { if (active && result.ok) setReviews(result.data?.reviews ?? []); });
+    return () => { active = false; };
+  }, [id]);
+
+  useEffect(() => {
+    if (!product || !session?.user) { setWishlisted(false); return; }
+    let active = true;
+    void getWishlistIds().then((result) => { if (active && result.ok) setWishlisted((result.data?.productIds ?? []).includes(product.id)); });
+    return () => { active = false; };
+  }, [product, session?.user]);
 
   useEffect(() => {
     if (!product || !session?.user) return;
@@ -333,6 +357,22 @@ export default function ProductDetailPage() {
   }
 
   const progress = progressOf(product);
+
+  const handleToggleWishlist = async () => {
+    if (!session?.user) { navigate("/auth"); return; }
+    setWishlisted((prev) => !prev);
+    const result = await toggleWishlist(product.id);
+    if (!result.ok) { setWishlisted((prev) => !prev); setError(result.error?.message ?? "찜 처리에 실패했습니다."); }
+  };
+
+  const handleAddToCart = async () => {
+    if (!session?.user) { navigate("/auth"); return; }
+    setAddingToCart(true);
+    const result = await addToCart(product.id, quantity);
+    setAddingToCart(false);
+    if (!result.ok) return setError(result.error?.message ?? "장바구니에 담지 못했습니다.");
+    setNotice("장바구니에 담았습니다.");
+  };
 
   const handleCreateOrder = async () => {
     if (!session?.user) return;
@@ -591,9 +631,19 @@ export default function ProductDetailPage() {
                   </StatusBadge>
                   <span className="category-pill">{product.category}</span>
                 </div>
-                <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1a202c", margin: "0 0 8px 0", lineHeight: "1.3" }}>
-                  {product.name}
-                </h1>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                  <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1a202c", margin: "0 0 8px 0", lineHeight: "1.3" }}>
+                    {product.name}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleWishlist()}
+                    aria-label={wishlisted ? "찜 해제" : "찜하기"}
+                    style={{ flexShrink: 0, width: 38, height: 38, borderRadius: "50%", border: "1px solid #e2e8f0", background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                  >
+                    <Heart size={18} color={wishlisted ? "#ff5722" : "#94a3b8"} fill={wishlisted ? "#ff5722" : "none"} />
+                  </button>
+                </div>
                 <p style={{ fontSize: 14, color: "#718096", margin: 0, lineHeight: "1.5" }}>
                   목표 인원이 모이면 제안된 타임딜 가격으로 함께 구매하는 상품입니다. 픽업 장소와 수령 시간을 선택해 주문을 접수할 수 있습니다.
                 </p>
@@ -1047,35 +1097,60 @@ export default function ProductDetailPage() {
                     </strong>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => void handleCreateOrder()}
-                    disabled={submitting || !locationId || !slotId || !product.dealId}
-                    style={{
-                      width: "100%",
-                      height: 46,
-                      background: "#ff5722",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: 3,
-                      fontSize: 15,
-                      fontWeight: 700,
-                      cursor: submitting || !locationId || !slotId ? "not-allowed" : "pointer",
-                      opacity: submitting || !locationId || !slotId ? 0.6 : 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                    }}
-                  >
-                    {submitting ? (
-                      <>
-                        <LoaderCircle size={16} className="spin-icon" /> 주문 접수 중...
-                      </>
-                    ) : (
-                      "주문 접수하기"
-                    )}
-                  </button>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => void handleAddToCart()}
+                      disabled={addingToCart || !product.dealId}
+                      style={{
+                        flex: "0 0 120px",
+                        height: 46,
+                        background: "#ffffff",
+                        color: "#ff5722",
+                        border: "1.5px solid #ff5722",
+                        borderRadius: 3,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: addingToCart ? "not-allowed" : "pointer",
+                        opacity: addingToCart ? 0.6 : 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <ShoppingCart size={16} /> 담기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateOrder()}
+                      disabled={submitting || !locationId || !slotId || !product.dealId}
+                      style={{
+                        flex: 1,
+                        height: 46,
+                        background: "#ff5722",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 3,
+                        fontSize: 15,
+                        fontWeight: 700,
+                        cursor: submitting || !locationId || !slotId ? "not-allowed" : "pointer",
+                        opacity: submitting || !locationId || !slotId ? 0.6 : 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      {submitting ? (
+                        <>
+                          <LoaderCircle size={16} className="spin-icon" /> 주문 접수 중...
+                        </>
+                      ) : (
+                        "주문 접수하기"
+                      )}
+                    </button>
+                  </div>
 
                   <p style={{ margin: "10px 0 0 0", fontSize: 11, color: "#94a3b8", textAlign: "center" }}>
                     {isTossPaymentsConfigured ? (
@@ -1103,6 +1178,39 @@ export default function ProductDetailPage() {
 
           </div>
 
+        </div>
+
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e2e8f0" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1a202c", margin: "0 0 16px 0" }}>
+            리뷰 {reviews.length > 0 ? reviews.length : ""}
+          </h2>
+          {reviews.length === 0 ? (
+            <p style={{ fontSize: 13, color: "#94a3b8" }}>아직 작성된 리뷰가 없습니다.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {reviews.map((review) => {
+                const imageUrls = (review.image_urls as string[] | undefined) ?? [];
+                return (
+                  <div key={String(review.id)} style={{ paddingBottom: 16, borderBottom: "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <strong style={{ color: "#ff5722", fontSize: 13 }}>{"★".repeat(Number(review.rating ?? 0))}</strong>
+                      <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                        {(review.profiles as { name?: string } | null)?.name ?? "이웃"} · {new Date(String(review.created_at)).toLocaleDateString("ko-KR")}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 14, color: "#334155", margin: "0 0 8px 0", lineHeight: 1.6 }}>{String(review.content ?? "")}</p>
+                    {imageUrls.length > 0 && (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {imageUrls.map((url) => (
+                          <img key={url} src={url} alt="리뷰 사진" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 6 }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </AppShell>

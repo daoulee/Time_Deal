@@ -24,6 +24,11 @@ catalogRouter.get("/deals", async (context) => {
 });
 catalogRouter.get("/deals/:id", async (context) => { if (!isSupabaseConfigured()) { if (!config.enableSampleData) { const result = unavailable(); return context.json(result.body, result.status); } const deal = sampleDeals.find((item) => item.id === context.req.param("id")); return deal ? context.json(apiSuccess({ deal, source: "sample" })) : context.json(apiFailure("NOT_FOUND", "딜을 찾을 수 없습니다."), 404); } const { data, error } = await getAdminSupabase().from("deals").select("*,product:products(*)").eq("id", context.req.param("id")).maybeSingle(); if (error) return context.json(apiFailure("QUERY_FAILED", "딜을 조회하지 못했습니다."), 502); return data ? context.json(apiSuccess({ deal: data, source: "supabase" })) : context.json(apiFailure("NOT_FOUND", "딜을 찾을 수 없습니다."), 404); });
 
+catalogRouter.get("/products/:id/reviews", async (context) => {
+  if (!isSupabaseConfigured()) return context.json(apiSuccess({ reviews: [] }));
+  const { data, error } = await getAdminSupabase().from("reviews").select("id,rating,content,image_urls,created_at,profiles(name)").eq("product_id", context.req.param("id")).eq("status", "visible").order("created_at", { ascending: false });
+  return error ? context.json(apiFailure("QUERY_FAILED", "리뷰를 조회하지 못했습니다."), 502) : context.json(apiSuccess({ reviews: data ?? [] }));
+});
 catalogRouter.get("/products/:id/reopen-request-count", async (context) => {
   if (!isSupabaseConfigured()) return context.json(apiSuccess({ count: 0, requested: false }));
   const { count, error } = await getAdminSupabase().from("reopen_requests").select("*", { count: "exact", head: true }).eq("product_id", context.req.param("id"));

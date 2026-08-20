@@ -10,6 +10,7 @@ import { apiFailure, apiSuccess } from "../../http.js";
 import { config } from "../../config.js";
 import { requireAuth, requireRole } from "../../middleware/auth.js";
 import { getAdminSupabase } from "../../supabase.js";
+import { notifyUser } from "../../notify.js";
 
 export const auctionRouter = new Hono();
 const sellerOnly = requireRole("seller", "admin");
@@ -53,11 +54,12 @@ const mapAuction = (row: AuctionRow, bids: BidRow[] = []) => ({
 async function expireAuctions() {
   const supabase = getAdminSupabase();
   const nowIso = new Date().toISOString();
-  const { data: liveExpired } = await supabase.from("auction_items").select("id,highest_bidder_id,ends_at").eq("status", "live").lte("ends_at", nowIso);
+  const { data: liveExpired } = await supabase.from("auction_items").select("id,title,highest_bidder_id,ends_at").eq("status", "live").lte("ends_at", nowIso);
   for (const row of liveExpired ?? []) {
     if (row.highest_bidder_id) {
       const deadline = new Date(new Date(row.ends_at).getTime() + PAYMENT_WINDOW_MS).toISOString();
       await supabase.from("auction_items").update({ status: "payment_pending", payment_deadline: deadline, updated_at: nowIso }).eq("id", row.id);
+      void notifyUser(row.highest_bidder_id, "auction_won", `[${row.title}] 경매에 낙찰되었어요`, "5분 안에 결제하지 않으면 낙찰이 취소되고 재입찰이 제한됩니다.", `/auction/${row.id}`);
     } else {
       await supabase.from("auction_items").update({ status: "completed", updated_at: nowIso }).eq("id", row.id);
     }
@@ -231,6 +233,7 @@ auctionRouter.post("/seller-auctions/:id/award", sellerOnly, async (context) => 
   }
   const paymentDeadline = new Date(Date.now() + PAYMENT_WINDOW_MS).toISOString();
   const { data: updated, error } = await supabase.from("auction_items").update({ status: "payment_pending", highest_bidder_id: winnerId, current_price: finalPrice, ends_at: nowIso, payment_deadline: paymentDeadline, updated_at: nowIso }).eq("id", auction.id).select().single();
+  if (!error && updated) void notifyUser(winnerId, "auction_won", `[${updated.title}] 경매에 낙찰되었어요`, "5분 안에 결제하지 않으면 낙찰이 취소되고 재입찰이 제한됩니다.", `/auction/${updated.id}`);
   return error || !updated ? context.json(apiFailure("SAVE_FAILED", "낙찰 처리를 저장하지 못했습니다."), 400) : context.json(apiSuccess({ auction: mapAuction(updated) }));
 });
 auctionRouter.post("/seller-auctions/image-upload-url", sellerOnly, async (context) => {

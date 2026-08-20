@@ -122,9 +122,25 @@ export async function getMySellerApplication() { return requestData<{ applicatio
 export async function applySellerAccount(input: { businessName: string; businessNumber: string }) { return requestData<{ application: RawRecord }>("/me/seller-application", json("POST", input)); }
 export async function getMyParticipations() { return requestData<{ participations: RawRecord[] }>("/participations"); }
 export async function getMyReviews() { return requestData<{ reviews: RawRecord[] }>("/reviews"); }
-export async function createMyReview(input: { orderItemId: string; rating: number; content: string }) { return requestData<{ review: RawRecord }>("/reviews", json("POST", input)); }
-export async function updateMyReview(id: string, input: { rating?: number; content?: string }) { return requestData<{ review: RawRecord }>(`/reviews/${encodeURIComponent(id)}`, json("PATCH", input)); }
+export async function createMyReview(input: { orderItemId: string; rating: number; content: string; images?: string[] }) { return requestData<{ review: RawRecord }>("/reviews", json("POST", input)); }
+export async function updateMyReview(id: string, input: { rating?: number; content?: string; images?: string[] }) { return requestData<{ review: RawRecord }>(`/reviews/${encodeURIComponent(id)}`, json("PATCH", input)); }
 export async function deleteMyReview(id: string) { return requestData<{ deleted: boolean }>(`/reviews/${encodeURIComponent(id)}`, { method: "DELETE" }); }
+export async function getReviewImageUploadUrl(file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>("/reviews/image-upload-url", json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
+export async function getProductReviews(productId: string) { return requestData<{ reviews: RawRecord[] }>(`/products/${encodeURIComponent(productId)}/reviews`, { auth: false }); }
+
+export async function getWishlist() { return requestData<{ items: RawRecord[] }>("/wishlist"); }
+export async function getWishlistIds() { return requestData<{ productIds: string[] }>("/wishlist/ids"); }
+export async function toggleWishlist(productId: string) { return requestData<{ liked: boolean }>(`/wishlist/${encodeURIComponent(productId)}/toggle`, { method: "POST" }); }
+
+export async function getCart() { return requestData<{ items: RawRecord[] }>("/cart"); }
+export async function addToCart(productId: string, quantity = 1) { return requestData<{ item: RawRecord }>("/cart", json("POST", { productId, quantity })); }
+export async function updateCartItem(id: string, quantity: number) { return requestData<{ item: RawRecord }>(`/cart/${encodeURIComponent(id)}`, json("PATCH", { quantity })); }
+export async function removeCartItem(id: string) { return requestData<{ deleted: boolean }>(`/cart/${encodeURIComponent(id)}`, { method: "DELETE" }); }
+export async function clearCart() { return requestData<{ cleared: boolean }>("/cart", { method: "DELETE" }); }
+
+export async function getMyNotifications() { return requestData<{ notifications: RawRecord[]; unreadCount: number }>("/notifications"); }
+export async function markNotificationRead(id: string) { return requestData<{ read: boolean }>(`/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }); }
+export async function markAllNotificationsRead() { return requestData<{ read: boolean }>("/notifications/read-all", { method: "POST" }); }
 export async function getMyRestockRequests() { return requestData<{ requests: RawRecord[] }>("/restock-requests"); }
 export async function createRestockRequest(orderItemId: string, message: string) { return requestData<{ request: RawRecord }>("/restock-requests", json("POST", { orderItemId, message })); }
 export async function getSellerRestockRequests() { return requestData<{ requests: RawRecord[] }>("/seller-restock-requests"); }

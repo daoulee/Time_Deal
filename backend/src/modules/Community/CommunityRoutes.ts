@@ -8,6 +8,7 @@ import { apiFailure, apiSuccess } from "../../http.js";
 import { config } from "../../config.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { getAdminSupabase } from "../../supabase.js";
+import { notifyUser } from "../../notify.js";
 export const communityRouter = new Hono();
 const imagePath = z.string().min(3).max(500).regex(/^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|webp)$/i);
 const imageRef = z.union([imagePath, z.string().url().max(2000)]);
@@ -56,7 +57,12 @@ communityRouter.delete("/community/:id", requireAuth, async (context) => {
 });
 communityRouter.post("/community/:id/comments", requireAuth, async (context) => {
   const parsed = commentInput.safeParse(await context.req.json().catch(() => null)); if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "댓글을 확인하세요."), 400);
-  const { data, error } = await getAdminSupabase().from("community_comments").insert({ post_id: context.req.param("id"), user_id: context.var.currentUser!.id, content: parsed.data.content }).select().single();
+  const postId = context.req.param("id"); const commenterId = context.var.currentUser!.id;
+  const { data, error } = await getAdminSupabase().from("community_comments").insert({ post_id: postId, user_id: commenterId, content: parsed.data.content }).select().single();
+  if (!error) {
+    const { data: post } = await getAdminSupabase().from("community_posts").select("user_id,title").eq("id", postId).maybeSingle();
+    if (post && post.user_id !== commenterId) void notifyUser(post.user_id, "community_comment", `[${post.title}] 글에 새 댓글이 달렸어요`, parsed.data.content, `/community/${postId}`);
+  }
   return error ? context.json(apiFailure("SAVE_FAILED", "댓글을 저장하지 못했습니다."), 400) : context.json(apiSuccess({ comment: data }), 201);
 });
 communityRouter.patch("/community/comments/:id", requireAuth, async (context) => {

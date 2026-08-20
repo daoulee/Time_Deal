@@ -3,13 +3,20 @@
  * HomePage와 ProductsPage의 상품 그리드에서 공통으로 사용합니다.
  * 개발 fixture·운영 데이터 상태와 접근 가능한 이미지 대체 문구를 유지합니다.
  */
+import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { discountPercentOf, formatPrice, type Product } from "@/shared/catalog";
 import { CountdownTimer } from "@/shared/components/CountdownTimer";
 import { StockGauge } from "@/shared/components/StockGauge";
 import { useCountdown } from "@/shared/hooks/useCountdown";
 
-export function ProductCard({ product }: { product: Product }) {
+type ProductCardProps = {
+  product: Product;
+  isWishlisted?: boolean;
+  onToggleWishlist?: (productId: string) => void;
+};
+
+export function ProductCard({ product, isWishlisted, onToggleWishlist }: ProductCardProps) {
   const { mode } = useCountdown(product.endsAtIso, product.endsAt);
   const expired = mode === "expired";
   const discount = discountPercentOf(product);
@@ -18,6 +25,16 @@ export function ProductCard({ product }: { product: Product }) {
       <Link to={`/products/${product.id}`} className="product-media" aria-label={`${product.name} 상세 보기`}>
         <img src={product.image} alt={product.name} loading={product.id === "eggs-30" ? "eager" : "lazy"} />
         <span className={`deal-badge${expired ? " deal-badge-expired" : ""}`}>{expired ? "마감" : `${discount}% OFF`}</span>
+        {onToggleWishlist && (
+          <button
+            type="button"
+            aria-label={isWishlisted ? "찜 해제" : "찜하기"}
+            onClick={(event) => { event.preventDefault(); event.stopPropagation(); onToggleWishlist(product.id); }}
+            style={{ position: "absolute", top: 8, right: 8, width: 30, height: 30, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          >
+            <Heart size={15} color={isWishlisted ? "#ff5722" : "#94a3b8"} fill={isWishlisted ? "#ff5722" : "none"} />
+          </button>
+        )}
       </Link>
       <div className="product-card-body">
         <p className="product-category">{product.category}</p>

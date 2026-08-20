@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Gavel,
+  Heart,
   KeyRound,
   LoaderCircle,
   MapPin,
@@ -19,6 +20,7 @@ import {
   TimerReset,
   UserRound,
   CheckCircle2,
+  X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -40,9 +42,13 @@ import {
   getMyRestockRequests,
   getMyReviews,
   getMySellerApplication,
+  getReviewImageUploadUrl,
+  getWishlist,
   replyMyInquiry,
+  toggleWishlist,
   updateMyProfile,
   updateMyReview,
+  uploadProductImage,
   type Inquiry,
   type Order,
   type RawRecord,
@@ -56,6 +62,7 @@ const menu = [
   ["/mypage/deals", "참여 딜", TimerReset],
   ["/mypage/orders", "주문", PackageCheck],
   ["/mypage/auctions", "낙찰 내역", Gavel],
+  ["/mypage/wishlist", "찜한 상품", Heart],
   ["/mypage/restock-requests", "재입고 요청", PackagePlus],
   ["/mypage/reviews", "나의 리뷰", Star],
   ["/mypage/inquiries", "나의 문의", MessageSquareText],
@@ -68,6 +75,7 @@ const details: Record<string, [string, string]> = {
   "/mypage/deals": ["참여 딜", "주문으로 확정된 공동구매 참여 현황을 확인합니다."],
   "/mypage/orders": ["주문", "픽업 장소·슬롯과 현장 결제 또는 예약 주문 상태를 확인합니다."],
   "/mypage/auctions": ["낙찰 내역", "직판장 경매 낙찰 건의 에스크로·수령 상태를 확인합니다."],
+  "/mypage/wishlist": ["찜한 상품", "마음에 든 상품을 모아두고 다시 찾아볼 수 있습니다."],
   "/mypage/restock-requests": ["재입고 요청", "주문했던 상품의 재입고를 요청하고 판매자 답변을 확인합니다."],
   "/mypage/reviews": ["나의 리뷰", "수령 완료 주문 상품의 리뷰를 작성·수정·삭제합니다."],
   "/mypage/inquiries": ["나의 문의", "고객센터 문의 대화를 확인하고 메시지를 추가합니다."],
@@ -1038,12 +1046,94 @@ function RestockRequestsPanel() {
   );
 }
 
+type CatalogItem = {
+  id: string;
+  productId: string;
+  product: { id: string; name: string; image: string; category: string; regularPrice: number; status: string } | null;
+  deal: { id: string; dealPrice: number } | null;
+};
+
+function WishlistPanel() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const result = await getWishlist();
+    setLoading(false);
+    if (result.ok) setItems((result.data?.items ?? []) as unknown as CatalogItem[]);
+    else setError(result.error?.message ?? "찜한 상품을 불러오지 못했습니다.");
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const remove = async (productId: string) => {
+    const result = await toggleWishlist(productId);
+    if (!result.ok) return setError(result.error?.message ?? "찜을 해제하지 못했습니다.");
+    setItems((prev) => prev.filter((item) => item.productId !== productId));
+  };
+
+  if (loading) return <Loading text="찜한 상품을 불러오는 중입니다." />;
+  return (
+    <section className="dashboard-panel">
+      <Feedback error={error} notice={null} />
+      <div className="panel-title-row">
+        <div>
+          <p>WISHLIST</p>
+          <h2>찜한 상품</h2>
+        </div>
+      </div>
+      {items.length === 0 ? (
+        <Empty title="찜한 상품이 없습니다." text="마음에 드는 상품에서 하트를 눌러 찜해보세요." />
+      ) : (
+        <div className="operation-list">
+          {items.map((item) => (
+            <article className="compact-row" key={item.id}>
+              <span onClick={() => item.productId && navigate(`/products/${item.productId}`)} style={{ cursor: "pointer" }}>
+                <b>{item.product?.name ?? "삭제된 상품"}</b>
+                <small>
+                  {item.deal ? formatPrice(item.deal.dealPrice) : item.product ? `${formatPrice(item.product.regularPrice)} (진행 중인 딜 없음)` : ""}
+                </small>
+              </span>
+              <div className="action-row">
+                <button onClick={() => void remove(item.productId)}>찜 해제</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+const REVIEW_MAX_IMAGES = 5;
+
 function ReviewsPanel() {
   const [reviews, setReviews] = useState<RawRecord[]>([]);
   const [eligible, setEligible] = useState<Array<{ id: string; name: string }>>([]);
   const [form, setForm] = useState({ orderItemId: "", rating: 5, content: "" });
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const addImages = (files: FileList | null) => {
+    if (!files) return;
+    const remaining = REVIEW_MAX_IMAGES - imageFiles.length;
+    const picked = Array.from(files).slice(0, Math.max(0, remaining));
+    if (!picked.length) return;
+    setImageFiles((prev) => [...prev, ...picked]);
+    setImagePreviews((prev) => [...prev, ...picked.map((file) => URL.createObjectURL(file))]);
+  };
+  const removeImage = (index: number) => {
+    setImagePreviews((prev) => { URL.revokeObjectURL(prev[index]); return prev.filter((_, i) => i !== index); });
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const load = useCallback(async () => {
     const [reviewResult, orderResult] = await Promise.all([
@@ -1076,10 +1166,24 @@ function ReviewsPanel() {
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
-    const result = await createMyReview(form);
+    setError(null);
+    setUploading(true);
+    const images: string[] = [];
+    for (const file of imageFiles) {
+      const signed = await getReviewImageUploadUrl(file);
+      if (!signed.ok || !signed.data) { setUploading(false); return setError(signed.error?.message ?? "이미지 업로드 URL을 만들지 못했습니다."); }
+      const uploaded = await uploadProductImage(signed.data.bucket, signed.data.objectPath, signed.data.token, file);
+      if (!uploaded.ok) { setUploading(false); return setError(uploaded.error ?? "이미지 업로드에 실패했습니다."); }
+      images.push(signed.data.objectPath);
+    }
+    const result = await createMyReview({ ...form, images });
+    setUploading(false);
     if (!result.ok) return setError(result.error?.message ?? "리뷰를 저장하지 못했습니다.");
     setNotice("리뷰를 작성했습니다.");
     setForm({ orderItemId: "", rating: 5, content: "" });
+    imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setImageFiles([]);
+    setImagePreviews([]);
     await load();
   };
 
@@ -1157,7 +1261,23 @@ function ReviewsPanel() {
                 }
               />
             </label>
-            <button className="primary-button">리뷰 작성</button>
+            <label className="wide">
+              사진 (최대 {REVIEW_MAX_IMAGES}장, {imageFiles.length}/{REVIEW_MAX_IMAGES})
+              {imagePreviews.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  {imagePreviews.map((url, index) => (
+                    <div key={url} className="image-preview-row">
+                      <img src={url} alt="미리보기" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }} />
+                      <button type="button" className="image-remove-button" onClick={() => removeImage(index)}><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {imageFiles.length < REVIEW_MAX_IMAGES && (
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { addImages(event.target.files); event.target.value = ""; }} />
+              )}
+            </label>
+            <button className="primary-button" disabled={uploading}>{uploading ? "저장 중..." : "리뷰 작성"}</button>
           </form>
         ) : (
           <p className="muted-copy">현재 리뷰를 작성할 수 있는 수령 완료 상품이 없습니다.</p>
@@ -1177,18 +1297,28 @@ function ReviewsPanel() {
           />
         ) : (
           <div className="operation-list">
-            {reviews.map((item) => (
-              <article className="compact-row" key={str(item, "id")}>
-                <span>
-                  <b>{"★".repeat(num(item, "rating"))}</b>
-                  <small>{str(item, "content")}</small>
-                </span>
-                <div className="action-row">
-                  <button onClick={() => void edit(item)}>수정</button>
-                  <button onClick={() => void remove(str(item, "id"))}>삭제</button>
-                </div>
-              </article>
-            ))}
+            {reviews.map((item) => {
+              const imageUrls = (item.image_urls as string[] | undefined) ?? [];
+              return (
+                <article className="compact-row" key={str(item, "id")}>
+                  <span>
+                    <b>{"★".repeat(num(item, "rating"))}</b>
+                    <small>{str(item, "content")}</small>
+                    {imageUrls.length > 0 && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                        {imageUrls.map((url) => (
+                          <img key={url} src={url} alt="리뷰 사진" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />
+                        ))}
+                      </div>
+                    )}
+                  </span>
+                  <div className="action-row">
+                    <button onClick={() => void edit(item)}>수정</button>
+                    <button onClick={() => void remove(str(item, "id"))}>삭제</button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
@@ -1417,6 +1547,7 @@ export default function MyPage() {
     "/mypage/deals": <ParticipationsPanel />,
     "/mypage/orders": <OrdersPanel />,
     "/mypage/auctions": <AuctionOrdersPanel />,
+    "/mypage/wishlist": <WishlistPanel />,
     "/mypage/restock-requests": <RestockRequestsPanel />,
     "/mypage/reviews": <ReviewsPanel />,
     "/mypage/inquiries": <InquiriesPanel />,

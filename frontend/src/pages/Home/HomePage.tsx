@@ -29,6 +29,7 @@ import {
 import { THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
 import { getCatalog } from "@/shared/services/catalog";
 import { discountPercentOf, formatPrice as formatDealPrice, type Product } from "@/shared/catalog";
+import { getCart, getMyNotifications, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
 
 // ── 마켓컬리 스타일 2단 카테고리 데이터 ──
 const categoryData: Record<string, string[]> = {
@@ -416,6 +417,37 @@ export default function HomePage() {
     });
     return () => { active = false; };
   }, []);
+
+  // ── 장바구니 개수 및 알림 센터(실제 API) ──
+  const [cartCount, setCartCount] = useState(0);
+  const [notifications, setNotifications] = useState<RawRecord[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  useEffect(() => {
+    if (!session?.user) { setCartCount(0); setNotifications([]); setUnreadCount(0); return; }
+    let active = true;
+    const refresh = () => {
+      void getCart().then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });
+      void getMyNotifications().then((result) => { if (active && result.ok) { setNotifications(result.data?.notifications ?? []); setUnreadCount(result.data?.unreadCount ?? 0); } });
+    };
+    refresh();
+    const timer = setInterval(refresh, 30000);
+    return () => { active = false; clearInterval(timer); };
+  }, [session?.user]);
+  const openNotification = async (item: RawRecord) => {
+    setIsNotifOpen(false);
+    if (!item.read_at) {
+      await markNotificationRead(String(item.id));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setNotifications((prev) => prev.map((row) => (row.id === item.id ? { ...row, read_at: new Date().toISOString() } : row)));
+    }
+    if (item.link) navigate(String(item.link));
+  };
+  const readAllNotifications = async () => {
+    await markAllNotificationsRead();
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((row) => ({ ...row, read_at: row.read_at ?? new Date().toISOString() })));
+  };
 
   // ── 검색 상태 및 ref ──
   const [searchTerm, setSearchTerm] = useState("");
@@ -1275,7 +1307,7 @@ export default function HomePage() {
               alignItems: "center",
               justifyContent: "center",
             }}
-            onClick={() => navigate("/mypage")}
+            onClick={() => navigate("/mypage/wishlist")}
             title="찜한 상품"
           >
             <Heart
@@ -1299,15 +1331,15 @@ export default function HomePage() {
               alignItems: "center",
               justifyContent: "center",
             }}
-            onClick={() => navigate("/mypage/orders")}
-            title="장바구니/예약"
+            onClick={() => navigate("/cart")}
+            title="장바구니"
           >
             <ShoppingCart
               size={24}
               strokeWidth={1.5}
               color={TOKENS.colors.navy}
             />
-            {likedIds.size > 0 && (
+            {cartCount > 0 && (
               <span
                 style={{
                   position: "absolute",
@@ -1325,10 +1357,44 @@ export default function HomePage() {
                   justifyContent: "center",
                 }}
               >
-                {likedIds.size}
+                {cartCount}
               </span>
             )}
           </div>
+          {session?.user && (
+            <div style={{ position: "relative" }} onMouseEnter={() => setIsNotifOpen(true)} onMouseLeave={() => setIsNotifOpen(false)}>
+              <div style={{ width: 36, height: 36, position: "relative", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="알림">
+                <BellRing size={24} strokeWidth={1.5} color={TOKENS.colors.navy} />
+                {unreadCount > 0 && (
+                  <span style={{ position: "absolute", top: 0, right: -2, background: TOKENS.colors.primaryOrange, color: "#ffffff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              {isNotifOpen && (
+                <div style={{ position: "absolute", top: 36, right: 0, width: 320, maxHeight: 400, overflowY: "auto", background: "#ffffff", border: `1px solid ${TOKENS.colors.borderMedium}`, boxShadow: TOKENS.shadows.floating, borderRadius: 8, zIndex: 210 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${TOKENS.colors.borderLight}` }}>
+                    <strong style={{ fontSize: 13 }}>알림</strong>
+                    {unreadCount > 0 && <span style={{ fontSize: 12, color: TOKENS.colors.primaryOrange, cursor: "pointer" }} onClick={() => void readAllNotifications()}>모두 읽음</span>}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: "24px 14px", fontSize: 13, color: TOKENS.colors.textSubtle, textAlign: "center" }}>알림이 없습니다.</div>
+                  ) : (
+                    notifications.map((item) => (
+                      <div
+                        key={String(item.id)}
+                        onClick={() => void openNotification(item)}
+                        style={{ padding: "10px 14px", borderBottom: `1px solid ${TOKENS.colors.borderLight}`, cursor: "pointer", background: item.read_at ? "#ffffff" : "#fff8f6" }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{String(item.title)}</div>
+                        <div style={{ fontSize: 12, color: TOKENS.colors.textSubtle, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(item.body ?? "")}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
