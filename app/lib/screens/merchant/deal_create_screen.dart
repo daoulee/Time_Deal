@@ -12,6 +12,7 @@ import '../../core/providers/deal_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/utils/app_logger.dart';
+import '../../core/utils/id_gen.dart';
 
 // 카테고리별 아이콘 & 기본 이미지 (800x800 고화질 정비율 1:1)
 const _categoryIcons = {
@@ -205,7 +206,8 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
 
     setState(() => _isSubmitting = true);
 
-    final dealId = 'new_${DateTime.now().millisecondsSinceEpoch}';
+    // deals.id는 Postgres uuid 컬럼이라 형식이 맞아야 insert가 실패하지 않음
+    final dealId = generateUuidV4();
     final imageUrl = await _uploadImage(dealId);
 
     if (!mounted) return;

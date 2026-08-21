@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,11 +37,39 @@ class MyPageScreen extends StatelessWidget {
         .byStatus('픽업완료')
         .fold(0, (sum, r) => sum + (r.deal.originalPrice - r.deal.discountedPrice));
 
+    // [Antigravity | 2026-08-21] 수정범위: MyPageScreen — 상단 헤더 프로스티드 글래스 블러(Frosted Glass Blur) 및 부드러운 스크롤 페이드 적용
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('내 정보', style: TextStyle(fontWeight: FontWeight.w800)),
+      extendBodyBehindAppBar: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.82),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.withValues(alpha: 0.12),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: AppBar(
+                title: const Text('내 정보', style: TextStyle(fontWeight: FontWeight.w800)),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+              ),
+            ),
+          ),
+        ),
       ),
       body: ListView(
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
+          bottom: 28,
+        ),
         children: [
           // 프로필
           Padding(
