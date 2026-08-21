@@ -116,8 +116,8 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
                   CachedNetworkImage(
                     imageUrl: deal.imageUrl,
                     fit: BoxFit.cover,
-                    memCacheWidth: 300,
-                    memCacheHeight: 300,
+                    memCacheWidth: 800,
+                    memCacheHeight: 800,
                     fadeOutDuration: const Duration(milliseconds: 200),
                     fadeInDuration: const Duration(milliseconds: 200),
                     placeholder: (_, _) => Container(

@@ -1,7 +1,9 @@
 import 'package:flutter/services.dart';
 
-/// 성공/완료 순간에 쓰는 프리미엄 "따당" 더블 햅틱
 class AppHaptics {
+  static void light() => HapticFeedback.lightImpact();
+  static void selection() => HapticFeedback.selectionClick();
+
   static Future<void> success() async {
     HapticFeedback.mediumImpact();
     await Future.delayed(const Duration(milliseconds: 90));

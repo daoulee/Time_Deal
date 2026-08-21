@@ -43,8 +43,8 @@ class DealCard extends StatelessWidget {
                           width: 64,
                           height: 64,
                           fit: BoxFit.cover,
-                          memCacheWidth: 128,
-                          memCacheHeight: 128,
+                          memCacheWidth: 256,
+                          memCacheHeight: 256,
                           fadeOutDuration: const Duration(milliseconds: 200),
                           fadeInDuration: const Duration(milliseconds: 200),
                           placeholder: (_, _) => Container(

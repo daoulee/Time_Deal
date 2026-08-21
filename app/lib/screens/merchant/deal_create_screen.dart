@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,7 +13,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/utils/app_logger.dart';
 
-// 카테고리별 아이콘 & 기본 이미지
+// 카테고리별 아이콘 & 기본 이미지 (800x800 고화질 정비율 1:1)
 const _categoryIcons = {
   '베이커리': 'wheat',
   '음식': 'utensils',
@@ -22,12 +23,98 @@ const _categoryIcons = {
 };
 
 const _categoryImages = {
-  '베이커리': 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=400&fit=crop&auto=format&q=80',
-  '음식': 'https://images.unsplash.com/photo-1635363638580-c2809d049eee?w=400&h=400&fit=crop&auto=format&q=80',
-  '카페': 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=400&fit=crop&auto=format&q=80',
-  '마트': 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop&auto=format&q=80',
-  '꽃집': 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=400&fit=crop&auto=format&q=80',
+  '베이커리': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&h=800&fit=crop&q=85',
+  '음식': 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800&h=800&fit=crop&q=85',
+  '카페': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=800&fit=crop&q=85',
+  '마트': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800&h=800&fit=crop&q=85',
+  '꽃집': 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=800&h=800&fit=crop&q=85',
 };
+
+class PresetProductTemplate {
+  final String label;
+  final String category;
+  final String imageUrl;
+  final String iconName;
+  final String defaultTitle;
+  final int defaultOriginal;
+  final int defaultDiscount;
+
+  const PresetProductTemplate({
+    required this.label,
+    required this.category,
+    required this.imageUrl,
+    required this.iconName,
+    required this.defaultTitle,
+    required this.defaultOriginal,
+    required this.defaultDiscount,
+  });
+}
+
+const _presetTemplates = [
+  PresetProductTemplate(
+    label: '🥐 크루아상/빵',
+    category: '베이커리',
+    imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&h=800&fit=crop&q=85',
+    iconName: 'wheat',
+    defaultTitle: '오늘의 마감 크루아상 & 베이커리 세트',
+    defaultOriginal: 12000,
+    defaultDiscount: 5000,
+  ),
+  PresetProductTemplate(
+    label: '🍣 모듬 초밥',
+    category: '음식',
+    imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&h=800&fit=crop&q=85',
+    iconName: 'utensils',
+    defaultTitle: '당일 마감 특선 모듬초밥 12P',
+    defaultOriginal: 18000,
+    defaultDiscount: 9000,
+  ),
+  PresetProductTemplate(
+    label: '🍱 수제 도시락',
+    category: '음식',
+    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=800&fit=crop&q=85',
+    iconName: 'utensils',
+    defaultTitle: '건강 가득 마감 영양 도시락',
+    defaultOriginal: 10000,
+    defaultDiscount: 4500,
+  ),
+  PresetProductTemplate(
+    label: '☕ 아메리카노 세트',
+    category: '카페',
+    imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=800&fit=crop&q=85',
+    iconName: 'coffee',
+    defaultTitle: '스페셜티 아메리카노 2잔 + 조각케익',
+    defaultOriginal: 14000,
+    defaultDiscount: 6500,
+  ),
+  PresetProductTemplate(
+    label: '🍓 생과일 팩',
+    category: '마트',
+    imageUrl: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800&h=800&fit=crop&q=85',
+    iconName: 'shoppingCart',
+    defaultTitle: '당도 보장 제철 과일 모듬 팩',
+    defaultOriginal: 15000,
+    defaultDiscount: 7000,
+  ),
+  PresetProductTemplate(
+    label: '🍗 바삭 옛날통닭',
+    category: '음식',
+    imageUrl: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&h=800&fit=crop&q=85',
+    iconName: 'utensils',
+    defaultTitle: '갓 튀긴 바삭 옛날통닭 1마리',
+    defaultOriginal: 13000,
+    defaultDiscount: 6900,
+  ),
+  PresetProductTemplate(
+    label: '💐 생화 꽃다발',
+    category: '꽃집',
+    imageUrl: 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=800&h=800&fit=crop&q=85',
+    iconName: 'flower2',
+    defaultTitle: '오늘의 신선 플라워 미니 꽃다발',
+    defaultOriginal: 20000,
+    defaultDiscount: 8900,
+  ),
+];
 
 class DealCreateScreen extends StatefulWidget {
   const DealCreateScreen({super.key});
@@ -46,6 +133,7 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
 
   int _hours = 1;
   String _selectedCategory = '베이커리';
+  String? _selectedPresetUrl;
   XFile? _imageFile;
   bool _isSubmitting = false;
 
@@ -61,7 +149,7 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
   }
 
   String get _fallbackImage =>
-      _categoryImages[_selectedCategory] ?? _categoryImages['베이커리']!;
+      _selectedPresetUrl ?? _categoryImages[_selectedCategory] ?? _categoryImages['베이커리']!;
 
   int _parsePrice(String text) =>
       int.tryParse(text.replaceAll(',', '')) ?? 0;
@@ -69,11 +157,16 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 800,
-      maxHeight: 800,
+      imageQuality: 85,
+      maxWidth: 1000,
+      maxHeight: 1000,
     );
-    if (picked != null) setState(() => _imageFile = picked);
+    if (picked != null) {
+      setState(() {
+        _imageFile = picked;
+        _selectedPresetUrl = null;
+      });
+    }
   }
 
   Future<String> _uploadImage(String dealId) async {
@@ -158,13 +251,29 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           // 이미지 선택
-          _Label('상품 사진'),
+          Row(
+            children: [
+              _Label('상품 사진'),
+              const Spacer(),
+              if (_imageFile != null || _selectedPresetUrl != null)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _imageFile = null;
+                    _selectedPresetUrl = null;
+                  }),
+                  child: const Text(
+                    '초기화',
+                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                  ),
+                ),
+            ],
+          ),
           GestureDetector(
             onTap: _pickImage,
             child: Container(
-              height: 160,
+              height: 170,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.3),
                     style: BorderStyle.solid),
@@ -172,28 +281,136 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
               ),
               child: _imageFile != null
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(15),
                       child: Image.file(File(_imageFile!.path),
                           fit: BoxFit.cover, width: double.infinity),
                     )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.imagePlus,
-                            size: 36, color: AppColors.primary.withValues(alpha: 0.6)),
-                        const SizedBox(height: 8),
-                        Text('탭해서 사진 선택',
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.primary.withValues(alpha: 0.7))),
-                        const SizedBox(height: 4),
-                        Text('선택 안 하면 카테고리 기본 이미지 사용',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                      ],
-                    ),
+                  : _selectedPresetUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: CachedNetworkImage(
+                            imageUrl: _selectedPresetUrl!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CachedNetworkImage(
+                                imageUrl: _categoryImages[_selectedCategory]!,
+                                fit: BoxFit.cover,
+                              ),
+                              Container(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(LucideIcons.camera, size: 24, color: Colors.white),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      '앨범에서 사진 선택',
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$_selectedCategory 고화질 기본 이미지가 적용됩니다',
+                                      style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // 추천 상품 프리셋 (탭 시 고화질 사진 및 기본 정보 자동 입력)
+          const Text(
+            '⚡ 추천 상품 프리셋 (탭 시 고화질 사진 & 정보 자동완성)',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 68,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _presetTemplates.length,
+              itemBuilder: (ctx, i) {
+                final t = _presetTemplates[i];
+                final isSel = _selectedPresetUrl == t.imageUrl;
+                return GestureDetector(
+                  onTap: () {
+                    AppHaptics.light();
+                    setState(() {
+                      _selectedPresetUrl = t.imageUrl;
+                      _imageFile = null;
+                      _selectedCategory = t.category;
+                      if (_titleCtrl.text.isEmpty) _titleCtrl.text = t.defaultTitle;
+                      if (_originalCtrl.text.isEmpty) _originalCtrl.text = '${t.defaultOriginal}';
+                      if (_discountCtrl.text.isEmpty) _discountCtrl.text = '${t.defaultDiscount}';
+                    });
+                  },
+                  child: Container(
+                    width: 145,
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isSel
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : Theme.of(context).cardTheme.color,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSel ? AppColors.primary : Colors.grey.withValues(alpha: 0.2),
+                        width: isSel ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: t.imageUrl,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            t.label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                              color: isSel ? AppColors.primary : null,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 18),
 
           // 카테고리
           _Label('카테고리'),
