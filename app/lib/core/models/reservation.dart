@@ -1,4 +1,5 @@
 import 'deal.dart';
+import '../utils/formatters.dart';
 
 class Reservation {
   final String id;
@@ -25,9 +26,7 @@ class Reservation {
         status: json['status'] as String,
       );
 
-  String get formattedPrice => deal.discountedPrice
-      .toString()
-      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  String get formattedPrice => Formatters.price(deal.discountedPrice);
 
   String get formattedDate {
     final diff = DateTime.now().difference(reservedAt);

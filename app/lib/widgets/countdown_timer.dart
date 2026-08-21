@@ -26,9 +26,13 @@ class _CountdownTimerState extends State<CountdownTimer> {
   @override
   void initState() {
     super.initState();
-    _remaining = widget.expiresAt.difference(DateTime.now());
+    final initial = widget.expiresAt.difference(DateTime.now());
+    _remaining = initial.isNegative ? Duration.zero : initial;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _remaining = widget.expiresAt.difference(DateTime.now()));
+      if (mounted) {
+        final remaining = widget.expiresAt.difference(DateTime.now());
+        setState(() => _remaining = remaining.isNegative ? Duration.zero : remaining);
+      }
     });
   }
 

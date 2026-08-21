@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/deal.dart';
 import '../models/reservation.dart';
-import '../services/device_id.dart';
+import '../utils/app_logger.dart';
 
 class ReservationProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -11,6 +11,10 @@ class ReservationProvider extends ChangeNotifier {
   List<Reservation> _merchantReservations = [];
   RealtimeChannel? _channel;
   bool _disposed = false;
+  String? lastError;
+
+  /// 현재 로그인된 Auth user.id. 비로그인 시 null → 빈 문자열 fallback
+  String get _userId => _supabase.auth.currentUser?.id ?? '';
 
   List<Reservation> get all => List.unmodifiable(_reservations);
   List<Reservation> get merchantAll => List.unmodifiable(_merchantReservations);
@@ -20,27 +24,31 @@ class ReservationProvider extends ChangeNotifier {
   }
 
   Future<void> _load() async {
+    if (_userId.isEmpty) return; // 비로그인 시 조회 스킵
     // 내 예약 목록 (user_id 기준)
     try {
       final data = await _supabase
           .from('reservations')
           .select('*, deals(*)')
-          .eq('user_id', DeviceId.value)
-          .order('reserved_at', ascending: false);
+          .eq('user_id', _userId)
+          .order('reserved_at', ascending: false) as List<dynamic>;
       _reservations =
-          (data as List).map((j) => Reservation.fromJson(j)).toList();
-    } catch (_) {}
+          data.map((j) => Reservation.fromJson(j as Map<String, dynamic>)).toList();
+    } catch (e, st) {
+      AppLogger.error('Failed to load reservations', e, st);
+      lastError = e.toString();
+      notifyListeners();
+    }
 
-    // 상인 예약 목록: 내 store_id 딜에 달린 예약만 (Fix #1)
-    // deals 테이블을 먼저 조회해 본인 딜만 가져온 후 reservation 조인
+    // 상인 예약 목록: 내 store_id(=Auth user.id) 딜에 달린 예약만
     try {
       final myDeals = await _supabase
           .from('deals')
           .select('*, reservations(*)')
-          .eq('store_id', DeviceId.value);
+          .eq('store_id', _userId) as List<dynamic>;
 
       final flat = <Map<String, dynamic>>[];
-      for (final deal in myDeals as List) {
+      for (final deal in myDeals) {
         final dealMap = Map<String, dynamic>.from(deal);
         final rsvs = dealMap.remove('reservations') as List? ?? [];
         for (final r in rsvs) {
@@ -50,7 +58,11 @@ class ReservationProvider extends ChangeNotifier {
       flat.sort((a, b) =>
           (b['reserved_at'] as String).compareTo(a['reserved_at'] as String));
       _merchantReservations = flat.map((j) => Reservation.fromJson(j)).toList();
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.error('Failed to load merchant reservations', e, st);
+      lastError = e.toString();
+      notifyListeners();
+    }
 
     if (_disposed) return;
     notifyListeners();
@@ -86,14 +98,13 @@ class ReservationProvider extends ChangeNotifier {
       _reservations.any((r) => r.deal.id == dealId && r.status == '진행중');
 
   Future<bool> reserve(Deal deal) async {
-    // Fix #2: 클라이언트 이중예약·재고 0 사전 차단
+    if (_userId.isEmpty) return false; // 비로그인 시 예약 불가
     if (isReserved(deal.id)) return false;
     if (deal.remainingStock <= 0) return false;
 
-    // Optimistic insert
     final temp = Reservation(
       id: '_tmp_${DateTime.now().millisecondsSinceEpoch}',
-      userId: DeviceId.value,
+      userId: _userId,
       deal: deal,
       reservedAt: DateTime.now(),
     );
@@ -102,7 +113,7 @@ class ReservationProvider extends ChangeNotifier {
 
     try {
       await _supabase.from('reservations').insert({
-        'user_id': DeviceId.value,
+        'user_id': _userId,
         'deal_id': deal.id,
         'status': '진행중',
         'reserved_at': DateTime.now().toUtc().toIso8601String(),
@@ -114,14 +125,18 @@ class ReservationProvider extends ChangeNotifier {
         await _supabase.rpc('decrement_stock', params: {'deal_id': deal.id});
       } catch (_) {
         // RPC 미생성 시 fallback: gt 조건으로 음수 방지
-        await _supabase
+        final updated = await _supabase
             .from('deals')
             .update({'remaining_stock': deal.remainingStock - 1})
             .eq('id', deal.id)
-            .gt('remaining_stock', 0);
+            .gt('remaining_stock', 0)
+            .select() as List<dynamic>;
+        if (updated.isEmpty) throw Exception('재고 없음');
       }
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.error('Failed to reserve deal', e, st);
+      lastError = e.toString();
       // 예약 삽입 실패 시 optimistic 항목 제거
       _reservations.remove(temp);
       notifyListeners();
@@ -130,48 +145,59 @@ class ReservationProvider extends ChangeNotifier {
   }
 
   Future<void> complete(String id) async {
-    final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
-    final cIdx = _reservations.indexWhere((r) => r.id == id);
-    if (mIdx == -1 && cIdx == -1) return;
-    if (mIdx != -1) _merchantReservations[mIdx].status = '픽업완료';
-    if (cIdx != -1) _reservations[cIdx].status = '픽업완료';
-    notifyListeners();
     try {
       await _supabase
           .from('reservations')
           .update({'status': '픽업완료'})
           .eq('id', id);
-    } catch (_) {
-      final rollMIdx = _merchantReservations.indexWhere((r) => r.id == id);
-      final rollCIdx = _reservations.indexWhere((r) => r.id == id);
-      if (rollMIdx != -1) _merchantReservations[rollMIdx].status = '진행중';
-      if (rollCIdx != -1) _reservations[rollCIdx].status = '진행중';
+      final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
+      final cIdx = _reservations.indexWhere((r) => r.id == id);
+      if (mIdx != -1) _merchantReservations[mIdx].status = '픽업완료';
+      if (cIdx != -1) _reservations[cIdx].status = '픽업완료';
       notifyListeners();
+    } catch (e, st) {
+      AppLogger.error('픽업 완료 처리 실패', e, st);
+      lastError = e.toString();
     }
   }
 
+  Reservation? _findReservation(String id) {
+    for (final r in [..._reservations, ..._merchantReservations]) {
+      if (r.id == id) return r;
+    }
+    return null;
+  }
+
   Future<void> cancel(String id) async {
-    // 소비자 취소
-    final uIdx = _reservations.indexWhere((r) => r.id == id);
-    // 상인 취소
-    final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
-    if (uIdx == -1 && mIdx == -1) return;
-
-    if (uIdx != -1) _reservations[uIdx].status = '취소';
-    if (mIdx != -1) _merchantReservations[mIdx].status = '취소';
-    notifyListeners();
-
     try {
+      // 취소 상태로 변경
       await _supabase
           .from('reservations')
           .update({'status': '취소'})
           .eq('id', id);
-    } catch (_) {
-      final ruIdx = _reservations.indexWhere((r) => r.id == id);
-      final rmIdx = _merchantReservations.indexWhere((r) => r.id == id);
-      if (ruIdx != -1) _reservations[ruIdx].status = '진행중';
-      if (rmIdx != -1) _merchantReservations[rmIdx].status = '진행중';
+      // 해당 딜 찾아서 atomic increment_stock RPC 호출
+      final reservation = _findReservation(id);
+      if (reservation == null) return; // 두 리스트 모두에 없으면 조용히 종료
+      try {
+        await _supabase.rpc('increment_stock', params: {'deal_id': reservation.deal.id});
+      } catch (_) {
+        // fallback: RPC가 없거나 실패한 경우 조건부 update
+        await _supabase
+            .from('deals')
+            .update({'remaining_stock': reservation.deal.remainingStock + 1})
+            .eq('id', reservation.deal.id);
+      }
+      // 로컬 상태 반영
+      final uIdx = _reservations.indexWhere((r) => r.id == id);
+      final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
+      if (uIdx != -1) _reservations[uIdx].status = '취소';
+      if (mIdx != -1) _merchantReservations[mIdx].status = '취소';
       notifyListeners();
+    } catch (e, st) {
+      AppLogger.error('예약 취소 처리 실패', e, st);
+      lastError = e.toString();
     }
   }
+  // [Claude | 2026-08-21] 수정범위: _findReservation() 신규 + cancel() — Kiro 지적사항 #1, 두 리스트에 id 없을 때 StateError 크래시 나던 것 null-safe로 수정
 }
+// [Kiro | 2026-08-21] reservation_provider 전체 — DeviceId.value → Auth user.id(_userId getter) 전환, 비로그인 시 guard 추가

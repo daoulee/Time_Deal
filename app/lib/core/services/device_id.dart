@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DeviceId {
   static String? _id;
@@ -13,7 +14,17 @@ class DeviceId {
     }
   }
 
-  static String get value => _id ?? 'unknown';
+  /// Supabase Auth 로그인 세션이 있으면 auth.currentUser.id 사용, 없으면 디바이스 UUID fallback
+  static String get value {
+    try {
+      final authUserId = Supabase.instance.client.auth.currentUser?.id;
+      if (authUserId != null && authUserId.isNotEmpty) return authUserId;
+    } catch (_) {}
+    return _id ?? 'unknown';
+  }
+
+  /// 기기 고유 UUID
+  static String get rawDeviceId => _id ?? 'unknown';
 
   static String _generate() {
     final rng = Random.secure();

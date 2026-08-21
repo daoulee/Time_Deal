@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/app_config.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/deal_provider.dart';
 import 'core/providers/location_provider.dart';
 import 'core/providers/reservation_provider.dart';
 import 'core/providers/wishlist_provider.dart';
+import 'core/providers/auth_provider.dart';
+import 'core/providers/profile_provider.dart';
 import 'core/services/device_id.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/splash/splash_screen.dart';
@@ -14,8 +17,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://gnrnsbuqmofcjoamjsqk.supabase.co',
-    publishableKey: 'sb_publishable_HPLVv4uynMxvMV4nklcU9w_sJNtgTMJ',
+    url: AppConfig.supabaseUrl,
+    publishableKey: AppConfig.supabasePublishableKey,
   );
 
   await DeviceId.init();
@@ -28,6 +31,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => ReservationProvider()),
         ChangeNotifierProvider(create: (_) => WishlistProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: const TownFlashDealApp(),
     ),

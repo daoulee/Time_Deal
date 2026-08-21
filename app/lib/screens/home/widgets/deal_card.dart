@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/models/deal.dart';
 import '../../../core/providers/wishlist_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../widgets/countdown_timer.dart';
 import '../../../widgets/stock_gauge.dart';
 import '../../deal_detail/deal_detail_screen.dart';
@@ -42,6 +43,10 @@ class DealCard extends StatelessWidget {
                           width: 64,
                           height: 64,
                           fit: BoxFit.cover,
+                          memCacheWidth: 128,
+                          memCacheHeight: 128,
+                          fadeOutDuration: const Duration(milliseconds: 200),
+                          fadeInDuration: const Duration(milliseconds: 200),
                           placeholder: (_, _) => Container(
                             width: 64, height: 64,
                             color: AppColors.primary.withValues(alpha: 0.08),
@@ -148,13 +153,15 @@ class DealCard extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${_fmt(deal.originalPrice)}원',
-                              style: const TextStyle(
+                          Text('${Formatters.price(deal.originalPrice)}원',
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.textSecondary,
+                                color: isDark ? Colors.grey[400] : AppColors.textSecondary,
                                 decoration: TextDecoration.lineThrough,
+                                decorationColor: isDark ? Colors.grey[400] : AppColors.textSecondary,
+                                decorationThickness: 1.5,
                               )),
-                          Text('${_fmt(deal.discountedPrice)}원',
+                          Text('${Formatters.price(deal.discountedPrice)}원',
                               style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -230,8 +237,4 @@ class DealCard extends StatelessWidget {
     );
   }
 
-  String _fmt(int price) {
-    return price.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-  }
 }

@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../../core/models/reservation.dart';
 import '../../core/providers/reservation_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/mock_utils.dart';
+import '../../core/utils/status_colors.dart';
 
 class MerchantOrdersScreen extends StatefulWidget {
   const MerchantOrdersScreen({super.key});
@@ -68,15 +71,6 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen>
 
 class _OrderList extends StatelessWidget {
   final List<Reservation> reservations;
-
-  static const _names = ['김동네', '이성수', '박뚝섬', '최서울', '정한강', '강마포', '윤뚝섬', '임성수'];
-
-  static String _customerName(String userId) {
-    if (userId.isEmpty) return '고객';
-    final hash = userId.codeUnits.fold(0, (a, b) => a + b);
-    return _names[hash % _names.length];
-  }
-
   const _OrderList({required this.reservations});
 
   @override
@@ -103,7 +97,7 @@ class _OrderList extends StatelessWidget {
         final r = reservations[i];
         return _OrderCard(
           reservation: r,
-          customerName: _customerName(r.userId),
+          customerName: mockCustomerName(r.userId),
         );
       },
     );
@@ -115,10 +109,6 @@ class _OrderCard extends StatelessWidget {
   final String customerName;
 
   const _OrderCard({required this.reservation, required this.customerName});
-
-  String _fmt(int price) => price
-      .toString()
-      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +165,7 @@ class _OrderCard extends StatelessWidget {
               const Spacer(),
               Icon(LucideIcons.tag, size: 13, color: Colors.grey[400]),
               const SizedBox(width: 4),
-              Text('${_fmt(r.deal.discountedPrice)}원',
+              Text('${Formatters.price(r.deal.discountedPrice)}원',
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -256,17 +246,10 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDone = status == '픽업완료';
-    final isCancelled = status == '취소';
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isDone
-            ? Colors.grey.withValues(alpha: 0.12)
-            : isCancelled
-                ? Colors.red.withValues(alpha: 0.1)
-                : AppColors.primary.withValues(alpha: 0.1),
+        color: StatusColors.background(status),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -274,11 +257,7 @@ class _StatusBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isDone
-              ? Colors.grey
-              : isCancelled
-                  ? Colors.red
-                  : AppColors.primary,
+          color: StatusColors.foreground(status),
         ),
       ),
     );

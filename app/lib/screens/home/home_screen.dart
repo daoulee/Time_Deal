@@ -33,10 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     final pos = loc.position;
     if (pos != null) {
-      final center = neighborhoodCoords[loc.neighborhood] ?? dealCenter;
       context.read<DealProvider>().updateDistances(
-        pos.latitude, pos.longitude,
-        centerLat: center.lat, centerLng: center.lng,
+        pos.latitude,
+        pos.longitude,
+        neighborhood: loc.neighborhood,
       );
     }
   }

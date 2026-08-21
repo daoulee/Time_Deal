@@ -3,6 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  static ElevatedButtonThemeData get _elevatedButtonTheme =>
+      ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          minimumSize: const Size(double.infinity, 52),
+        ),
+      );
+
   static ThemeData get light => ThemeData(
         brightness: Brightness.light,
         colorScheme: const ColorScheme.light(
@@ -38,14 +48,7 @@ class AppTheme {
           type: BottomNavigationBarType.fixed,
           elevation: 0,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            minimumSize: const Size(double.infinity, 52),
-          ),
-        ),
+        elevatedButtonTheme: _elevatedButtonTheme,
         useMaterial3: true,
       );
 
@@ -84,14 +87,7 @@ class AppTheme {
           type: BottomNavigationBarType.fixed,
           elevation: 0,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            minimumSize: const Size(double.infinity, 52),
-          ),
-        ),
+        elevatedButtonTheme: _elevatedButtonTheme,
         useMaterial3: true,
       );
 }

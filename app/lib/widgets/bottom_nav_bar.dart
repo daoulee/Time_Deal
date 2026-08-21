@@ -38,7 +38,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkBackground : AppColors.lightBackground,

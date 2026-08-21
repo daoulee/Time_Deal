@@ -15,6 +15,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
   late String _selected;
   final _ctrl = TextEditingController();
   bool _initialized = false;
+  bool _locating = false;
   String _query = '';
 
   @override
@@ -29,6 +30,9 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
   final _neighborhoods = [
     '성수동 1가', '성수동 2가', '뚝섬로', '서울숲길',
     '왕십리', '마장동', '행당동', '사근동',
+    '합정동', '망원동', '연남동', '신촌동',
+    '홍대입구', '상수동', '서교동', '동교동',
+    '강남대로', '역삼동',
   ];
 
   List<String> get _filtered => _query.isEmpty
@@ -48,15 +52,20 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
         title: const Text('내 동네 설정', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           TextButton(
-            onPressed: () {
-              context.read<LocationProvider>().setNeighborhood(_selected);
-              ScaffoldMessenger.of(context).showSnackBar(
+            onPressed: () async {
+              final locationProvider = context.read<LocationProvider>();
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              final selected = _selected;
+              await locationProvider.setNeighborhood(selected);
+              if (!mounted) return;
+              messenger.showSnackBar(
                 SnackBar(
-                  content: Text('동네가 "$_selected"으로 설정됐어요'),
+                  content: Text('동네가 "$selected"으로 설정됐어요'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
-              Navigator.pop(context);
+              navigator.pop();
             },
             child: const Text('저장', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
           ),
@@ -71,30 +80,49 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 현재 위치
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(LucideIcons.locateFixed, size: 18, color: AppColors.primary),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('현재 위치 사용',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                            Text('GPS로 자동 감지합니다',
-                                style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          ],
+                GestureDetector(
+                  onTap: _locating ? null : () async {
+                    setState(() => _locating = true);
+                    final locationProvider = context.read<LocationProvider>();
+                    await locationProvider.requestLocation();
+                    if (!mounted) return;
+                    // requestLocation이 내부에서 역지오코딩 후 neighborhood를 갱신함
+                    final dong = locationProvider.neighborhood;
+                    setState(() { _selected = dong; _locating = false; });
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(content: Text('현재 위치: $dong'),
+                          behavior: SnackBarBehavior.floating),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        _locating
+                            ? const SizedBox(width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                            : Icon(LucideIcons.locateFixed, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('현재 위치 사용',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              Text('GPS로 자동 감지합니다',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(LucideIcons.chevronRight, size: 16, color: AppColors.primary),
-                    ],
+                        Icon(LucideIcons.chevronRight, size: 16, color: AppColors.primary),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

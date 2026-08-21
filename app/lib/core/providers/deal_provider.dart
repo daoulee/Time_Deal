@@ -1,16 +1,19 @@
-import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/mock_data.dart';
 import '../models/deal.dart';
-import '../services/device_id.dart';
+import '../utils/geo_utils.dart';
+import '../utils/app_logger.dart';
 
 class DealProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
 
   List<Deal> _deals = List.from(mockDeals);
   RealtimeChannel? _channel;
+  Timer? _expiryTimer;
   bool _disposed = false;
+  String? error;
 
   double? _lastLat;
   double? _lastLng;
@@ -19,6 +22,11 @@ class DealProvider extends ChangeNotifier {
 
   DealProvider() {
     _load();
+    _expiryTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      final before = _deals.length;
+      _deals.removeWhere((d) => d.isExpired);
+      if (_deals.length != before && !_disposed) notifyListeners();
+    });
   }
 
   Future<void> _load() async {
@@ -27,13 +35,17 @@ class DealProvider extends ChangeNotifier {
           .from('deals')
           .select()
           .gt('expires_at', DateTime.now().toUtc().toIso8601String())
-          .order('created_at', ascending: false);
-      final loaded = (data as List).map((j) => Deal.fromJson(j)).toList();
+          .order('created_at', ascending: false) as List<dynamic>;
+      final loaded = data.map((j) => Deal.fromJson(j as Map<String, dynamic>)).toList();
+      // Supabase에 실제 딜이 있으면 사용, 없으면 mock 유지 (데모용)
       if (loaded.isNotEmpty) {
         _deals = loaded;
       }
-    } catch (_) {
-      // keep mock data on error
+    } catch (e, st) {
+      AppLogger.error('Failed to load deals', e, st);
+      error = e.toString();
+      if (_disposed) return;
+      notifyListeners();
     }
     _applyDistancesIfKnown();
     if (_disposed) return;
@@ -56,6 +68,7 @@ class DealProvider extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _expiryTimer?.cancel();
     if (_channel != null) _supabase.removeChannel(_channel!);
     super.dispose();
   }
@@ -72,14 +85,20 @@ class DealProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _supabase.from('deals').insert(deal.toJson());
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.error('Failed to insert deal', e, st);
+    }
   }
 
-  void updateDistances(double userLat, double userLng, {double? centerLat, double? centerLng}) {
-    // 시뮬레이터/해외 GPS: 동네 중심에서 50km 초과 시 동네 중심 기준으로 fallback
+  // 실제 동네가 확인되기 전엔 빈 문자열 — generateMockDeals()가 빈 값이면 '우리동네'로 대체 표시함
+  String _currentNeighborhood = '';
+
+  void updateDistances(double userLat, double userLng, {String? neighborhood, double? centerLat, double? centerLng}) {
+    // 시뮬레이터 기본 GPS(미국 쿠퍼티노 등) 대응: 기준 좌표에서 50km 넘게 벗어나면
+    // 실제 GPS 대신 기준 좌표(딜 중심)를 사용해 거리가 비정상적으로 크게 뜨는 것 방지
     final refLat = centerLat ?? dealCenter.lat;
     final refLng = centerLng ?? dealCenter.lng;
-    final distToCenter = _haversine(userLat, userLng, refLat, refLng);
+    final distToCenter = GeoUtils.haversine(userLat, userLng, refLat, refLng);
     if (distToCenter > 50.0) {
       _lastLat = refLat;
       _lastLng = refLng;
@@ -87,38 +106,44 @@ class DealProvider extends ChangeNotifier {
       _lastLat = userLat;
       _lastLng = userLng;
     }
+    if (neighborhood != null && neighborhood.isNotEmpty) {
+      _currentNeighborhood = neighborhood;
+    }
+
+    // 등록된 딜이 mock 딜뿐이라면, 사용자의 실제 GPS/동네 주변으로 mock 딜을 동적 생성
+    final onlyMocks = _deals.every((d) => d.id.startsWith('mock_'));
+    if (onlyMocks) {
+      _deals = generateMockDeals(userLat, userLng, _currentNeighborhood);
+    }
+
     _applyDistancesIfKnown();
     notifyListeners();
   }
+  // [Claude | 2026-08-21] 수정범위: updateDistances() — Kiro 지적사항 #2, 50km 초과 시 기준 좌표로 폴백하는 로직 복원 (시뮬레이터 GPS 대응)
+  // [Claude | 2026-08-21] 수정범위: _currentNeighborhood 초기값 — Kiro 지적사항 #3, 하드코딩된 '비산동' 대신 빈 문자열로 변경
 
   void _applyDistancesIfKnown() {
     if (_lastLat == null || _lastLng == null) return;
-    for (final deal in _deals) {
+    _deals = _deals.map((deal) {
       final (lat, lng) = _coordForDeal(deal);
-      deal.distanceKm = _haversine(_lastLat!, _lastLng!, lat, lng);
-    }
+      return deal.copyWith(
+        distanceKm: GeoUtils.haversine(_lastLat!, _lastLng!, lat, lng),
+      );
+    }).toList();
     _deals.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
   }
 
   (double, double) _coordForDeal(Deal deal) {
-    final c = dealCoordinates[deal.id];
-    if (c != null) return (c.lat, c.lng);
+    final baseLat = _lastLat ?? dealCenter.lat;
+    final baseLng = _lastLng ?? dealCenter.lng;
+    final offset = mockDealOffsets[deal.id];
+    if (offset != null) {
+      return (baseLat + offset.latOffset, baseLng + offset.lngOffset);
+    }
     final hash = deal.id.hashCode;
-    final latOffset = ((hash % 100) - 50) * 0.0002;
-    final lngOffset = ((hash ~/ 100 % 100) - 50) * 0.0002;
-    return (dealCenter.lat + latOffset, dealCenter.lng + lngOffset);
-  }
-
-  double _haversine(double lat1, double lng1, double lat2, double lng2) {
-    const r = 6371.0;
-    final dLat = (lat2 - lat1) * pi / 180;
-    final dLng = (lng2 - lng1) * pi / 180;
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * pi / 180) *
-            cos(lat2 * pi / 180) *
-            sin(dLng / 2) *
-            sin(dLng / 2);
-    return r * 2 * atan2(sqrt(a), sqrt(1 - a));
+    final latOffset = ((hash % 100) - 50) * 0.00015;
+    final lngOffset = ((hash ~/ 100 % 100) - 50) * 0.00015;
+    return (baseLat + latOffset, baseLng + lngOffset);
   }
 
   static Deal createFromForm({
@@ -132,12 +157,12 @@ class DealProvider extends ChangeNotifier {
     required String storeCategory,
     required String iconName,
     required String imageUrl,
-    String storeName = '성수 베이커리',
+    String storeName = '우리 동네 가게',
   }) {
     final now = DateTime.now();
     return Deal(
       id: id,
-      storeId: DeviceId.value,
+      storeId: Supabase.instance.client.auth.currentUser?.id ?? '',
       storeName: storeName,
       storeCategory: storeCategory,
       title: title,
@@ -152,4 +177,5 @@ class DealProvider extends ChangeNotifier {
       imageUrl: imageUrl,
     );
   }
+  // [Claude | 2026-08-21] 수정범위: createFromForm() storeId — DeviceId.value → Supabase Auth user.id 전환 (Kiro 요청 Auth 전환 작업 #2)
 }

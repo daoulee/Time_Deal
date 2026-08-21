@@ -9,6 +9,7 @@ import '../../core/models/deal.dart';
 import '../../core/providers/deal_provider.dart';
 import '../../core/providers/location_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatters.dart';
 import '../deal_detail/deal_detail_screen.dart';
 
 const _darkMapStyle = '''[
@@ -33,9 +34,6 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _mapController;
   Deal? _selectedDeal;
-
-  // 딜 좌표 해시 fallback용 고정 중심점
-  static const _center = LatLng(37.5444, 127.0557);
 
   // 동네/GPS 기반 초기 카메라 위치 (initState에서 결정)
   late LatLng _initialCenter;
@@ -134,12 +132,17 @@ class _MapScreenState extends State<MapScreen> {
 
   // ── Map coordinate helpers ───────────────────────────────────────────────
   LatLng _coordForDeal(Deal deal) {
-    final c = dealCoordinates[deal.id];
-    if (c != null) return LatLng(c.lat, c.lng);
+    final mc = context.read<LocationProvider>().mapCenter;
+    final baseLat = mc.lat;
+    final baseLng = mc.lng;
+    final offset = mockDealOffsets[deal.id];
+    if (offset != null) {
+      return LatLng(baseLat + offset.latOffset, baseLng + offset.lngOffset);
+    }
     final hash = deal.id.hashCode;
-    final latOffset = ((hash % 100) - 50) * 0.0002;
-    final lngOffset = ((hash ~/ 100 % 100) - 50) * 0.0002;
-    return LatLng(_center.latitude + latOffset, _center.longitude + lngOffset);
+    final latOffset = ((hash % 100) - 50) * 0.00015;
+    final lngOffset = ((hash ~/ 100 % 100) - 50) * 0.00015;
+    return LatLng(baseLat + latOffset, baseLng + lngOffset);
   }
 
   Set<Marker> _buildMarkers(List<Deal> deals) {
@@ -168,11 +171,6 @@ class _MapScreenState extends State<MapScreen> {
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
   }
-
-  String _fmt(int price) => price
-      .toString()
-      .replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 
   // ── Selected deal card (always in tree, slide-up animated) ───────────────
   Widget _selectedDealCard() {
@@ -244,7 +242,7 @@ class _MapScreenState extends State<MapScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
-                  Text('${_fmt(deal.discountedPrice)}원',
+                  Text('${Formatters.price(deal.discountedPrice)}원',
                       style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -262,10 +260,14 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final deals = context.watch<DealProvider>().deals;
+    final allDeals = context.watch<DealProvider>().deals;
     final loc = context.watch<LocationProvider>();
     final mc = loc.mapCenter;
     final currentCenter = LatLng(mc.lat, mc.lng);
+
+    // [Antigravity | 2026-08-21] 수정범위: build() — 사용자가 설정한 반경(radiusKm) 이내의 딜만 엄격히 필터링
+    final radiusLimit = loc.radiusKm.toDouble();
+    final deals = allDeals.where((d) => d.distanceKm <= radiusLimit).toList();
 
     // Realtime으로 새 딜 추가 시 캐시 미스 마커를 채워줌
     final hasMissingIcons = deals.any((d) =>
@@ -299,6 +301,16 @@ class _MapScreenState extends State<MapScreen> {
                 ? _darkMapStyle
                 : null,
             markers: _buildMarkers(deals),
+            circles: {
+              Circle(
+                circleId: const CircleId('user_radius_circle'),
+                center: currentCenter,
+                radius: loc.radiusKm * 1000.0,
+                fillColor: AppColors.primary.withValues(alpha: 0.06),
+                strokeColor: AppColors.primary.withValues(alpha: 0.35),
+                strokeWidth: 2,
+              ),
+            },
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
@@ -306,50 +318,56 @@ class _MapScreenState extends State<MapScreen> {
             onTap: (_) => setState(() => _selectedDeal = null),
           ),
 
-          // 상단 검색바
+          // 상단 검색바 & 반경 선택기
           Positioned(
             top: 0, left: 0, right: 0,
             child: SafeArea(
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(LucideIcons.mapPin,
-                          size: 16, color: AppColors.primary),
-                      const SizedBox(width: 6),
-                      Text(loc.neighborhood,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(10),
+                child: GestureDetector(
+                  onTap: () => _showRadiusPicker(context, loc),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
-                        child: Text('${deals.length}개',
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.mapPin,
+                            size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text('${loc.neighborhood} · ${loc.radiusKm}km 반경',
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                    ],
+                                fontWeight: FontWeight.w700, fontSize: 14)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 18, color: Colors.grey[600]),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('${deals.length}개',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -507,7 +525,7 @@ class _MapScreenState extends State<MapScreen> {
                                               TextOverflow.ellipsis),
                                       const SizedBox(height: 2),
                                       Text(
-                                          '${_fmt(deal.discountedPrice)}원',
+                                          '${Formatters.price(deal.discountedPrice)}원',
                                           style: const TextStyle(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w800,
@@ -530,4 +548,84 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
+}
+
+/// [Antigravity | 2026-08-21] 수정범위: _showRadiusPicker — 사용자가 원하는 탐색 반경(1km, 3km, 5km, 10km)을 즉시 변경
+void _showRadiusPicker(BuildContext context, LocationProvider loc) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              '동네 탐색 반경 설정',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '내 위치 기준으로 선택한 반경 내의 딜만 지도와 홈에 표시됩니다',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [1, 3, 5, 10].map((r) {
+                final isSel = loc.radiusKm == r;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isSel ? AppColors.primary : Colors.grey.withValues(alpha: 0.1),
+                          foregroundColor: isSel ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isSel ? AppColors.primary : Colors.grey.withValues(alpha: 0.2),
+                            ),
+                          ),
+                        ),
+                        onPressed: () {
+                          loc.setRadiusKm(r);
+                          Navigator.pop(ctx);
+                        },
+                        child: Text(
+                          '${r}km',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

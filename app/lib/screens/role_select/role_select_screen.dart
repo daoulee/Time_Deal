@@ -27,16 +27,22 @@ class RoleSelectScreen extends StatelessWidget {
                 icon: LucideIcons.shoppingBag,
                 title: '소비자',
                 subtitle: '주변 동네 타임딜을\n찾고 싶어요',
-                onTap: () => Navigator.pushReplacement(
-                  context, MaterialPageRoute(builder: (_) => const MainScaffold())),
+                onTap: () => Navigator.of(context).pushReplacement(PageRouteBuilder(
+                  pageBuilder: (_, _, _) => const MainScaffold(),
+                  transitionDuration: const Duration(milliseconds: 150),
+                  transitionsBuilder: (_, anim, _, child) => FadeTransition(opacity: anim, child: child),
+                )),
               ),
               const SizedBox(height: 16),
               _RoleCard(
                 icon: LucideIcons.store,
                 title: '사장님',
                 subtitle: '우리 가게 마감 특가를\n올리고 싶어요',
-                onTap: () => Navigator.pushReplacement(
-                  context, MaterialPageRoute(builder: (_) => const MerchantHomeScreen())),
+                onTap: () => Navigator.of(context).pushReplacement(PageRouteBuilder(
+                  pageBuilder: (_, _, _) => const MerchantHomeScreen(),
+                  transitionDuration: const Duration(milliseconds: 150),
+                  transitionsBuilder: (_, anim, _, child) => FadeTransition(opacity: anim, child: child),
+                )),
               ),
             ],
           ),

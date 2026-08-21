@@ -20,6 +20,10 @@ dependencies:
   supabase_flutter: ^2.9.0
   image_picker: ^1.1.2
   flutter_svg: ^2.0.10+1
+  geocoding: ^3.0.0
+  google_sign_in: ^6.2.2
+  url_launcher: ^6.3.0
+  flutter_web_auth_2: ^4.0.0
 
 dev_dependencies:
   flutter_test:
@@ -38,3 +42,7 @@ flutter:
   assets:
     - assets/
     - assets/icons/
+  fonts:
+    - family: Pacifico
+      fonts:
+        - asset: assets/fonts/Pacifico-Regular.ttf

@@ -3,30 +3,27 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/reservation.dart';
 import '../../core/providers/deal_provider.dart';
+import '../../core/providers/location_provider.dart';
+import '../../core/providers/profile_provider.dart';
 import '../../core/providers/reservation_provider.dart';
 import '../../core/services/device_id.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/mock_utils.dart';
+import '../../core/utils/status_colors.dart';
 import 'deal_create_screen.dart';
+import '../role_select/role_select_screen.dart';
 import 'merchant_orders_screen.dart';
 
 class MerchantHomeScreen extends StatelessWidget {
   const MerchantHomeScreen({super.key});
 
-  static const _mockNames = ['김동네', '이성수', '박뚝섬', '최서울', '정한강', '강마포'];
-
-  String _mockCustomerName(String reservationId) {
-    final hash = reservationId.codeUnits.fold(0, (a, b) => a + b);
-    return _mockNames[hash % _mockNames.length];
-  }
-
-  String _fmt(int price) => price
-      .toString()
-      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-
   @override
   Widget build(BuildContext context) {
     final rp = context.watch<ReservationProvider>();
     final dp = context.watch<DealProvider>();
+    final profile = context.watch<ProfileProvider>();
+    final location = context.watch<LocationProvider>();
 
     final activeCount = rp.merchantByStatus('진행중').length;
     final completedCount = rp.merchantByStatus('픽업완료').length;
@@ -45,6 +42,12 @@ class MerchantHomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('사장님 대시보드', style: TextStyle(fontWeight: FontWeight.w800)),
+        leading: IconButton(
+          icon: Icon(LucideIcons.arrowLeft),
+          tooltip: '모드 전환',
+          onPressed: () => Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (_) => const RoleSelectScreen())),
+        ),
         actions: [
           IconButton(
             icon: Icon(LucideIcons.clipboardList),
@@ -71,18 +74,22 @@ class MerchantHomeScreen extends StatelessWidget {
               children: [
                 Icon(LucideIcons.store, size: 36, color: Colors.white),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('성수 베이커리',
-                          style: TextStyle(
+                      Text(
+                          profile.name.isNotEmpty ? '${profile.name}의 가게' : '내 가게',
+                          style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.w700)),
-                      SizedBox(height: 4),
-                      Text('베이커리 · 성수동 2가',
-                          style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Text(
+                          location.neighborhood.isNotEmpty
+                              ? location.neighborhood
+                              : '위치 확인 중...',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -131,7 +138,7 @@ class MerchantHomeScreen extends StatelessWidget {
             const SizedBox(width: 10),
             _DashCard(
               label: '누적 매출',
-              value: '${_fmt(totalRevenue)}원',
+              value: '${Formatters.price(totalRevenue)}원',
               icon: LucideIcons.banknote,
             ),
           ]),
@@ -174,7 +181,10 @@ class MerchantHomeScreen extends StatelessWidget {
               ),
             )
           else
-            ...activeDeals.map((deal) => Container(
+            ...activeDeals.map((deal) => GestureDetector(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const MerchantOrdersScreen())),
+              child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -195,7 +205,7 @@ class MerchantHomeScreen extends StatelessWidget {
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 2),
                         Text(
-                          '${_fmt(deal.discountedPrice)}원 · ${deal.remainingStock}/${deal.totalStock}개 남음',
+                          '${Formatters.price(deal.discountedPrice)}원 · ${deal.remainingStock}/${deal.totalStock}개 남음',
                           style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                         ),
                       ],
@@ -215,7 +225,7 @@ class MerchantHomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            )),
+            ))),
           const SizedBox(height: 20),
 
           // 최근 주문
@@ -240,7 +250,7 @@ class MerchantHomeScreen extends StatelessWidget {
           else
             ...recentOrders.map((r) => _ReservationOrderItem(
               reservation: r,
-              customerName: _mockCustomerName(r.id),
+              customerName: mockCustomerName(r.id),
             )),
           const SizedBox(height: 80),
         ],
@@ -312,11 +322,11 @@ class _ReservationOrderItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = reservation;
-    final isActive = r.status == '진행중';
-    final isDone = r.status == '픽업완료';
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const MerchantOrdersScreen())),
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: AppColors.primary.withValues(alpha: 0.1),
@@ -332,22 +342,14 @@ class _ReservationOrderItem extends StatelessWidget {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: isDone
-              ? Colors.grey.withValues(alpha: 0.12)
-              : isActive
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : Colors.grey.withValues(alpha: 0.08),
+          color: StatusColors.background(r.status),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(r.status,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isDone
-                  ? Colors.grey
-                  : isActive
-                      ? AppColors.primary
-                      : Colors.grey[400],
+              color: StatusColors.foreground(r.status),
             )),
       ),
     );

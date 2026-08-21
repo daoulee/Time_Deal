@@ -1,6 +1,6 @@
 # TodoList — 우리 동네 타임딜
 
-> 마지막 업데이트: 2026-08-09 | D-11 (대회: 08.20~08.22) — Phase 1·2·3-A 완료, Phase 3-B 완료, 내부 결함 검증 완료
+> 마지막 업데이트: 2026-08-15 | D-5 (대회: 08.20~08.22) — Phase 1·2·3 전체 완료, 기능 결함 9종 수정, 알림 UI 완성, 거리 제한 적용, 실기기 설치 완료
 
 ---
 
@@ -80,7 +80,40 @@
   - [x] 상인 예약 쿼리 deal 필드 누락 — `.select('id,...')`→`.select('*,...')` (#027)
   - [x] `Deal.discountPercent` NaN throw — `originalPrice==0` 방어 조건 (#028)
   - [x] 지도 동네명 하드코딩 — `loc.neighborhood` 바인딩 (#029)
-- [ ] 전체 플로우 E2E 테스트 (소비자 / 사장님) — 기기 실물 테스트 필요
+- [x] **기능 결함 9종 수정** (2026-08-13~14)
+  - [x] BUG-1: 알림 팝업 `parentContext` 필드 삭제 → `Navigator.of(context)` 사전 캡처로 교체
+  - [x] BUG-2: 예약 RPC 실패 시 fallback UPDATE `.gt('remaining_stock', 0).select()` → 빈 결과 throw
+  - [x] BUG-3: `WishlistProvider` — 이미 찜한 딜 insert 시 upsert 충돌 방어
+  - [x] BUG-4: `CountdownTimer` — remaining이 음수일 때 `Duration.zero`로 고정 (TroubleReport #030)
+  - [x] BUG-5: 딜 등록 폼 — `stock <= 0` 유효성 검사 추가
+  - [x] BUG-6: `DealProvider._load()` — `_disposed` 플래그 없어 위젯 소멸 후 `notifyListeners()` 호출
+  - [x] BUG-7: `WishlistProvider.toggle()` — DB 실패 시 로컬 상태 롤백 추가
+  - [x] BUG-8: `ReservationProvider.complete/cancel()` — 로컬 상태 먼저 변경 → DB 실패 시 불일치 (순서 역전)
+  - [x] BUG-9: `LocationProvider` — 권한 거부/영구거부 시 에러 메시지 누락 추가
+- [x] **전체 리팩토링 Phase 1~3** (2026-08-14)
+  - [x] `Formatters.price()` — 가격 3자리 콤마 포매팅 유틸 추출
+  - [x] `GeoUtils.haversine()` — Haversine 거리 계산 유틸 추출
+  - [x] `StatusColors.foreground/background()` — 예약 상태 색상 유틸 추출
+  - [x] `AppLogger.error/info()` — 통합 로거 (kDebugMode 조건부)
+  - [x] `AppConfig` — `String.fromEnvironment` 환경 변수 관리 클래스
+  - [x] Mock 데이터 fallback 복원 — Supabase 빈 경우 `mockDeals` 표시
+  - [x] `flutter analyze` — No issues found (info 2건만 남음, 빌드 무관)
+- [x] **거리 제한 3km 적용** (당근마켓 스타일, 2026-08-14)
+  - [x] `DealDetailScreen` — 3km 초과 시 오렌지 경고 배너 표시
+  - [x] 예약 버튼 — 3km 초과 시 비활성화 + 거리 표시 텍스트
+  - [x] 시뮬레이터/해외 GPS — 동네 중심 50km 초과 시 중심 좌표 fallback
+- [x] **알림 화면 전면 개선** (2026-08-14)
+  - [x] 구분선 색상 — 검정 → 연회색 (`Colors.grey[200]`, thickness 0.5)
+  - [x] 알림 탭 → 딜 미리보기 팝업 다이얼로그 (`showDialog` barrierDismissible)
+  - [x] 팝업 이미지 탭 → `PageRouteBuilder` FadeTransition+SlideTransition으로 딜 상세 이동 (280ms)
+  - [x] "탭하여 상세보기" 힌트 오버레이 (이미지 우하단)
+  - [x] "상세보기" 버튼 → `SizeTransition` 슬라이드 딜 소개 펼침/접힘
+  - [x] "구매하기" 버튼 → 팝업 닫고 딜 상세 화면 이동
+  - [x] "모두 읽음" 버튼 → 시스템 알림 전체 제거 + unread dot 초기화 (실기능 구현)
+  - [x] `_NotifTile` — `Container` → `Material` 래핑 (잉크 스플래시 정상화)
+- [x] **실기기 설치 완료** — GreenVision iPhone (iOS 26.5.2) USB-C 연결, release 모드 7일 유효
+- [x] **Git push** — github.com/daoulee/Time_Deal.git (README 충돌 해결 후 완료, 2026-08-13)
+- [ ] 전체 플로우 E2E 테스트 (소비자 / 사장님 기기 동시) — 남은 필수 항목
 
 ### 3-B. 문서 정리
 - [x] `Report.md` 업데이트 (2026-08-08)
@@ -118,3 +151,27 @@
 - [x] 내부 결함 4종 수정 (대시보드 getter / 딜 필드 누락 / discountPercent / 지도 동네명)
 - [x] my_page 동네명 실시간 바인딩
 - [x] flutter analyze No issues found (빌드 에러 0)
+- [x] 거리 제한 3km — 3km 초과 딜 예약 불가 (당근마켓 스타일)
+- [x] 알림 화면 — 딜 미리보기 팝업 (이미지 탭 → 상세 전환, 상세보기 슬라이드, 모두 읽음 기능)
+- [x] 기능 결함 9종 수정 (ChangeNotifier 생명주기 / 롤백 / 타이머 음수 / 권한 에러 메시지 등)
+- [x] 전체 리팩토링 — Formatters / GeoUtils / StatusColors / AppLogger / AppConfig 유틸 분리
+- [x] Mock 데이터 fallback 복원 (Supabase 빈 경우 데모 가능)
+- [x] cancel() 재고 복구 atomic increment_stock RPC 추가 및 레이스 컨디션 해결 (2026-08-21)
+- [x] Supabase Auth 세션 기반 인증 연동 + DeviceId fallback 지원 (2026-08-21)
+- [x] RLS(Row Level Security) 정책 강화 (2026-08-21)
+- [x] Google Maps iOS 신규 API 키 교체 (2026-08-21)
+- [x] Google & Kakao 소셜 로그인 연동 완료 (2026-08-21)
+- [x] 로그인 완료 하단 팝업 알림 (AuthFeedback.showLoginToast) (2026-08-21)
+- [x] 회원가입 완료 햅틱 진동 + 화면 중앙 시그니처 오렌지 체크 애니메이션 (AuthFeedback.showSignUpSuccess) (2026-08-21)
+- [x] 사용자 실제 GPS(안양시 비산동 등) 기반 동적 데모 딜 & 지도 핀 생성 (2026-08-21)
+- [x] 초기 로그인 화면 3종 버튼 통합 (소셜 로그인 2초 로고 페이드 회전 + 회원가입 + 게스트) (2026-08-21)
+- [x] 소셜 로그인 회전 로고 브랜드 고유 배지(카카오 노랑, 구글 흰색, 이메일 주황) 및 고대비 화이트 버튼 스타일 적용 (2026-08-21)
+- [x] 로그인 화면 섹션 구분선 적용 ("이미 계정이 있으신가요?" / "처음이신가요?") 및 카카오/구글 3초 소셜 회원가입 통합 (2026-08-21)
+- [x] 미가입 계정 로그인 시도 시 "회원가입이 안 된 계정이네요!" 안내 모달 및 원클릭 회원가입 전환 연동 (2026-08-21)
+- [x] 사용자 설정 반경(1km, 3km, 5km, 10km) 기반 지도 딜 필터링 + Google Map 반경 원(Circle) 시각화 + 반경 선택기 연동 (2026-08-21)
+- [x] 실기기 설치 (GreenVision iPhone, iOS 26.5.2, USB-C, release 모드)
+- [x] Git push — github.com/daoulee/Time_Deal.git
+
+---
+> 📝 **마지막 수정:** 2026-08-21 | **수정자:** Antigravity (Gemini 3.7 Flash)
+

@@ -13,7 +13,7 @@ class Deal {
   final int totalStock;
   final int remainingStock;
   final DateTime expiresAt;
-  double distanceKm;
+  final double distanceKm;
   final String iconName;
   final String imageUrl;
 
@@ -91,6 +91,39 @@ class Deal {
         iconName: 'store',
         imageUrl: '',
       );
+
+  Deal copyWith({
+    String? id,
+    String? storeId,
+    String? storeName,
+    String? storeCategory,
+    String? title,
+    String? description,
+    int? originalPrice,
+    int? discountedPrice,
+    int? totalStock,
+    int? remainingStock,
+    DateTime? expiresAt,
+    double? distanceKm,
+    String? iconName,
+    String? imageUrl,
+  }) => Deal(
+        id: id ?? this.id,
+        storeId: storeId ?? this.storeId,
+        storeName: storeName ?? this.storeName,
+        storeCategory: storeCategory ?? this.storeCategory,
+        title: title ?? this.title,
+        description: description ?? this.description,
+        originalPrice: originalPrice ?? this.originalPrice,
+        discountedPrice: discountedPrice ?? this.discountedPrice,
+        totalStock: totalStock ?? this.totalStock,
+        remainingStock: remainingStock ?? this.remainingStock,
+        expiresAt: expiresAt ?? this.expiresAt,
+        distanceKm: distanceKm ?? this.distanceKm,
+        iconName: iconName ?? this.iconName,
+        imageUrl: imageUrl ?? this.imageUrl,
+      );
+  // [Kiro | 2026-08-21] copyWith() — distanceKm 단일 파라미터에서 전체 필드 지원으로 확장
 
   Map<String, dynamic> toJson() => {
         'store_id': storeId,

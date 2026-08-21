@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/login_screen.dart';
 import '../onboarding/onboarding_screen.dart';
+import '../role_select/role_select_screen.dart';
+import '../setup/post_login_setup_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,10 +19,15 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _scaleController;
   late AnimationController _fadeController;
   late AnimationController _glowController;
+  late AnimationController _handshakeController;
+  late AnimationController _handshakeFadeController;
 
   late Animation<double> _scaleAnim;
   late Animation<double> _fadeAnim;
   late Animation<double> _glowAnim;
+  late Animation<double> _handshakeShakeAnim;
+  late Animation<double> _handshakeScaleAnim;
+  late Animation<double> _handshakeFadeAnim;
 
   @override
   void initState() {
@@ -38,6 +45,14 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+    _handshakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _handshakeFadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
 
     _scaleAnim = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
@@ -47,6 +62,18 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _glowAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+    // 좌우 흔들림 (-8° ~ +8°)
+    _handshakeShakeAnim = Tween<double>(begin: -0.14, end: 0.14).animate(
+      CurvedAnimation(parent: _handshakeController, curve: Curves.easeInOut),
+    );
+    // 악수 시 살짝 위아래 스케일
+    _handshakeScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.12), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.12, end: 1.0), weight: 50),
+    ]).animate(_handshakeController);
+    _handshakeFadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _handshakeFadeController, curve: Curves.easeOut),
     );
 
     _runSequence();
@@ -60,24 +87,38 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 600));
     _glowController.repeat(reverse: true);
 
-    await Future.delayed(const Duration(milliseconds: 1800));
+    // Deal 텍스트 안정된 후 handshake 페이드인 + 반복 흔들림
+    await Future.delayed(const Duration(milliseconds: 300));
+    _handshakeFadeController.forward();
+    _handshakeController.repeat(reverse: true);
 
-    // 스플래시 먼저 페이드아웃 → 완전히 사라진 후 즉시 전환
+    await Future.delayed(const Duration(milliseconds: 1200));
+
     _glowController.stop();
+    _handshakeController.stop();
     await _fadeController.reverse();
 
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
-    final done = prefs.getBool('onboarding_done') ?? false;
+    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    final setupDone = prefs.getBool('setup_done') ?? false;
+    final session = Supabase.instance.client.auth.currentSession;
     if (!mounted) return;
+
+    Widget next;
+    if (!onboardingDone) {
+      next = const OnboardingScreen();
+    } else if (session != null) {
+      next = setupDone ? const RoleSelectScreen() : const PostLoginSetupScreen();
+    } else {
+      next = const LoginScreen();
+    }
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => done ? const LoginScreen() : const OnboardingScreen(),
-        transitionDuration: const Duration(milliseconds: 350),
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
-          child: child,
-        ),
+        pageBuilder: (_, _, _) => next,
+        transitionDuration: const Duration(milliseconds: 150),
+        transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
       ),
     );
   }
@@ -87,6 +128,8 @@ class _SplashScreenState extends State<SplashScreen>
     _scaleController.dispose();
     _fadeController.dispose();
     _glowController.dispose();
+    _handshakeController.dispose();
+    _handshakeFadeController.dispose();
     super.dispose();
   }
 
@@ -99,7 +142,10 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: bg,
       body: Center(
         child: AnimatedBuilder(
-          animation: Listenable.merge([_scaleAnim, _fadeAnim, _glowAnim]),
+          animation: Listenable.merge([
+            _scaleAnim, _fadeAnim, _glowAnim,
+            _handshakeShakeAnim, _handshakeScaleAnim, _handshakeFadeAnim,
+          ]),
           builder: (context, _) {
             return Opacity(
               opacity: _fadeAnim.value,
@@ -112,13 +158,13 @@ class _SplashScreenState extends State<SplashScreen>
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        // 글로우 레이어 (다크모드만)
                         if (isDark)
                           Padding(
                             padding: const EdgeInsets.only(right: 24, bottom: 8),
                             child: Text(
                               'Deal',
-                              style: GoogleFonts.pacifico(
+                              style: TextStyle(
+                                fontFamily: 'Pacifico',
                                 fontSize: 72,
                                 color: AppColors.primary
                                     .withValues(alpha: 0.4 * _glowAnim.value),
@@ -137,7 +183,6 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ),
                           ),
-                        // 메인 텍스트
                         ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(
                             begin: Alignment.topLeft,
@@ -148,7 +193,8 @@ class _SplashScreenState extends State<SplashScreen>
                             padding: const EdgeInsets.only(right: 24, bottom: 8),
                             child: Text(
                               'Deal',
-                              style: GoogleFonts.pacifico(
+                              style: const TextStyle(
+                                fontFamily: 'Pacifico',
                                 fontSize: 72,
                                 color: Colors.white,
                               ),
@@ -157,7 +203,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 4),
                     Text(
                       '우리 동네 타임딜',
                       style: TextStyle(
@@ -167,6 +213,41 @@ class _SplashScreenState extends State<SplashScreen>
                             : AppColors.lightTextSecondary,
                         letterSpacing: 2.0,
                         fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    // 악수 아이콘 — 좌우 흔들림 + 페이드인
+                    Opacity(
+                      opacity: _handshakeFadeAnim.value,
+                      child: Transform.rotate(
+                        angle: _handshakeShakeAnim.value,
+                        child: Transform.scale(
+                          scale: _handshakeScaleAnim.value,
+                          child: Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  const Color(0xFFFF6B35).withValues(alpha: 0.15),
+                                  AppColors.primary.withValues(alpha: 0.15),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.handshake_rounded,
+                              size: 34,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],

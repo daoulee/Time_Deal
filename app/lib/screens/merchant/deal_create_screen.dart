@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/mock_data.dart';
 import '../../core/providers/deal_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
+import '../../core/utils/app_logger.dart';
 
 // 카테고리별 아이콘 & 기본 이미지
 const _categoryIcons = {
@@ -58,6 +60,9 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
     super.dispose();
   }
 
+  String get _fallbackImage =>
+      _categoryImages[_selectedCategory] ?? _categoryImages['베이커리']!;
+
   int _parsePrice(String text) =>
       int.tryParse(text.replaceAll(',', '')) ?? 0;
 
@@ -72,10 +77,7 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
   }
 
   Future<String> _uploadImage(String dealId) async {
-    if (_imageFile == null) {
-      return _categoryImages[_selectedCategory] ??
-          _categoryImages['베이커리']!;
-    }
+    if (_imageFile == null) return _fallbackImage;
     try {
       final bytes = await _imageFile!.readAsBytes();
       final path = 'deals/$dealId.jpg';
@@ -86,9 +88,9 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
       return Supabase.instance.client.storage
           .from('deal-images')
           .getPublicUrl(path);
-    } catch (_) {
-      // Storage 버킷 없거나 업로드 실패 → 카테고리 기본 이미지 사용
-      return _categoryImages[_selectedCategory] ?? _categoryImages['베이커리']!;
+    } catch (e, st) {
+      AppLogger.error('Failed to upload deal image', e, st);
+      return _fallbackImage;
     }
   }
 
@@ -99,17 +101,16 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
     final discounted = _parsePrice(_discountCtrl.text);
     final stock = int.tryParse(_stockCtrl.text) ?? 1;
 
-    if (title.isEmpty || original == 0 || discounted == 0) {
+    if (title.isEmpty || original == 0 || discounted == 0 || stock <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('제목과 가격을 입력해주세요'),
+            content: Text('제목, 가격, 수량을 올바르게 입력해주세요'),
             behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
-    HapticFeedback.mediumImpact();
 
     final dealId = 'new_${DateTime.now().millisecondsSinceEpoch}';
     final imageUrl = await _uploadImage(dealId);
@@ -128,10 +129,11 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
       storeCategory: _selectedCategory,
       iconName: _categoryIcons[_selectedCategory] ?? 'store',
       imageUrl: imageUrl,
-      storeName: storeName.isEmpty ? '성수 베이커리' : storeName,
+      storeName: storeName.isEmpty ? '우리 동네 가게' : storeName,
     );
 
     context.read<DealProvider>().addDeal(deal);
+    AppHaptics.success();
 
     // ScaffoldMessenger를 pop 전에 캡처해야 대시보드에 SnackBar가 표시됨
     final messenger = ScaffoldMessenger.of(context);
@@ -141,6 +143,7 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
           content: Text('딜이 등록됐어요! 소비자 홈에 바로 반영됩니다 🎉'),
           behavior: SnackBarBehavior.floating),
     );
+    // [Claude | 2026-08-21] 수정범위: _submit() 딜 등록 완료 — 제출 시점 단일 햅틱을 성공 시점 AppHaptics.success() 더블 햅틱으로 교체
   }
 
   @override

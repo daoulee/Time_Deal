@@ -39,14 +39,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  Future<void> _finish() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_done', true);
+    if (!mounted) return;
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+  }
+
   Future<void> _next() async {
     if (_page < _pages.length - 1) {
       _controller.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
     } else {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('onboarding_done', true);
-      if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      await _finish();
     }
   }
 
@@ -59,13 +63,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Align(
               alignment: Alignment.topRight,
               child: TextButton(
-                onPressed: () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('onboarding_done', true);
-                  if (!context.mounted) return;
-                  Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                },
+                onPressed: _finish,
                 child: const Text('건너뛰기', style: TextStyle(color: Colors.grey)),
               ),
             ),

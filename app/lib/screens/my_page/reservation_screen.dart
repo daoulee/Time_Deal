@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/models/reservation.dart';
 import '../../core/providers/reservation_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/status_colors.dart';
 
 class ReservationScreen extends StatefulWidget {
   const ReservationScreen({super.key});
@@ -95,8 +96,6 @@ class _ReservationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = reservation;
-    final isDone = r.status == '픽업완료';
-    final isCancelled = r.status == '취소';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -136,11 +135,7 @@ class _ReservationCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isCancelled
-                      ? Colors.grey.withValues(alpha: 0.12)
-                      : isDone
-                          ? Colors.green.withValues(alpha: 0.1)
-                          : AppColors.primary.withValues(alpha: 0.1),
+                  color: StatusColors.background(r.status),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -148,11 +143,7 @@ class _ReservationCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isCancelled
-                        ? Colors.grey
-                        : isDone
-                            ? Colors.green
-                            : AppColors.primary,
+                    color: StatusColors.foreground(r.status),
                   ),
                 ),
               ),
@@ -177,44 +168,36 @@ class _ReservationCard extends StatelessWidget {
           ),
           if (r.status == '진행중') ...[
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      context.read<ReservationProvider>().cancel(r.id);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey,
-                      side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('예약 취소'),
+                      content: const Text('정말 예약을 취소할까요?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false),
+                            child: const Text('아니요')),
+                        TextButton(onPressed: () => Navigator.pop(context, true),
+                            child: const Text('취소하기',
+                                style: TextStyle(color: Colors.red))),
+                      ],
                     ),
-                    child: const Text('예약 취소', style: TextStyle(fontSize: 13)),
-                  ),
+                  );
+                  if (confirmed == true && context.mounted) {
+                    context.read<ReservationProvider>().cancel(r.id);
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.grey,
+                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      await context.read<ReservationProvider>().complete(r.id);
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('픽업 완료 처리됐어요!'),
-                            behavior: SnackBarBehavior.floating),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text('픽업 완료',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ],
+                child: const Text('예약 취소', style: TextStyle(fontSize: 13)),
+              ),
             ),
           ],
         ],
