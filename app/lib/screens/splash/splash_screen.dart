@@ -216,36 +216,17 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
-                    // 악수 아이콘 — 좌우 흔들림 + 페이드인
+                    // [Antigravity | 2026-08-21] 수정범위: splash_screen — 악수 아이콘 뒤 오렌지 원형 배경 제거 및 클린 아이콘 단독 렌더링
                     Opacity(
                       opacity: _handshakeFadeAnim.value,
                       child: Transform.rotate(
                         angle: _handshakeShakeAnim.value,
                         child: Transform.scale(
                           scale: _handshakeScaleAnim.value,
-                          child: Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  const Color(0xFFFF6B35).withValues(alpha: 0.15),
-                                  AppColors.primary.withValues(alpha: 0.15),
-                                ],
-                              ),
-                              border: Border.all(
-                                color: AppColors.primary.withValues(alpha: 0.3),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.handshake_rounded,
-                              size: 34,
-                              color: AppColors.primary,
-                            ),
+                          child: const Icon(
+                            Icons.handshake_rounded,
+                            size: 44,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
