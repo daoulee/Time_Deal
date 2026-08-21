@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/models/deal.dart';
+import '../../core/models/reservation.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/reservation_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
@@ -631,14 +632,10 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
                             if (!context.mounted) return;
                             if (ok) {
                               AppHaptics.success();
-                              nav.pop();
+                              nav.pop(); // 바텀시트 닫기
                               final newReservation = rp.all.isNotEmpty ? rp.all.first : null;
                               if (newReservation != null) {
-                                nav.push(
-                                  MaterialPageRoute(
-                                    builder: (_) => PickupTicketScreen(reservation: newReservation),
-                                  ),
-                                );
+                                _showReservationSuccessDialog(context, newReservation);
                               }
                             } else {
                               nav.pop();
@@ -718,6 +715,205 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // [Antigravity | 2026-08-21] 수정범위: _showReservationSuccessDialog() — 예약 완료 시 직관적이고 부드러운 '예약 완료 !' 미니 팝업 다이얼로그
+  Future<void> _showReservationSuccessDialog(
+    BuildContext context,
+    Reservation reservation,
+  ) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '예약 완료',
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 260),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return ScaleTransition(
+          scale: curve,
+          child: FadeTransition(
+            opacity: anim1,
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (dialogCtx, anim1, anim2) {
+        return Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 상단 성공 체크 아이콘
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.check,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // 타이틀
+                  const Text(
+                    '예약 완료 !',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 상품 및 매장 요약
+                  Text(
+                    '${reservation.deal.storeName}\n${reservation.deal.title}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 스윙 안심 가결제 요약 박스
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : Colors.grey.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.grey.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '가결제 보증금',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                            ),
+                            Text(
+                              '${reservation.formattedPrice}원 (홀드)',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              LucideIcons.shieldCheck,
+                              size: 13,
+                              color: const Color(0xFF10B981),
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                '매장 방문 픽업 시 가결제 100% 자동 취소',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 스마트 티켓 확인하기 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        AppHaptics.selection();
+                        Navigator.pop(dialogCtx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PickupTicketScreen(reservation: reservation),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.ticket, size: 16, color: Colors.white),
+                          const SizedBox(width: 6),
+                          const Text(
+                            '스마트 티켓 확인하기',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
