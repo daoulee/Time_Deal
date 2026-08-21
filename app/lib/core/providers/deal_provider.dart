@@ -114,6 +114,11 @@ class DealProvider extends ChangeNotifier {
   }
 
   (double, double) _coordForDeal(Deal deal) {
+    // 실제 가게 위치가 저장돼 있으면 그걸 사용 (웹/앱 공통으로 같은 좌표를 봄)
+    if (deal.storeLat != null && deal.storeLng != null) {
+      return (deal.storeLat!, deal.storeLng!);
+    }
+    // 위치가 없는 옛날/mock 딜은 뷰어 위치 기준 가짜 좌표로 대체 표시 (하위호환)
     final baseLat = _lastLat ?? dealCenter.lat;
     final baseLng = _lastLng ?? dealCenter.lng;
     final offset = mockDealOffsets[deal.id];
@@ -125,6 +130,7 @@ class DealProvider extends ChangeNotifier {
     final lngOffset = ((hash ~/ 100 % 100) - 50) * 0.00015;
     return (baseLat + latOffset, baseLng + lngOffset);
   }
+  // [Claude | 2026-08-21] 수정범위: _coordForDeal() — 저장된 실제 store_lat/store_lng 우선 사용, 없을 때만 기존 가짜 좌표 폴백
 
   static Deal createFromForm({
     required String id,
@@ -138,6 +144,9 @@ class DealProvider extends ChangeNotifier {
     required String iconName,
     required String imageUrl,
     String storeName = '우리 동네 가게',
+    double? storeLat,
+    double? storeLng,
+    String? neighborhood,
   }) {
     final now = DateTime.now();
     return Deal(
@@ -155,7 +164,11 @@ class DealProvider extends ChangeNotifier {
       distanceKm: 0.2,
       iconName: iconName,
       imageUrl: imageUrl,
+      storeLat: storeLat,
+      storeLng: storeLng,
+      neighborhood: neighborhood,
     );
   }
   // [Claude | 2026-08-21] 수정범위: createFromForm() storeId — DeviceId.value → Supabase Auth user.id 전환 (Kiro 요청 Auth 전환 작업 #2)
+  // [Claude | 2026-08-21] 수정범위: createFromForm() storeLat/storeLng/neighborhood 파라미터 추가 — 딜 등록 시 실제 가게 위치를 DB에 저장 (웹 연동용)
 }

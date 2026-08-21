@@ -16,6 +16,9 @@ class Deal {
   final double distanceKm;
   final String iconName;
   final String imageUrl;
+  final double? storeLat;
+  final double? storeLng;
+  final String? neighborhood;
 
   Deal({
     required this.id,
@@ -32,6 +35,9 @@ class Deal {
     required this.distanceKm,
     required this.iconName,
     required this.imageUrl,
+    this.storeLat,
+    this.storeLng,
+    this.neighborhood,
   });
 
   static final _iconMap = <String, IconData>{
@@ -73,6 +79,9 @@ class Deal {
         distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0.0,
         iconName: (json['icon_name'] as String?) ?? 'store',
         imageUrl: json['image_url'] as String,
+        storeLat: (json['store_lat'] as num?)?.toDouble(),
+        storeLng: (json['store_lng'] as num?)?.toDouble(),
+        neighborhood: json['neighborhood'] as String?,
       );
 
   factory Deal.placeholder() => Deal(
@@ -107,6 +116,9 @@ class Deal {
     double? distanceKm,
     String? iconName,
     String? imageUrl,
+    double? storeLat,
+    double? storeLng,
+    String? neighborhood,
   }) => Deal(
         id: id ?? this.id,
         storeId: storeId ?? this.storeId,
@@ -122,8 +134,12 @@ class Deal {
         distanceKm: distanceKm ?? this.distanceKm,
         iconName: iconName ?? this.iconName,
         imageUrl: imageUrl ?? this.imageUrl,
+        storeLat: storeLat ?? this.storeLat,
+        storeLng: storeLng ?? this.storeLng,
+        neighborhood: neighborhood ?? this.neighborhood,
       );
   // [Kiro | 2026-08-21] copyWith() — distanceKm 단일 파라미터에서 전체 필드 지원으로 확장
+  // [Claude | 2026-08-21] 수정범위: Deal 모델 — storeLat/storeLng/neighborhood 필드 추가 (웹 연동용 실제 위치 저장)
 
   Map<String, dynamic> toJson() => {
         'store_id': storeId,
@@ -137,6 +153,9 @@ class Deal {
         'remaining_stock': remainingStock,
         'expires_at': expiresAt.toUtc().toIso8601String(),
         'icon_name': iconName,
+        'store_lat': storeLat,
+        'store_lng': storeLng,
+        'neighborhood': neighborhood,
         'image_url': imageUrl,
       };
 }

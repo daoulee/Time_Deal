@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/mock_data.dart';
 import '../../core/providers/deal_provider.dart';
+import '../../core/providers/location_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/utils/app_logger.dart';

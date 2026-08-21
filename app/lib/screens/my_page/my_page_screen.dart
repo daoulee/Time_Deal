@@ -13,6 +13,7 @@ import '../../core/providers/reservation_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
 import '../../core/utils/formatters.dart';
 import '../auth/login_screen.dart';
 import '../merchant/merchant_home_screen.dart';
@@ -37,8 +38,14 @@ class MyPageScreen extends StatelessWidget {
         .byStatus('픽업완료')
         .fold(0, (sum, r) => sum + (r.deal.originalPrice - r.deal.discountedPrice));
 
-    // [Antigravity | 2026-08-21] 수정범위: MyPageScreen — 상단 헤더 프로스티드 글래스 블러(Frosted Glass Blur) 및 부드러운 스크롤 페이드 적용
+    // [Antigravity | 2026-08-21] 수정범위: MyPageScreen — 토스/당근/iOS 스타일 그룹형 카드(Grouped Cards), 컬러풀 아이콘 배지, 에코 절약 배너 전면 모더니제이션
+    final isDark = themeProvider.isDark;
+    final pageBg = isDark ? const Color(0xFF121316) : const Color(0xFFF6F7F9);
+    final cardBg = Theme.of(context).cardTheme.color ?? (isDark ? const Color(0xFF1C1D22) : Colors.white);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.05);
+
     return Scaffold(
+      backgroundColor: pageBg,
       extendBodyBehindAppBar: true,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -47,10 +54,10 @@ class MyPageScreen extends StatelessWidget {
             filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.82),
+                color: pageBg.withValues(alpha: 0.85),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.grey.withValues(alpha: 0.12),
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
                     width: 0.5,
                   ),
                 ),
@@ -67,151 +74,292 @@ class MyPageScreen extends StatelessWidget {
       ),
       body: ListView(
         padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-          bottom: 28,
+          top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+          bottom: 40,
+          left: 16,
+          right: 16,
         ),
         children: [
-          // 프로필
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
+          // 1. 프로필 카드
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
               children: [
-                _ProfileAvatar(profile: profile),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  children: [
+                    _ProfileAvatar(profile: profile),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(profile.name,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                              const SizedBox(width: 6),
+                              if (profile.verifiedNeighborhood != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.verified, size: 11, color: Color(0xFF10B981)),
+                                      SizedBox(width: 2),
+                                      Text('동네인증', style: TextStyle(fontSize: 10,
+                                          fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: () => _showVerifySheet(context, profile, location),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${location.neighborhood.isEmpty ? '우리동네' : location.neighborhood} 주민',
+                                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(LucideIcons.chevronRight, size: 12, color: Colors.grey[400]),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 프로필 편집 버튼
+                    GestureDetector(
+                      onTap: () => _showProfileEdit(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '프로필 수정',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // 에코/지구살리기 배너
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     children: [
-                      Text(profile.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      GestureDetector(
-                        onTap: () => _showVerifySheet(context, profile, location),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('${location.neighborhood} 주민',
-                                style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                            const SizedBox(width: 4),
-                            if (profile.verifiedNeighborhood != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.verified, size: 11, color: Color(0xFF10B981)),
-                                    SizedBox(width: 2),
-                                    Text('인증완료', style: TextStyle(fontSize: 10,
-                                        fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
-                                  ],
-                                ),
-                              )
-                            else
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text('동네 인증하기',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey)),
-                              ),
-                          ],
+                      const Text('🌱', style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          savedAmount > 0
+                              ? '타임딜로 ${Formatters.price(savedAmount)}원 아끼고 지구도 지켰어요!'
+                              : '마감 할인으로 맛있는 음식도 구하고 지구도 지켜보세요!',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF059669),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () => _showProfileEdit(context),
-                  child: const Text('프로필 편집'),
-                ),
               ],
             ),
           ),
-          // 활동 요약 (실시간)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _StatCard(
-                  label: '예약', value: '${rp.all.length}',
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const ReservationScreen())),
-                ),
-                const SizedBox(width: 8),
-                _StatCard(
-                  label: '찜한 딜', value: '${wl.count}',
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const WishlistScreen())),
-                ),
-                const SizedBox(width: 8),
-                _StatCard(
-                  label: '절약 금액',
-                  value: savedAmount > 0 ? '${Formatters.price(savedAmount)}원' : '-',
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const ReservationScreen())),
-                ),
-              ],
+          const SizedBox(height: 14),
+
+          // 2. 활동 요약 3단 스탯
+          Row(
+            children: [
+              _ModernStatCard(
+                icon: LucideIcons.calendarCheck,
+                iconColor: const Color(0xFF3B82F6),
+                label: '예약 내역',
+                value: '${rp.all.length}',
+                unit: '건',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ReservationScreen())),
+              ),
+              const SizedBox(width: 8),
+              _ModernStatCard(
+                icon: LucideIcons.heart,
+                iconColor: const Color(0xFFEF4444),
+                label: '찜한 타임딜',
+                value: '${wl.count}',
+                unit: '개',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const WishlistScreen())),
+              ),
+              const SizedBox(width: 8),
+              _ModernStatCard(
+                icon: LucideIcons.coins,
+                iconColor: AppColors.primary,
+                label: '누적 절약',
+                value: Formatters.price(savedAmount),
+                unit: '원',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ReservationScreen())),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // 3. 내 활동 그룹 카드
+          _GroupedSection(
+            title: '내 활동',
+            cardBg: cardBg,
+            borderColor: borderColor,
+            items: [
+              _GroupedItem(
+                icon: LucideIcons.clipboardList,
+                iconColor: const Color(0xFF3B82F6),
+                iconBg: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                title: '예약 내역',
+                badgeText: rp.all.isNotEmpty ? '${rp.all.length}' : null,
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ReservationScreen())),
+              ),
+              _GroupedItem(
+                icon: LucideIcons.heart,
+                iconColor: const Color(0xFFEF4444),
+                iconBg: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                title: '찜 목록',
+                badgeText: wl.count > 0 ? '${wl.count}' : null,
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const WishlistScreen())),
+              ),
+              _GroupedItem(
+                icon: LucideIcons.star,
+                iconColor: const Color(0xFFF59E0B),
+                iconBg: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                title: '내가 쓴 리뷰',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const MyReviewsScreen())),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // 4. 서비스 설정 그룹 카드
+          _GroupedSection(
+            title: '서비스 설정',
+            cardBg: cardBg,
+            borderColor: borderColor,
+            items: [
+              _GroupedItem(
+                icon: LucideIcons.mapPin,
+                iconColor: const Color(0xFF10B981),
+                iconBg: const Color(0xFF10B981).withValues(alpha: 0.1),
+                title: '내 동네 설정',
+                subtitle: '${location.neighborhood.isEmpty ? '동네 미설정' : location.neighborhood} · ${location.radiusKm}km 반경',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const LocationSettingsScreen())),
+              ),
+              _GroupedItem(
+                icon: LucideIcons.bell,
+                iconColor: const Color(0xFF8B5CF6),
+                iconBg: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                title: '알림 설정',
+                subtitle: '새 딜 및 픽업 리마인더',
+                onTap: () => _showNotificationSettings(context),
+              ),
+              _GroupedItem(
+                icon: themeProvider.isDark ? LucideIcons.sun : LucideIcons.moon,
+                iconColor: themeProvider.isDark ? const Color(0xFFF59E0B) : const Color(0xFF6366F1),
+                iconBg: (themeProvider.isDark ? const Color(0xFFF59E0B) : const Color(0xFF6366F1))
+                    .withValues(alpha: 0.1),
+                title: '화면 모드',
+                trailingText: themeProvider.isDark ? '다크 모드' : '라이트 모드',
+                onTap: themeProvider.toggle,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // 5. 기타 및 고객지원 그룹 카드
+          _GroupedSection(
+            title: '기타 및 지원',
+            cardBg: cardBg,
+            borderColor: borderColor,
+            items: [
+              _GroupedItem(
+                icon: LucideIcons.store,
+                iconColor: AppColors.primary,
+                iconBg: AppColors.primary.withValues(alpha: 0.1),
+                title: '사장님으로 전환',
+                subtitle: '마감 딜 등록 및 가게 관리',
+                trailingBadge: '사장님 모드',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const MerchantHomeScreen())),
+              ),
+              _GroupedItem(
+                icon: LucideIcons.headphones,
+                iconColor: const Color(0xFF06B6D4),
+                iconBg: const Color(0xFF06B6D4).withValues(alpha: 0.1),
+                title: '고객센터',
+                subtitle: '1:1 카카오톡 상담 · 전화문의 · FAQ',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const CustomerServiceScreen())),
+              ),
+              _GroupedItem(
+                icon: LucideIcons.logOut,
+                iconColor: const Color(0xFFEF4444),
+                iconBg: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                title: '로그아웃',
+                isDestructive: true,
+                onTap: () => _showLogoutDialog(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+
+          // 6. 하단 앱 버전 정보
+          Center(
+            child: Text(
+              '우리 동네 타임딜 v1.0.0\n지구를 지키는 따뜻한 소비',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+                height: 1.5,
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          _SectionDivider(),
-          _MenuSection(title: '내 활동', items: [
-            _MenuItem(
-              icon: LucideIcons.clipboardList, label: '예약 내역',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ReservationScreen())),
-            ),
-            _MenuItem(
-              icon: LucideIcons.heart, label: '찜 목록',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const WishlistScreen())),
-            ),
-            _MenuItem(
-              icon: LucideIcons.star, label: '내가 쓴 리뷰',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const MyReviewsScreen())),
-            ),
-          ]),
-          _SectionDivider(),
-          _MenuSection(title: '설정', items: [
-            _MenuItem(
-              icon: LucideIcons.mapPin, label: '내 동네 설정',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const LocationSettingsScreen())),
-            ),
-            _MenuItem(
-              icon: LucideIcons.bell, label: '알림 설정',
-              onTap: () => _showNotificationSettings(context),
-            ),
-            _MenuItem(
-              icon: themeProvider.isDark ? LucideIcons.sun : LucideIcons.moon,
-              label: themeProvider.isDark ? '라이트 모드' : '다크 모드',
-              onTap: themeProvider.toggle,
-            ),
-          ]),
-          _SectionDivider(),
-          _MenuSection(title: '기타', items: [
-            _MenuItem(
-              icon: LucideIcons.store, label: '사장님으로 전환',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const MerchantHomeScreen())),
-            ),
-            _MenuItem(
-              icon: LucideIcons.helpCircle, label: '고객센터',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const CustomerServiceScreen())),
-            ),
-            _MenuItem(
-              icon: LucideIcons.logOut, label: '로그아웃', isDestructive: true,
-              onTap: () => _showLogoutDialog(context),
-            ),
-          ]),
-          const SizedBox(height: 40),
         ],
       ),
     );
@@ -622,42 +770,96 @@ void _showLogoutDialog(BuildContext context) {
   );
 }
 
-class _SectionDivider extends StatelessWidget {
+class _ModernStatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final String unit;
+  final VoidCallback onTap;
+
+  const _ModernStatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      height: 8,
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.05)
-          : Colors.black.withValues(alpha: 0.04),
-    );
-  }
-}
+    final cardBg = Theme.of(context).cardTheme.color ?? (isDark ? const Color(0xFF1C1D22) : Colors.white);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.05);
 
-class _StatCard extends StatelessWidget {
-  final String label, value;
-  final VoidCallback? onTap;
-  const _StatCard({required this.label, required this.value, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
     return Expanded(
       child: GestureDetector(
-        onTap: onTap,
+        onTap: () {
+          AppHaptics.selection();
+          onTap();
+        },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+            color: cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Text(value, style: const TextStyle(fontSize: 16,
-                  fontWeight: FontWeight.w800, color: AppColors.primary)),
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 16, color: iconColor),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    unit,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 2),
-              Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[500],
+                ),
+              ),
             ],
           ),
         ),
@@ -666,44 +868,208 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _MenuSection extends StatelessWidget {
+class _GroupedSection extends StatelessWidget {
   final String title;
-  final List<_MenuItem> items;
-  const _MenuSection({required this.title, required this.items});
+  final Color cardBg;
+  final Color borderColor;
+  final List<_GroupedItem> items;
+
+  const _GroupedSection({
+    required this.title,
+    required this.cardBg,
+    required this.borderColor,
+    required this.items,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(title, style: TextStyle(fontSize: 12,
-              fontWeight: FontWeight.w600, color: Colors.grey[400])),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+            ),
+          ),
         ),
-        ...items,
+        Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: List.generate(items.length, (i) {
+              final item = items[i];
+              final isLast = i == items.length - 1;
+              return Column(
+                children: [
+                  item,
+                  if (!isLast)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 54, right: 16),
+                      child: Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+                      ),
+                    ),
+                ],
+              );
+            }),
+          ),
+        ),
       ],
     );
   }
 }
 
-class _MenuItem extends StatelessWidget {
+class _GroupedItem extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final Color iconColor;
+  final Color iconBg;
+  final String title;
+  final String? subtitle;
+  final String? badgeText;
+  final String? trailingText;
+  final String? trailingBadge;
   final bool isDestructive;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
-  const _MenuItem({required this.icon, required this.label,
-      this.isDestructive = false, this.onTap});
+  const _GroupedItem({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    this.subtitle,
+    this.badgeText,
+    this.trailingText,
+    this.trailingBadge,
+    this.isDestructive = false,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = isDestructive ? Colors.red : null;
-    return ListTile(
-      onTap: onTap ?? () {},
-      leading: Icon(icon, size: 20, color: color ?? Colors.grey[600]),
-      title: Text(label, style: TextStyle(fontSize: 14, color: color)),
-      trailing: Icon(LucideIcons.chevronRight, size: 14, color: Colors.grey),
+    return InkWell(
+      onTap: () {
+        AppHaptics.selection();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Icon(icon, size: 18, color: iconColor),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDestructive ? const Color(0xFFEF4444) : null,
+                        ),
+                      ),
+                      if (badgeText != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: iconColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badgeText!,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: iconColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (trailingBadge != null)
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  trailingBadge!,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            if (trailingText != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  trailingText!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: Colors.grey[400],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
