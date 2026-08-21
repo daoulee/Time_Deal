@@ -20,6 +20,9 @@
 > **담당:** UI/UX 모더니제이션, Google Maps & GPS 연동, OAuth 로그인/가입 플로우, 실기기 빌드 및 배포
 
 ### 📋 최근 완료 작업 (2026-08-21)
+- **예약 내역(ReservationScreen) 당겨서 새로고침(Pull-to-Refresh) 탑재 및 Supabase DB 상태 완전 동기화**:
+  - `ReservationScreen` 내 `RefreshIndicator.adaptive`를 장착하여 사용자가 언제든 아래로 당겨 Supabase 최신 상태로 즉시 재동기화 가능
+  - Supabase `reservations` 테이블에 잔류해 있던 떡볶이 세트 예약 행을 REST API를 통해 '취소' 상태로 완벽 정리
 - **예약 취소 및 상태 변경 시 실시간 탭 동기화 버그 완벽 수정 (`reservation_provider.dart`)**:
   - 예약 생성 시 Supabase가 발급한 실제 UUID를 낙관적(Optimistic) 로컬 객체에 즉시 바인딩하도록 수정
   - 취소/완료/노쇼 처리 시 임시 ID와 실제 UUID 모두 완벽 대응하며, `_load()` 및 로컬 상태 즉시 갱신을 통해 '취소' 탭으로 실시간 즉시 전환되도록 동기화 보정
