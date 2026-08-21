@@ -208,7 +208,6 @@ class MyPageScreen extends StatelessWidget {
             children: [
               _ModernStatCard(
                 icon: LucideIcons.calendarCheck,
-                iconColor: const Color(0xFF3B82F6),
                 label: '예약 내역',
                 value: '${rp.all.length}',
                 unit: '건',
@@ -218,7 +217,6 @@ class MyPageScreen extends StatelessWidget {
               const SizedBox(width: 8),
               _ModernStatCard(
                 icon: LucideIcons.heart,
-                iconColor: const Color(0xFFEF4444),
                 label: '찜한 타임딜',
                 value: '${wl.count}',
                 unit: '개',
@@ -247,8 +245,6 @@ class MyPageScreen extends StatelessWidget {
             items: [
               _GroupedItem(
                 icon: LucideIcons.clipboardList,
-                iconColor: const Color(0xFF3B82F6),
-                iconBg: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                 title: '예약 내역',
                 badgeText: rp.all.isNotEmpty ? '${rp.all.length}' : null,
                 onTap: () => Navigator.push(context,
@@ -256,8 +252,6 @@ class MyPageScreen extends StatelessWidget {
               ),
               _GroupedItem(
                 icon: LucideIcons.heart,
-                iconColor: const Color(0xFFEF4444),
-                iconBg: const Color(0xFFEF4444).withValues(alpha: 0.1),
                 title: '찜 목록',
                 badgeText: wl.count > 0 ? '${wl.count}' : null,
                 onTap: () => Navigator.push(context,
@@ -265,8 +259,6 @@ class MyPageScreen extends StatelessWidget {
               ),
               _GroupedItem(
                 icon: LucideIcons.star,
-                iconColor: const Color(0xFFF59E0B),
-                iconBg: const Color(0xFFF59E0B).withValues(alpha: 0.1),
                 title: '내가 쓴 리뷰',
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const MyReviewsScreen())),
@@ -283,8 +275,6 @@ class MyPageScreen extends StatelessWidget {
             items: [
               _GroupedItem(
                 icon: LucideIcons.mapPin,
-                iconColor: const Color(0xFF10B981),
-                iconBg: const Color(0xFF10B981).withValues(alpha: 0.1),
                 title: '내 동네 설정',
                 subtitle: '${location.neighborhood.isEmpty ? '동네 미설정' : location.neighborhood} · ${location.radiusKm}km 반경',
                 onTap: () => Navigator.push(context,
@@ -292,17 +282,12 @@ class MyPageScreen extends StatelessWidget {
               ),
               _GroupedItem(
                 icon: LucideIcons.bell,
-                iconColor: const Color(0xFF8B5CF6),
-                iconBg: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
                 title: '알림 설정',
                 subtitle: '새 딜 및 픽업 리마인더',
                 onTap: () => _showNotificationSettings(context),
               ),
               _GroupedItem(
                 icon: themeProvider.isDark ? LucideIcons.sun : LucideIcons.moon,
-                iconColor: themeProvider.isDark ? const Color(0xFFF59E0B) : const Color(0xFF6366F1),
-                iconBg: (themeProvider.isDark ? const Color(0xFFF59E0B) : const Color(0xFF6366F1))
-                    .withValues(alpha: 0.1),
                 title: '화면 모드',
                 trailingText: themeProvider.isDark ? '다크 모드' : '라이트 모드',
                 onTap: themeProvider.toggle,
@@ -319,8 +304,6 @@ class MyPageScreen extends StatelessWidget {
             items: [
               _GroupedItem(
                 icon: LucideIcons.store,
-                iconColor: AppColors.primary,
-                iconBg: AppColors.primary.withValues(alpha: 0.1),
                 title: '사장님으로 전환',
                 subtitle: '마감 딜 등록 및 가게 관리',
                 trailingBadge: '사장님 모드',
@@ -329,8 +312,6 @@ class MyPageScreen extends StatelessWidget {
               ),
               _GroupedItem(
                 icon: LucideIcons.headphones,
-                iconColor: const Color(0xFF06B6D4),
-                iconBg: const Color(0xFF06B6D4).withValues(alpha: 0.1),
                 title: '고객센터',
                 subtitle: '1:1 카카오톡 상담 · 전화문의 · FAQ',
                 onTap: () => Navigator.push(context,
@@ -338,8 +319,6 @@ class MyPageScreen extends StatelessWidget {
               ),
               _GroupedItem(
                 icon: LucideIcons.logOut,
-                iconColor: const Color(0xFFEF4444),
-                iconBg: const Color(0xFFEF4444).withValues(alpha: 0.1),
                 title: '로그아웃',
                 isDestructive: true,
                 onTap: () => _showLogoutDialog(context),
@@ -773,7 +752,7 @@ void _showLogoutDialog(BuildContext context) {
 
 class _ModernStatCard extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
   final String label;
   final String value;
   final String unit;
@@ -781,7 +760,7 @@ class _ModernStatCard extends StatelessWidget {
 
   const _ModernStatCard({
     required this.icon,
-    required this.iconColor,
+    this.iconColor,
     required this.label,
     required this.value,
     required this.unit,
@@ -793,6 +772,7 @@ class _ModernStatCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = Theme.of(context).cardTheme.color ?? (isDark ? const Color(0xFF1C1D22) : Colors.white);
     final borderColor = isDark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.05);
+    final effectiveIconColor = iconColor ?? (isDark ? Colors.white70 : const Color(0xFF4E5968));
 
     return Expanded(
       child: GestureDetector(
@@ -819,10 +799,10 @@ class _ModernStatCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
+                  color: effectiveIconColor.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 16, color: iconColor),
+                child: Icon(icon, size: 16, color: effectiveIconColor),
               ),
               const SizedBox(height: 8),
               Row(
@@ -941,8 +921,6 @@ class _GroupedSection extends StatelessWidget {
 
 class _GroupedItem extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
   final String title;
   final String? subtitle;
   final String? badgeText;
@@ -953,8 +931,6 @@ class _GroupedItem extends StatelessWidget {
 
   const _GroupedItem({
     required this.icon,
-    required this.iconColor,
-    required this.iconBg,
     required this.title,
     this.subtitle,
     this.badgeText,
@@ -966,6 +942,11 @@ class _GroupedItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDestructive ? const Color(0xFFEF4444) : (isDark ? Colors.white70 : const Color(0xFF4E5968));
+    final iconBg = isDestructive
+        ? const Color(0xFFEF4444).withValues(alpha: 0.1)
+        : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04));
     return InkWell(
       onTap: () {
         AppHaptics.selection();
