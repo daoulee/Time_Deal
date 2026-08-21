@@ -69,14 +69,22 @@ export default function ProductsPage() {
     return () => { active = false; };
   }, [session?.user]);
 
-  const handleToggleWishlist = (productId: string) => {
+  const handleToggleWishlist = async (productId: string) => {
     if (!session?.user) return;
+    const wasLiked = wishlistIds?.has(productId) ?? false;
     setWishlistIds((prev) => {
       const next = new Set(prev ?? []);
       if (next.has(productId)) next.delete(productId); else next.add(productId);
       return next;
     });
-    void toggleWishlist(productId);
+    const result = await toggleWishlist(productId);
+    if (!result.ok) {
+      setWishlistIds((prev) => {
+        const next = new Set(prev ?? []);
+        if (wasLiked) next.add(productId); else next.delete(productId);
+        return next;
+      });
+    }
   };
 
   const query = searchParams.get("q")?.trim() ?? "";

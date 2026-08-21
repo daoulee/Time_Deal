@@ -20,8 +20,14 @@ adminRouter.get("/admin-dashboard", adminOnly, async (context) => {
   return context.json(apiSuccess({ dashboard: Object.fromEntries(tables.map((table, index) => [table, results[index].count ?? 0])), generatedAt: new Date().toISOString() }));
 });
 adminRouter.get("/admin-users", adminOnly, async (context) => {
-  const { data, error } = await getAdminSupabase().from("profiles").select("id,name,role,phone,preferred_region,is_suspended,created_at").order("created_at", { ascending: false }).limit(200);
-  return error ? context.json(apiFailure("QUERY_FAILED", "사용자를 조회하지 못했습니다."), 502) : context.json(apiSuccess({ users: data ?? [] }));
+  const supabase = getAdminSupabase();
+  const { data, error } = await supabase.from("profiles").select("id,name,role,phone,preferred_region,is_suspended,created_at").order("created_at", { ascending: false }).limit(200);
+  if (error) return context.json(apiFailure("QUERY_FAILED", "사용자를 조회하지 못했습니다."), 502);
+  // profiles 테이블에는 이메일이 없어(실제 이메일은 auth.users에만 있음) Auth admin API로 따로 조회해 합칩니다.
+  const { data: authUsers } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const emailById = new Map((authUsers?.users ?? []).map((user) => [user.id, user.email ?? ""]));
+  const users = (data ?? []).map((row) => ({ ...row, email: emailById.get(row.id) ?? "" }));
+  return context.json(apiSuccess({ users }));
 });
 adminRouter.patch("/admin-users/:id", adminOnly, async (context) => {
   const parsed = z.object({ role: z.enum(["user", "seller", "admin"]).optional(), isSuspended: z.boolean().optional(), reason: reasonSchema }).strict().safeParse(await context.req.json().catch(() => null));
@@ -31,7 +37,8 @@ adminRouter.patch("/admin-users/:id", adminOnly, async (context) => {
   const update = { ...(parsed.data.role ? { role: parsed.data.role } : {}), ...(parsed.data.isSuspended !== undefined ? { is_suspended: parsed.data.isSuspended } : {}), updated_at: new Date().toISOString() }; const { data, error } = await supabase.from("profiles").update(update).eq("id", context.req.param("id")).select().single();
   if (error) return context.json(apiFailure("SAVE_FAILED", "사용자를 변경하지 못했습니다."), 400); await audit(context.var.currentUser!.id, "user.update", "profile", data.id, before.data, data, parsed.data.reason); return context.json(apiSuccess({ user: data }));
 });
-adminRouter.get("/admin/seller-applications", adminOnly, async (context) => { const { data, error } = await getAdminSupabase().from("seller_applications").select("*,profiles(name)").order("created_at", { ascending: false }); return error ? context.json(apiFailure("QUERY_FAILED", "판매자 신청을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ applications: data ?? [] })); });
+adminRouter.get("/admin/seller-applications", adminOnly, async (context) => { const { data, error } = await getAdminSupabase().from("seller_applications").select("*,profiles!seller_applications_user_id_fkey(name)").order("created_at", { ascending: false }); return error ? context.json(apiFailure("QUERY_FAILED", "판매자 신청을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ applications: data ?? [] })); });
+adminRouter.get("/admin/restock-requests", adminOnly, async (context) => { const { data, error } = await getAdminSupabase().from("restock_requests").select("*,products(name,image),profiles(name)").order("created_at", { ascending: false }).limit(200); return error ? context.json(apiFailure("QUERY_FAILED", "재입고 요청을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ requests: data ?? [] })); });
 adminRouter.patch("/admin/seller-applications/:id", adminOnly, async (context) => {
   const parsed = z.object({ status: z.enum(["approved", "rejected"]), reason: reasonSchema }).strict().safeParse(await context.req.json().catch(() => null)); if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "심사 결과를 확인하세요."), 400);
   const supabase = getAdminSupabase(); const before = await supabase.from("seller_applications").select("*").eq("id", context.req.param("id")).eq("status", "pending").maybeSingle(); if (!before.data) return context.json(apiFailure("NOT_FOUND", "대기 중인 신청을 찾을 수 없습니다."), 404);

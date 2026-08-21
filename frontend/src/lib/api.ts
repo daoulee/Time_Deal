@@ -103,6 +103,7 @@ export async function getAdminDashboard() { return requestData<{ dashboard: Reco
 export async function getAdminUsers() { return requestData<{ users: RawRecord[] }>("/admin-users"); }
 export async function updateAdminUser(id: string, input: { role?: string; isSuspended?: boolean; reason: string }) { return requestData<{ user: RawRecord }>(`/admin-users/${encodeURIComponent(id)}`, json("PATCH", input)); }
 export async function getSellerApplications() { return requestData<{ applications: RawRecord[] }>("/admin/seller-applications"); }
+export async function getAdminRestockRequests() { return requestData<{ requests: RawRecord[] }>("/admin/restock-requests"); }
 export async function reviewSellerApplication(id: string, status: "approved" | "rejected", reason: string) { return requestData<{ application: RawRecord }>(`/admin/seller-applications/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
 export async function getAdminItems(resource: "products" | "deals" | "reviews" | "community" | "community-reports" | "pickup-locations" | "pickup-slots" | "audit-logs" | "auctions") { return requestData<{ items: RawRecord[] }>(`/admin/${resource}`); }
 export async function deleteAdminAuction(id: string, reason: string) { return requestData<{ deleted: boolean }>(`/admin/auctions/${encodeURIComponent(id)}`, json("DELETE", { reason })); }

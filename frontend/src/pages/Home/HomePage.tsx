@@ -158,7 +158,7 @@ const HERO_SLIDES = [
     title: "오늘 아침 산란,\n특란 30구 신선특가",
     desc: "당일 산란한 신선란만 골라 담은 타임딜!\n아침 든든하게 채우는 신선식품을 지금 만나보세요.",
     // 신선한 갈색 달걀/신선란 트레이 이미지
-    img: "https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&w=1600&q=80",
+    img: "https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&w=1600&q=80](https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "9",
