@@ -179,7 +179,7 @@ class MyPageScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Text('🌱', style: TextStyle(fontSize: 14)),
+                      Icon(LucideIcons.leaf, size: 14, color: const Color(0xFF059669)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(

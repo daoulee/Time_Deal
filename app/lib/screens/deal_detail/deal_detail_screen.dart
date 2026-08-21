@@ -173,7 +173,7 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
                       : const Rect.fromLTWH(300, 50, 50, 50);
                   try {
                     await Share.share(
-                      '🔥 ${d.storeName} - ${d.title}\n'
+                      '[타임딜] ${d.storeName} - ${d.title}\n'
                       '${d.discountPercent}% 할인 · ${Formatters.price(d.discountedPrice)}원\n'
                       '우리 동네 타임딜에서 확인하세요!',
                       subject: d.title,
@@ -669,7 +669,7 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
                             ),
                           )
                         : Text(
-                            '💳 ${Formatters.price(deal.discountedPrice)}원 가결제하고 예약하기',
+                            '${Formatters.price(deal.discountedPrice)}원 가결제하고 예약하기',
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,

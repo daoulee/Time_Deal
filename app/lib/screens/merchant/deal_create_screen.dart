@@ -54,7 +54,7 @@ class PresetProductTemplate {
 
 const _presetTemplates = [
   PresetProductTemplate(
-    label: '🥐 크루아상/빵',
+    label: '크루아상/빵',
     category: '베이커리',
     imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&h=800&fit=crop&q=85',
     iconName: 'wheat',
@@ -63,7 +63,7 @@ const _presetTemplates = [
     defaultDiscount: 5000,
   ),
   PresetProductTemplate(
-    label: '🍣 모듬 초밥',
+    label: '모듬 초밥',
     category: '음식',
     imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&h=800&fit=crop&q=85',
     iconName: 'utensils',
@@ -72,7 +72,7 @@ const _presetTemplates = [
     defaultDiscount: 9000,
   ),
   PresetProductTemplate(
-    label: '🍱 수제 도시락',
+    label: '수제 도시락',
     category: '음식',
     imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=800&fit=crop&q=85',
     iconName: 'utensils',
@@ -81,7 +81,7 @@ const _presetTemplates = [
     defaultDiscount: 4500,
   ),
   PresetProductTemplate(
-    label: '☕ 아메리카노 세트',
+    label: '아메리카노 세트',
     category: '카페',
     imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=800&fit=crop&q=85',
     iconName: 'coffee',
@@ -90,7 +90,7 @@ const _presetTemplates = [
     defaultDiscount: 6500,
   ),
   PresetProductTemplate(
-    label: '🍓 생과일 팩',
+    label: '생과일 팩',
     category: '마트',
     imageUrl: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800&h=800&fit=crop&q=85',
     iconName: 'shoppingCart',
@@ -99,7 +99,7 @@ const _presetTemplates = [
     defaultDiscount: 7000,
   ),
   PresetProductTemplate(
-    label: '🍗 바삭 옛날통닭',
+    label: '바삭 옛날통닭',
     category: '음식',
     imageUrl: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&h=800&fit=crop&q=85',
     iconName: 'utensils',
@@ -108,7 +108,7 @@ const _presetTemplates = [
     defaultDiscount: 6900,
   ),
   PresetProductTemplate(
-    label: '💐 생화 꽃다발',
+    label: '생화 꽃다발',
     category: '꽃집',
     imageUrl: 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=800&h=800&fit=crop&q=85',
     iconName: 'flower2',
@@ -248,7 +248,7 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
     Navigator.pop(context);
     messenger.showSnackBar(
       const SnackBar(
-          content: Text('딜이 등록됐어요! 소비자 홈에 바로 반영됩니다 🎉'),
+          content: Text('딜이 등록됐어요! 소비자 홈에 바로 반영됩니다'),
           behavior: SnackBarBehavior.floating),
     );
     // [Claude | 2026-08-21] 수정범위: _submit() 딜 등록 완료 — 제출 시점 단일 햅틱을 성공 시점 AppHaptics.success() 더블 햅틱으로 교체
