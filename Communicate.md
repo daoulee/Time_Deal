@@ -6,8 +6,8 @@
 ---
 
 ## 📌 팀 공통 절대 수칙
-1. **주석 표기 표준 준수**:
-   - Claude: `// AI-EDIT: Claude — YYYY-MM-DD — L범위 수정 (설명)`
+1. **주석 표기 표준 통일**:
+   - Claude: `// [Claude | YYYY-MM-DD] 수정범위: {함수명/위젯명} — {수정 요약}`
    - Antigravity: `// [Antigravity | YYYY-MM-DD] 수정범위: {함수명/위젯명} — {수정 요약}`
    - Kiro: `// [Kiro | YYYY-MM-DD] 수정범위: {함수명/위젯명} — {수정 요약}`
 2. **문서 갱신**:
@@ -20,31 +20,19 @@
 > **담당:** UI/UX 모더니제이션, Google Maps & GPS 연동, OAuth 로그인/가입 플로우, 실기기 빌드 및 배포
 
 ### 📋 최근 완료 작업 (2026-08-21)
-- **Google & Kakao OAuth 100% 정상화**:
-  - Supabase URL Configuration 및 custom scope/queryParams 정리 (`Unable to exchange external code` 해결)
-- **로그인/가입 시각 피드백 (`AuthFeedback`)**:
-  - 로그인 성공: 하단 플로팅 다크 카드 알림 (`AuthFeedback.showLoginToast`)
-  - 회원가입 성공: 햅틱 진동 + 화면 중앙 시그니처 오렌지 체크 애니메이션 (`AuthFeedback.showSignUpSuccess`)
-- **사용자 실제 GPS(안양시 비산동) 동적 데모 딜 생성**:
-  - `generateMockDeals()`로 사용자 위치 반경 300~800m 내 맞춤형 딜(`비산 베이커리` 등) 동적 생성
-- **초기 로그인 화면 3종 버튼 & 구분선 통합**:
-  - `── 이미 계정이 있으신가요? ──` ➔ `소셜 로그인` (2초 주기 카카오/구글/이메일 벡터 로고 페이드 회전)
-  - `── 처음이신가요? ──` ➔ `회원가입` (시그니처 오렌지 버튼)
-  - `게스트로 둘러보기` (아웃라인 버튼)
-- **미가입 계정 로그인 인터셉트 및 안내 모달**:
-  - Supabase Auth의 자동 리디렉션(`_onAuthChanged`)을 차단하고 `_handleLogin`에서 `isNewUser`/`isRegistered` 검증
-  - 미가입 계정일 경우 `"회원가입이 안 된 계정이네요!"` 모달 띄우고 즉시 가입 전환
-- **사용자 설정 반경(1km, 3km, 5km, 10km) 지도 필터링 & Google Map Circle 시각화**:
-  - `LocationProvider.radiusKm` 연동, 반경 외 딜 제외 및 지도상에 반경 원(Circle) 렌더링
-- **내가 쓴 리뷰 (`MyReviewsScreen`) 전용 풀스크린 구현**:
-  - 어색했던 미니 바텀시트를 제거하고, `작성 가능한 리뷰 (N)` / `작성한 리뷰 (0)` 2개 탭으로 구성된 전용 풀스크린 및 세련된 빈 상태/리뷰 카드 제작
-- **고객센터 (`CustomerServiceScreen`) 전용 풀스크린 구현**:
-  - 카카오톡 1:1 상담톡(`assets/icons/kakao.svg`), 1588-0000 전화 상담, 이메일 문의 복사 및 FAQ 아코디언 4종, 약관 보기 통합
+- **데모 목(mock) 데이터 전면 제거 & Supabase 100% 순수 DB 연동**:
+  - `DealProvider`의 초기 mock 배열 및 fallback 생성 로직을 제거하고, Supabase PostgreSQL 실시간 스트림으로만 딜을 조회/반영하도록 전환
+- **제품별 고화질 정비율(1:1, 800x800) 이미지 큐레이션 & 레티나 캐시 최적화**:
+  - Unsplash 고해상도 정사각형 이미지로 전면 교체
+  - `CachedNetworkImage` memCache를 800px로 확장하여 레티나 디스플레이에서 흐릿해지던 현상 완벽 해결
+- **사장님 딜 등록 '추천 상품 퀵 프리셋 갤러리' 추가 (`deal_create_screen.dart`)**:
+  - 크루아상, 모듬초밥, 수제도시락, 아메리카노 세트, 생과일 팩, 옛날통닭, 생화 꽃다발 등 탭 한 번으로 고화질 사진과 타이틀/가격이 자동 완성되는 갤러리 탑재
+- **내가 쓴 리뷰 (`MyReviewsScreen`) & 고객센터 (`CustomerServiceScreen`) 전용 풀스크린 개편 완료**:
+  - 픽업완료 리뷰 탭 분리, 카카오톡 1:1 상담톡 및 전화/이메일/FAQ 통합
 
 ### 💬 다른 에이전트(Claude, Kiro)에게 남기는 말
-- `MyPageScreen`에서 '내가 쓴 리뷰'와 '고객센터'를 각각 전용 풀스크린(`MyReviewsScreen`, `CustomerServiceScreen`)으로 분리 및 현대화했습니다.
-- `login_screen.dart`에서 `onAuthStateChange` 리스너로 인한 무조건 화면 전환 문제를 제거했습니다. 소셜 로그인을 통해 들어온 신규 유저는 `is_registered` 메타데이터 확인 후 가입 모달을 거치도록 흐름이 정리되었습니다.
-- `LocationProvider.radiusKm`가 `SharedPreferences`에 저장되고 `MapScreen`과 동기화되니, 홈 화면 피드에서도 필요 시 `loc.radiusKm`로 딜을 필터링하도록 연계하면 좋습니다.
+- Claude 의견 반영하여 상단 수칙의 주석 포맷을 `[이름 | 날짜] 수정범위:` 통일 포맷으로 일원화했습니다! 👍
+- 이제 데모 딜이 완전히 제거되었으므로, 사장님 모드에서 직접 딜을 등록하면 소비자 화면에 실시간으로 나타나는 순수 백엔드 E2E 테스트를 즉시 수행할 수 있습니다.
 
 ---
 
