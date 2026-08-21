@@ -10,6 +10,7 @@ import { RequireAuth } from "@/components/auth/route-guards";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/shared/theme/ThemeProvider";
+import { LocationProvider } from "@/shared/location/LocationContext";
 import HomePage from "@/pages/Home/HomePage";
 import AuthPage from "@/pages/Auth/AuthPage";
 import ResetPasswordPage from "@/pages/Auth/ResetPasswordPage";
@@ -40,12 +41,12 @@ const queryClient = new QueryClient();
 const myPagePaths = ["/mypage", "/mypage/deals", "/mypage/orders", "/mypage/auctions", "/mypage/wishlist", "/mypage/restock-requests", "/mypage/reviews", "/mypage/inquiries", "/mypage/seller-application", "/mypage/security"];
 const sellerPaths = ["/seller", "/seller/products", "/seller/products/new", "/seller/orders", "/seller/analytics", "/seller/inquiries", "/seller/auction", "/seller/settlement", "/seller/restock-requests"];
 const adminPaths = ["/admin", "/admin/orders", "/admin/users", "/admin/sellers", "/admin/products", "/admin/auctions", "/admin/inquiries", "/admin/reviews", "/admin/community", "/admin/pickups", "/admin/audit-logs", "/admin/research", "/admin/restock-requests"];
-const App = () => <QueryClientProvider client={queryClient}><TooltipProvider><ThemeProvider><Sonner position="top-center" richColors /><BrowserRouter><Routes>
+const App = () => <QueryClientProvider client={queryClient}><TooltipProvider><ThemeProvider><LocationProvider><Sonner position="top-center" richColors /><BrowserRouter><Routes>
   <Route path="/" element={<HomePage />} /><Route path="/products" element={<ProductsPage />} /><Route path="/products/:id" element={<ProductDetailPage />} /><Route path="/map" element={<MapPage />} /><Route path="/neighborhood" element={<NeighborhoodPage />} /><Route path="/community" element={<CommunityPage />} /><Route path="/community/:id" element={<CommunityPostPage />} /><Route path="/inquiry" element={<InquiryPage />} /><Route path="/notices" element={<NoticePage />} /><Route path="/faq" element={<FaqPage />} /><Route path="/about" element={<AboutPage />} /><Route path="/terms" element={<TermsPage />} /><Route path="/privacy" element={<PrivacyPage />} /><Route path="/email-policy" element={<EmailPolicyPage />} /><Route path="/auction" element={<AuctionListPage />} /><Route path="/auction/:id" element={<AuctionDetailPage />} /><Route path="/auth" element={<AuthPage />} /><Route path="/auth/reset-password" element={<ResetPasswordPage />} />
   <Route path="/payments/toss/checkout" element={<RequireAuth><TossCheckoutPage /></RequireAuth>} /><Route path="/payments/toss/success" element={<RequireAuth><TossSuccessPage /></RequireAuth>} /><Route path="/payments/toss/fail" element={<RequireAuth><TossFailPage /></RequireAuth>} /><Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
   {myPagePaths.map((path) => <Route key={path} path={path} element={<RequireAuth><MyPage /></RequireAuth>} />)}
   {sellerPaths.map((path) => <Route key={path} path={path} element={<RequireSeller><SellerPage /></RequireSeller>} />)}
   {adminPaths.map((path) => <Route key={path} path={path} element={<RequireAdmin><AdminPage /></RequireAdmin>} />)}
   <Route path="*" element={<NotFoundPage />} />
-</Routes></BrowserRouter></ThemeProvider></TooltipProvider></QueryClientProvider>;
+</Routes></BrowserRouter></LocationProvider></ThemeProvider></TooltipProvider></QueryClientProvider>;
 export default App;

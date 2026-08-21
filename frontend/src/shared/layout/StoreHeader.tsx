@@ -20,7 +20,7 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth";
-import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
+import { useLocationStore } from "@/shared/location/LocationContext";
 import { CATEGORY_GROUPS, THEME_ROUTE, type ThemeKey } from "@/shared/categoryData";
 import { getCart, getMyNotifications, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
 
@@ -70,10 +70,8 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
   const [isCustomerMenuOpen, setIsCustomerMenuOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string>(Object.keys(CATEGORY_GROUPS)[0]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState("성수동 2가");
   const [manualAddress, setManualAddress] = useState("");
-  const [locatingHome, setLocatingHome] = useState(false);
-  const [homeLocateError, setHomeLocateError] = useState<string | null>(null);
+  const { currentLocation, recentLocations, locating: locatingHome, error: homeLocateError, locateByGps, setManualLocation, selectRecent, clearError } = useLocationStore();
   const navScrollRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -181,55 +179,26 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
     navigate(`/products?category=${encodeURIComponent(parent)}&sub=${encodeURIComponent(sub)}`);
   };
 
-  const handleLocate = () => {
-    if (!navigator.geolocation) {
-      setHomeLocateError("이 브라우저에서는 위치 조회를 지원하지 않습니다.");
-      return;
+  const handleLocate = async () => {
+    const label = await locateByGps();
+    if (label) {
+      setIsLocationModalOpen(false);
+      toast.success(`기준 동네가 [${label}]로 설정되었습니다.`);
     }
-    setLocatingHome(true);
-    setHomeLocateError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const coordLabel = `위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`;
-        const apply = (label: string) => {
-          setCurrentLocation(label);
-          setLocatingHome(false);
-          setIsLocationModalOpen(false);
-          toast.success(`기준 동네가 [${label}]로 설정되었습니다.`);
-        };
-        if (!isGoogleMapsConfigured) {
-          apply(coordLabel);
-          return;
-        }
-        void loadGoogleMaps()
-          .then((maps) =>
-            new (maps as any).Geocoder().geocode({ location: { lat: latitude, lng: longitude } })
-          )
-          .then((response: any) =>
-            apply(response.results?.[0]?.formatted_address ?? coordLabel)
-          )
-          .catch(() => apply(coordLabel));
-      },
-      (geoError) => {
-        setLocatingHome(false);
-        setHomeLocateError(
-          geoError.code === geoError.PERMISSION_DENIED
-            ? "위치 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요."
-            : "현재 위치를 확인하지 못했습니다."
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const handleManualAddressSubmit = () => {
-    const trimmed = manualAddress.trim();
-    if (!trimmed) return;
-    setCurrentLocation(trimmed);
+    const label = setManualLocation(manualAddress);
+    if (!label) return;
     setManualAddress("");
     setIsLocationModalOpen(false);
-    toast.success(`기준 동네가 [${trimmed}]로 설정되었습니다.`);
+    toast.success(`기준 동네가 [${label}]로 설정되었습니다.`);
+  };
+
+  const handleSelectRecent = (entry: (typeof recentLocations)[number]) => {
+    selectRecent(entry);
+    setIsLocationModalOpen(false);
+    toast.success(`기준 동네가 [${entry.label}]로 설정되었습니다.`);
   };
 
   return (
@@ -1043,14 +1012,36 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
                 내 동네 설정
               </h3>
               <button
-                onClick={() => setIsLocationModalOpen(false)}
+                onClick={() => { setIsLocationModalOpen(false); clearError(); }}
                 style={{ background: "none", border: "none", cursor: "pointer" }}
               >
                 <X size={20} />
               </button>
             </div>
+            {recentLocations.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                {recentLocations.map((entry) => (
+                  <button
+                    key={entry.label}
+                    onClick={() => handleSelectRecent(entry)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 16,
+                      border: `1px solid ${entry.label === currentLocation ? TOKENS.primaryOrange : TOKENS.borderLight}`,
+                      background: entry.label === currentLocation ? TOKENS.primaryLight : "#ffffff",
+                      color: entry.label === currentLocation ? TOKENS.primaryOrange : TOKENS.navy,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {entry.neighborhood ?? entry.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
-              onClick={handleLocate}
+              onClick={() => void handleLocate()}
               disabled={locatingHome}
               style={{
                 width: "100%",

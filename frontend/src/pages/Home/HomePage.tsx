@@ -22,10 +22,7 @@ import {
 import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth";
-import {
-  isGoogleMapsConfigured,
-  loadGoogleMaps,
-} from "@/lib/google-maps-loader";
+import { useLocationStore } from "@/shared/location/LocationContext";
 import { THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
 import { getCatalog } from "@/shared/services/catalog";
 import { discountPercentOf, formatPrice as formatDealPrice, type Product } from "@/shared/catalog";
@@ -465,10 +462,8 @@ export default function HomePage() {
   const [isCustomerMenuOpen, setIsCustomerMenuOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string>("채소·과일");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState("성수동 2가");
   const [manualAddress, setManualAddress] = useState("");
-  const [locatingHome, setLocatingHome] = useState(false);
-  const [homeLocateError, setHomeLocateError] = useState<string | null>(null);
+  const { currentLocation, recentLocations, locating: locatingHome, error: homeLocateError, locateByGps, setManualLocation, selectRecent, clearError } = useLocationStore();
 
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [votedReopenIds, setVotedReopenIds] = useState<Set<string>>(new Set());
@@ -594,57 +589,26 @@ export default function HomePage() {
     setCanScrollNavLeft(e.currentTarget.scrollLeft > 10);
   };
 
-  const handleLocateHome = () => {
-    if (!navigator.geolocation) {
-      setHomeLocateError("이 브라우저에서는 위치 조회를 지원하지 않습니다.");
-      return;
+  const handleLocateHome = async () => {
+    const label = await locateByGps();
+    if (label) {
+      setIsLocationModalOpen(false);
+      showToast(`기준 동네가 [${label}]로 설정되었습니다.`);
     }
-    setLocatingHome(true);
-    setHomeLocateError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const coordLabel = `위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`;
-        const applyLocation = (label: string) => {
-          setCurrentLocation(label);
-          setLocatingHome(false);
-          setIsLocationModalOpen(false);
-          showToast(`기준 동네가 [${label}]로 설정되었습니다.`);
-        };
-        if (!isGoogleMapsConfigured) {
-          applyLocation(coordLabel);
-          return;
-        }
-        void loadGoogleMaps()
-          .then((maps) =>
-            new maps.Geocoder().geocode({
-              location: { lat: latitude, lng: longitude },
-            }),
-          )
-          .then((response) =>
-            applyLocation(response.results[0]?.formatted_address ?? coordLabel),
-          )
-          .catch(() => applyLocation(coordLabel));
-      },
-      (geoError) => {
-        setLocatingHome(false);
-        setHomeLocateError(
-          geoError.code === geoError.PERMISSION_DENIED
-            ? "위치 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요."
-            : "현재 위치를 확인하지 못했습니다.",
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
   };
 
   const handleManualAddressSubmit = () => {
-    const trimmed = manualAddress.trim();
-    if (!trimmed) return;
-    setCurrentLocation(trimmed);
+    const label = setManualLocation(manualAddress);
+    if (!label) return;
     setManualAddress("");
     setIsLocationModalOpen(false);
-    showToast(`기준 동네가 [${trimmed}]로 설정되었습니다.`);
+    showToast(`기준 동네가 [${label}]로 설정되었습니다.`);
+  };
+
+  const handleSelectRecentLocation = (entry: (typeof recentLocations)[number]) => {
+    selectRecent(entry);
+    setIsLocationModalOpen(false);
+    showToast(`기준 동네가 [${entry.label}]로 설정되었습니다.`);
   };
 
   const toggleLike = (e: React.MouseEvent, id: string) => {
@@ -3324,7 +3288,7 @@ export default function HomePage() {
                 📍 내 동네 설정
               </h3>
               <button
-                onClick={() => setIsLocationModalOpen(false)}
+                onClick={() => { setIsLocationModalOpen(false); clearError(); }}
                 style={{
                   background: "none",
                   border: "none",
@@ -3345,7 +3309,7 @@ export default function HomePage() {
             </p>
 
             <button
-              onClick={handleLocateHome}
+              onClick={() => void handleLocateHome()}
               disabled={locatingHome}
               style={{
                 width: "100%",
@@ -3429,33 +3393,32 @@ export default function HomePage() {
               또는 자주 찾는 동네에서 선택
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {["성수동 1가", "성수동 2가", "자양동", "화양동"].map((dong) => (
+              {(recentLocations.length > 0
+                ? recentLocations
+                : (["성수동 1가", "성수동 2가", "자양동", "화양동"] as const).map((label) => ({ label, neighborhood: label, coords: null }))
+              ).map((entry) => (
                 <button
-                  key={dong}
-                  onClick={() => {
-                    setCurrentLocation(dong);
-                    setIsLocationModalOpen(false);
-                    showToast(`기준 동네가 [${dong}]로 설정되었습니다.`);
-                  }}
+                  key={entry.label}
+                  onClick={() => handleSelectRecentLocation(entry)}
                   style={{
                     padding: "14px 16px",
                     borderRadius: 4,
-                    border: `1px solid ${currentLocation === dong ? TOKENS.colors.primaryOrange : TOKENS.colors.borderLight}`,
+                    border: `1px solid ${currentLocation === entry.label ? TOKENS.colors.primaryOrange : TOKENS.colors.borderLight}`,
                     background:
-                      currentLocation === dong
+                      currentLocation === entry.label
                         ? TOKENS.colors.primaryLight
                         : "#ffffff",
                     color:
-                      currentLocation === dong
+                      currentLocation === entry.label
                         ? TOKENS.colors.primaryOrange
                         : "#333333",
-                    fontWeight: currentLocation === dong ? 500 : 400,
+                    fontWeight: currentLocation === entry.label ? 500 : 400,
                     textAlign: "left",
                     cursor: "pointer",
                     fontSize: 14,
                   }}
                 >
-                  {dong} {currentLocation === dong && "✓"}
+                  {entry.neighborhood ?? entry.label} {currentLocation === entry.label && "✓"}
                 </button>
               ))}
             </div>

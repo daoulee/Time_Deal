@@ -2,7 +2,7 @@
  * 모바일 팀 Supabase 프로젝트의 딜을 그대로 보여주고 예약·찜을 할 수 있는 "동네 딜" 페이지입니다.
  * 우리 웹 로그인과 별개로 "모바일 앱 계정"으로 로그인해야 예약·찜이 모바일 앱에도 실시간으로 보입니다.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, Heart, MapPin, Store } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/shared/layout/AppShell";
@@ -24,6 +24,7 @@ import {
   type RawRecord,
 } from "@/lib/api";
 import { clearMobileSession, getMobileSession, setMobileSession } from "@/lib/mobile-auth";
+import { useLocationStore } from "@/shared/location/LocationContext";
 
 type ReservationRow = { id: string; status: string; reserved_at: string; deals: RawRecord | null };
 
@@ -35,8 +36,10 @@ export default function NeighborhoodPage() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
 
+  const { neighborhood: myNeighborhood } = useLocationStore();
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [selected, setSelected] = useState("");
+  const autoSelectedRef = useRef(false);
   const [deals, setDeals] = useState<NeighborhoodDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
@@ -49,6 +52,14 @@ export default function NeighborhoodPage() {
   useEffect(() => {
     void getNeighborhoods().then((result) => setNeighborhoods(result.data?.neighborhoods ?? []));
   }, []);
+
+  // 헤더에서 설정한 "내 동네"와 이름이 겹치는 동네가 있으면 처음 한 번만 자동으로 선택해준다.
+  useEffect(() => {
+    if (autoSelectedRef.current || !myNeighborhood || neighborhoods.length === 0) return;
+    autoSelectedRef.current = true;
+    const matched = neighborhoods.find((name) => name.includes(myNeighborhood) || myNeighborhood.includes(name));
+    if (matched) setSelected(matched);
+  }, [myNeighborhood, neighborhoods]);
 
   useEffect(() => {
     let active = true;

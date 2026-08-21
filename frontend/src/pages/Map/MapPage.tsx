@@ -13,6 +13,7 @@ import { getPickupLocations, type PickupLocation } from "@/lib/api";
 import { getCatalog } from "@/shared/services/catalog";
 import type { Product } from "@/shared/catalog";
 import { ProductCard } from "@/shared/components/ProductCard";
+import { useLocationStore } from "@/shared/location/LocationContext";
 
 const NECESSITIES_CATEGORY = "생활용품·뷰티";
 const SEONGSU_CENTER = { lat: 37.5445, lng: 127.0562 };
@@ -21,6 +22,9 @@ type GeoStore = PickupLocation & { lat: number; lng: number };
 
 export default function MapPage() {
   const navigate = useNavigate();
+  const { coords: myCoords } = useLocationStore();
+  const myCoordsRef = useRef(myCoords);
+  myCoordsRef.current = myCoords;
   const mapNodeRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
@@ -59,7 +63,7 @@ export default function MapPage() {
       if (!active) return;
       if (!geocoded.length) { setStatus("error"); setErrorMessage("매장 주소를 지도 좌표로 변환하지 못했습니다."); return; }
 
-      const map = new maps.Map(mapNodeRef.current, { center: SEONGSU_CENTER, zoom: 14, disableDefaultUI: false, streetViewControl: false, fullscreenControl: false });
+      const map = new maps.Map(mapNodeRef.current, { center: myCoordsRef.current ?? SEONGSU_CENTER, zoom: 14, disableDefaultUI: false, streetViewControl: false, fullscreenControl: false });
       mapRef.current = map;
       const infoWindow = new maps.InfoWindow();
       infoWindowRef.current = infoWindow;
