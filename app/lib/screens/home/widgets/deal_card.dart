@@ -13,8 +13,9 @@ import '../../deal_detail/deal_detail_screen.dart';
 
 class DealCard extends StatelessWidget {
   final Deal deal;
+  final int index;
 
-  const DealCard({super.key, required this.deal});
+  const DealCard({super.key, required this.deal, this.index = 0});
 
   static const _grayscaleMatrix = ColorFilter.matrix([
     0.2126, 0.7152, 0.0722, 0, 0,
@@ -205,7 +206,7 @@ class DealCard extends StatelessWidget {
       );
     }
 
-    return Padding(
+    final cardWidget = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
         color: Theme.of(context).cardTheme.color,
@@ -235,6 +236,28 @@ class DealCard extends StatelessWidget {
         ),
       ),
     );
-  }
 
+    // [Antigravity | 2026-08-21] 수정범위: DealCard — 새 딜 등장 및 리스트 갱신 시 부드러운 스태거드 페이드 & 슬라이드업 애니메이션
+    final delayMs = (index * 45).clamp(0, 300);
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('deal_anim_${deal.id}'),
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 380 + delayMs),
+      curve: Curves.easeOutQuart,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, 22 * (1 - value)),
+            child: Transform.scale(
+              scale: 0.96 + (0.04 * value),
+              alignment: Alignment.center,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: cardWidget,
+    );
+  }
 }

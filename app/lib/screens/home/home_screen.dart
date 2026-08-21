@@ -5,6 +5,7 @@ import '../../core/data/mock_data.dart';
 import '../../core/providers/deal_provider.dart';
 import '../../core/providers/location_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
 import '../../core/providers/theme_provider.dart';
 import '../my_page/location_settings_screen.dart';
 import '../search/search_screen.dart';
@@ -131,18 +132,36 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           // 딜 목록
+          // [Antigravity | 2026-08-21] 수정범위: HomeScreen — 카테고리 전환 및 딜 갱신 시 부드러운 AnimatedSwitcher + RefreshIndicator 적용
           Expanded(
-            child: filtered.isEmpty
-                ? const EmptyStateView(
-                    icon: Icons.local_offer_outlined,
-                    title: '이 카테고리의 딜이 없어요',
-                    subtitle: '다른 카테고리를 확인해보세요',
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 96),
-                    itemCount: filtered.length,
-                    itemBuilder: (_, i) => DealCard(deal: filtered[i]),
-                  ),
+            child: RefreshIndicator.adaptive(
+              color: AppColors.primary,
+              onRefresh: () async {
+                AppHaptics.selection();
+                await dealProvider.refresh();
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: filtered.isEmpty
+                    ? const EmptyStateView(
+                        key: ValueKey('empty_deals'),
+                        icon: Icons.local_offer_outlined,
+                        title: '이 카테고리의 딜이 없어요',
+                        subtitle: '다른 카테고리를 확인해보세요',
+                      )
+                    : ListView.builder(
+                        key: ValueKey('list_$_selectedCategory'),
+                        padding: const EdgeInsets.only(bottom: 96, top: 4),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) => DealCard(
+                          deal: filtered[i],
+                          index: i,
+                        ),
+                      ),
+              ),
+            ),
           ),
         ],
       ),

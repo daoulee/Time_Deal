@@ -29,6 +29,8 @@ class DealProvider extends ChangeNotifier {
     });
   }
 
+  Future<void> refresh() => _load();
+
   Future<void> _load() async {
     try {
       final data = await _supabase
