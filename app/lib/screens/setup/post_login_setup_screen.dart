@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -114,45 +113,14 @@ class _PostLoginSetupScreenState extends State<PostLoginSetupScreen> {
       _loadingDongs = true;
       _nearbyDongs = [];
     });
-    final dongs = await _fetchNearbyDongs(pos.latitude, pos.longitude, _radiusKm);
+    final dongs = await LocationProvider.fetchNearbyDongs(pos.latitude, pos.longitude, _radiusKm);
     if (!mounted) return;
     setState(() {
       _nearbyDongs = dongs;
       _loadingDongs = false;
     });
   }
-
-  // 반경 내 샘플 포인트 → 역지오코딩 → 동 이름 목록
-  static ({double lat, double lng}) _offsetPoint(
-      double lat, double lng, double distKm, double bearingDeg) {
-    const R = 6371.0;
-    final d = distKm / R;
-    final b = bearingDeg * pi / 180;
-    final lat1 = lat * pi / 180;
-    final lng1 = lng * pi / 180;
-    final lat2 = asin(sin(lat1) * cos(d) + cos(lat1) * sin(d) * cos(b));
-    final lng2 = lng1 +
-        atan2(sin(b) * sin(d) * cos(lat1), cos(d) - sin(lat1) * sin(lat2));
-    return (lat: lat2 * 180 / pi, lng: lng2 * 180 / pi);
-  }
-
-  static Future<List<String>> _fetchNearbyDongs(
-      double lat, double lng, int radiusKm) async {
-    final seen = <String>{};
-
-    // 중심 동네
-    final center = await LocationProvider.reverseGeocode(lat, lng);
-    if (center != null && center.isNotEmpty) seen.add(center);
-
-    // N / E / S / W 끝점
-    for (final bearing in [0.0, 90.0, 180.0, 270.0]) {
-      final pt = _offsetPoint(lat, lng, radiusKm.toDouble(), bearing);
-      final dong = await LocationProvider.reverseGeocode(pt.lat, pt.lng);
-      if (dong != null && dong.isNotEmpty) seen.add(dong);
-    }
-
-    return seen.toList()..sort();
-  }
+  // [Claude | 2026-08-21] 수정범위: _loadNearbyDongs() — 중복 로직 제거, LocationProvider.fetchNearbyDongs() 공용 유틸 호출로 교체
 
   @override
   Widget build(BuildContext context) {

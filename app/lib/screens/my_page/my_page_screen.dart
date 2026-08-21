@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -14,9 +15,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../auth/login_screen.dart';
 import '../merchant/merchant_home_screen.dart';
+import 'customer_service_screen.dart';
+import 'location_settings_screen.dart';
+import 'my_reviews_screen.dart';
 import 'reservation_screen.dart';
 import 'wishlist_screen.dart';
-import 'location_settings_screen.dart';
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
@@ -141,7 +144,8 @@ class MyPageScreen extends StatelessWidget {
             ),
             _MenuItem(
               icon: LucideIcons.star, label: '내가 쓴 리뷰',
-              onTap: () => _showReviewSheet(context),
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const MyReviewsScreen())),
             ),
           ]),
           _SectionDivider(),
@@ -170,7 +174,8 @@ class MyPageScreen extends StatelessWidget {
             ),
             _MenuItem(
               icon: LucideIcons.helpCircle, label: '고객센터',
-              onTap: () => _showCustomerServiceSheet(context),
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const CustomerServiceScreen())),
             ),
             _MenuItem(
               icon: LucideIcons.logOut, label: '로그아웃', isDestructive: true,
@@ -492,35 +497,6 @@ void _showVerifySheet(BuildContext context, ProfileProvider profile, LocationPro
   );
 }
 
-// ── 내가 쓴 리뷰 바텀시트 ───────────────────────────────────────
-void _showReviewSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          const Text('내가 쓴 리뷰', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 40),
-          Icon(LucideIcons.star, size: 44, color: Colors.grey[300]),
-          const SizedBox(height: 12),
-          Text('아직 작성한 리뷰가 없어요', style: TextStyle(fontSize: 14, color: Colors.grey[400])),
-          const SizedBox(height: 4),
-          Text('딜 픽업 후 리뷰를 남겨보세요', style: TextStyle(fontSize: 12, color: Colors.grey[300])),
-          const SizedBox(height: 32),
-        ],
-      ),
-    ),
-  );
-}
-
 // ── 알림 설정 바텀시트 ───────────────────────────────────────────
 void _showNotificationSettings(BuildContext context) {
   bool dealAlert = true;
@@ -545,7 +521,10 @@ void _showNotificationSettings(BuildContext context) {
             const SizedBox(height: 16),
             SwitchListTile(
               value: dealAlert,
-              onChanged: (v) => setState(() => dealAlert = v),
+              onChanged: (v) {
+                HapticFeedback.lightImpact();
+                setState(() => dealAlert = v);
+              },
               title: const Text('새 딜 알림', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               subtitle: Text('인근 새 딜 등록 시 알림', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               activeThumbColor: AppColors.primary,
@@ -553,7 +532,10 @@ void _showNotificationSettings(BuildContext context) {
             ),
             SwitchListTile(
               value: pickupReminder,
-              onChanged: (v) => setState(() => pickupReminder = v),
+              onChanged: (v) {
+                HapticFeedback.lightImpact();
+                setState(() => pickupReminder = v);
+              },
               title: const Text('픽업 리마인더', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               subtitle: Text('픽업 마감 30분 전 알림', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               activeThumbColor: AppColors.primary,
@@ -561,98 +543,22 @@ void _showNotificationSettings(BuildContext context) {
             ),
             SwitchListTile(
               value: marketingAlert,
-              onChanged: (v) => setState(() => marketingAlert = v),
+              onChanged: (v) {
+                HapticFeedback.lightImpact();
+                setState(() => marketingAlert = v);
+              },
               title: const Text('마케팅 알림', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               subtitle: Text('이벤트 및 혜택 정보', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 8),
+            // [Claude | 2026-08-21] 수정범위: _showNotificationSettings() 스위치 3개 — onChanged에 HapticFeedback.lightImpact() 추가
           ],
         ),
       ),
     ),
   );
-}
-
-// ── 고객센터 바텀시트 ────────────────────────────────────────────
-void _showCustomerServiceSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          const Text('고객센터', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Text('평일 09:00 ~ 18:00 운영', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-          const SizedBox(height: 24),
-          _ContactTile(
-            icon: LucideIcons.messageCircle,
-            color: const Color(0xFFFFE000),
-            iconColor: const Color(0xFF3A1D1D),
-            label: '카카오톡 채널',
-            subtitle: '@우리동네타임딜',
-          ),
-          const SizedBox(height: 10),
-          _ContactTile(
-            icon: LucideIcons.phone,
-            color: AppColors.primary.withValues(alpha: 0.1),
-            iconColor: AppColors.primary,
-            label: '전화 문의',
-            subtitle: '1588-0000',
-          ),
-          const SizedBox(height: 10),
-          _ContactTile(
-            icon: LucideIcons.mail,
-            color: Colors.grey.withValues(alpha: 0.1),
-            iconColor: Colors.grey[600]!,
-            label: '이메일 문의',
-            subtitle: 'support@townflashdeal.kr',
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    ),
-  );
-}
-
-class _ContactTile extends StatelessWidget {
-  final IconData icon;
-  final Color color, iconColor;
-  final String label, subtitle;
-  const _ContactTile({required this.icon, required this.color, required this.iconColor, required this.label, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: iconColor)),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: iconColor.withValues(alpha: 0.7))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── 로그아웃 확인 다이얼로그 ────────────────────────────────────

@@ -39,12 +39,14 @@ class _ReservationScreenState extends State<ReservationScreen>
           labelColor: AppColors.primary,
           unselectedLabelColor: Colors.grey,
           indicatorColor: AppColors.primary,
+          dividerColor: Colors.transparent,
           tabs: const [
             Tab(text: '진행중'),
             Tab(text: '픽업완료'),
             Tab(text: '취소'),
           ],
         ),
+        // [Claude | 2026-08-21] 수정범위: TabBar dividerColor 추가 — M3 기본 전체폭 구분선(검은 줄) 제거
       ),
       body: TabBarView(
         controller: _tab,

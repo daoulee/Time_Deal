@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/mock_data.dart';
 import '../utils/app_logger.dart';
+import '../utils/geo_utils.dart';
 
 class LocationProvider extends ChangeNotifier {
   static const _key = 'neighborhood';
@@ -116,4 +117,22 @@ class LocationProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  // 기준 좌표 반경 내 N/E/S/W 끝점 + 중심을 역지오코딩해서 실제 근처 동 이름 목록 반환
+  static Future<List<String>> fetchNearbyDongs(
+      double lat, double lng, int radiusKm) async {
+    final seen = <String>{};
+
+    final center = await reverseGeocode(lat, lng);
+    if (center != null && center.isNotEmpty) seen.add(center);
+
+    for (final bearing in [0.0, 90.0, 180.0, 270.0]) {
+      final pt = GeoUtils.offsetPoint(lat, lng, radiusKm.toDouble(), bearing);
+      final dong = await reverseGeocode(pt.lat, pt.lng);
+      if (dong != null && dong.isNotEmpty) seen.add(dong);
+    }
+
+    return seen.toList()..sort();
+  }
 }
+// [Claude | 2026-08-21] 수정범위: LocationProvider.fetchNearbyDongs() 신규 — post_login_setup_screen 전용 로직을 공용화, location_settings_screen의 하드코딩된 서울 동네 리스트 버그 수정에 재사용

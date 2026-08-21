@@ -16,28 +16,35 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
   final _ctrl = TextEditingController();
   bool _initialized = false;
   bool _locating = false;
+  bool _loadingNearby = false;
   String _query = '';
+  List<String> _nearbyDongs = [];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      _selected = context.read<LocationProvider>().neighborhood;
+      final loc = context.read<LocationProvider>();
+      _selected = loc.neighborhood;
       _initialized = true;
+      final pos = loc.position;
+      if (pos != null) _loadNearbyDongs(pos.latitude, pos.longitude, loc.radiusKm);
     }
   }
 
-  final _neighborhoods = [
-    '성수동 1가', '성수동 2가', '뚝섬로', '서울숲길',
-    '왕십리', '마장동', '행당동', '사근동',
-    '합정동', '망원동', '연남동', '신촌동',
-    '홍대입구', '상수동', '서교동', '동교동',
-    '강남대로', '역삼동',
-  ];
+  Future<void> _loadNearbyDongs(double lat, double lng, int radiusKm) async {
+    setState(() => _loadingNearby = true);
+    final dongs = await LocationProvider.fetchNearbyDongs(lat, lng, radiusKm);
+    if (!mounted) return;
+    setState(() {
+      _nearbyDongs = dongs;
+      _loadingNearby = false;
+    });
+  }
 
   List<String> get _filtered => _query.isEmpty
-      ? _neighborhoods
-      : _neighborhoods.where((n) => n.contains(_query)).toList();
+      ? _nearbyDongs
+      : _nearbyDongs.where((n) => n.contains(_query)).toList();
 
   @override
   void dispose() {
@@ -89,6 +96,10 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
                     // requestLocation이 내부에서 역지오코딩 후 neighborhood를 갱신함
                     final dong = locationProvider.neighborhood;
                     setState(() { _selected = dong; _locating = false; });
+                    final pos = locationProvider.position;
+                    if (pos != null) {
+                      _loadNearbyDongs(pos.latitude, pos.longitude, locationProvider.radiusKm);
+                    }
                     if (!mounted) return;
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       SnackBar(content: Text('현재 위치: $dong'),
@@ -163,9 +174,24 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Text('근처 동네', style: TextStyle(fontSize: 12,
-                fontWeight: FontWeight.w600, color: Colors.grey[400])),
+            child: Row(
+              children: [
+                Text('근처 동네', style: TextStyle(fontSize: 12,
+                    fontWeight: FontWeight.w600, color: Colors.grey[400])),
+                if (_loadingNearby) ...[
+                  const SizedBox(width: 8),
+                  const SizedBox(width: 11, height: 11,
+                      child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.primary)),
+                ],
+              ],
+            ),
           ),
+          if (!_loadingNearby && _nearbyDongs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Text('현재 위치 사용을 눌러 근처 동네를 불러오세요',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+            ),
           Expanded(
             child: ListView.builder(
               itemCount: _filtered.length,
@@ -196,4 +222,5 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
       ),
     );
   }
+  // [Claude | 2026-08-21] 수정범위: _LocationSettingsScreenState 전체 — 하드코딩된 서울 동네 리스트를 LocationProvider.fetchNearbyDongs() 기반 실제 GPS 근처 동네 목록으로 교체
 }
