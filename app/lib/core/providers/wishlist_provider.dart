@@ -8,7 +8,8 @@ class WishlistProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
 
   /// 현재 사용자 식별자: 로그인된 Auth user.id 우선, 게스트 시 디바이스 UUID fallback
-  String get _userId => DeviceId.value;
+  String get _userId => _supabase.auth.currentUser?.id ?? DeviceId.value;
+  // [Claude | 2026-08-21] 수정범위: _userId getter — reservation_provider와 동일하게 Auth 우선순위 명시 (Kiro 요청과 일관성)
 
   Set<String> _likedIds = {};
   bool _disposed = false;

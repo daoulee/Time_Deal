@@ -15,7 +15,8 @@ class ReservationProvider extends ChangeNotifier {
   String? lastError;
 
   /// 현재 사용자 식별자: 로그인된 Auth user.id 우선, 게스트 시 디바이스 UUID fallback
-  String get _userId => DeviceId.value;
+  String get _userId => _supabase.auth.currentUser?.id ?? DeviceId.value;
+  // [Claude | 2026-08-21] 수정범위: _userId getter — Kiro 요청으로 Auth 우선순위를 명시적으로 드러냄 (DeviceId.value가 내부적으로 이미 같은 우선순위라 동작은 동일함)
 
   List<Reservation> get all => List.unmodifiable(_reservations);
   List<Reservation> get merchantAll => List.unmodifiable(_merchantReservations);

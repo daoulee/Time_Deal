@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/mock_data.dart';
 import '../models/deal.dart';
+import '../services/device_id.dart';
 import '../utils/geo_utils.dart';
 import '../utils/app_logger.dart';
 
@@ -153,7 +154,7 @@ class DealProvider extends ChangeNotifier {
     final now = DateTime.now();
     return Deal(
       id: id,
-      storeId: Supabase.instance.client.auth.currentUser?.id ?? '',
+      storeId: Supabase.instance.client.auth.currentUser?.id ?? DeviceId.value,
       storeName: storeName,
       storeCategory: storeCategory,
       title: title,
