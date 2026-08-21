@@ -168,6 +168,56 @@ class _ReservationCard extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: Colors.grey[500])),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // [Antigravity | 2026-08-21] 수정범위: _ReservationCard — 스윙 방식 노쇼 방지 가결제(Hold) 상태 및 픽업 시 자동 취소 알림 배너
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: r.status == '픽업완료'
+                  ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                  : r.status == '진행중'
+                      ? AppColors.primary.withValues(alpha: 0.06)
+                      : Colors.grey.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  r.status == '픽업완료'
+                      ? LucideIcons.checkCircle2
+                      : r.status == '진행중'
+                          ? LucideIcons.shieldAlert
+                          : LucideIcons.info,
+                  size: 14,
+                  color: r.status == '픽업완료'
+                      ? const Color(0xFF10B981)
+                      : r.status == '진행중'
+                          ? AppColors.primary
+                          : Colors.grey[600],
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    r.status == '진행중'
+                        ? '노쇼 보증금 ${r.formattedDeposit}원 가결제 홀드중 (방문 시 자동 취소)'
+                        : r.status == '픽업완료'
+                            ? '가결제 100% 자동 취소 완료 (0원 청구)'
+                            : r.paymentStatusLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: r.status == '픽업완료'
+                          ? const Color(0xFF10B981)
+                          : r.status == '진행중'
+                              ? AppColors.primary
+                              : Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (r.status == '진행중') ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -178,11 +228,14 @@ class _ReservationCard extends StatelessWidget {
                     context: context,
                     builder: (_) => AlertDialog(
                       title: const Text('예약 취소'),
-                      content: const Text('정말 예약을 취소할까요?'),
+                      content: const Text(
+                          '예약을 취소하시면 노쇼 방지 가결제(보증금)는 즉시 해제/취소됩니다.\n정말 취소하시겠습니까?'),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, false),
                             child: const Text('아니요')),
-                        TextButton(onPressed: () => Navigator.pop(context, true),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, true),
                             child: const Text('취소하기',
                                 style: TextStyle(color: Colors.red))),
                       ],
@@ -196,9 +249,11 @@ class _ReservationCard extends StatelessWidget {
                   foregroundColor: Colors.grey,
                   side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('예약 취소', style: TextStyle(fontSize: 13)),
+                child: const Text('예약 취소 (가결제 즉시 해제)',
+                    style: TextStyle(fontSize: 13)),
               ),
             ),
           ],

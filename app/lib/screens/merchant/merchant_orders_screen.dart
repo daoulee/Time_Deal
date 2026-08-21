@@ -174,24 +174,84 @@ class _OrderCard extends StatelessWidget {
                       color: AppColors.primary)),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // [Antigravity | 2026-08-21] 수정범위: _OrderCard — 사장님용 노쇼 보증금 확보 상태 뱃지 및 현장결제 확인 안내
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isPending
+                  ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                  : Colors.grey.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isPending ? LucideIcons.shieldCheck : LucideIcons.checkCircle2,
+                  size: 13,
+                  color: isPending ? const Color(0xFF10B981) : Colors.grey[500],
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isPending
+                        ? '노쇼 보증금 ${r.formattedDeposit}원 확보됨 (${r.paymentMethod})'
+                        : r.paymentStatusLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isPending ? const Color(0xFF10B981) : Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (isPending) ...[
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.read<ReservationProvider>().cancel(r.id);
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('노쇼 위약금 처리'),
+                          content: Text(
+                              '$customerName 손님이 마감시간까지 방문하지 않았나요?\n노쇼 처리 시 보증금(${r.formattedDeposit}원)이 사장님 손실 보전 위약금으로 결제 청구됩니다.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('취소')),
+                            TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('노쇼 확정',
+                                    style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && context.mounted) {
+                        HapticFeedback.heavyImpact();
+                        await context.read<ReservationProvider>().markNoShow(r.id);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('$customerName 노쇼 위약금 처리 완료'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey,
-                      side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                      foregroundColor: Colors.red[400],
+                      side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
-                    child: const Text('취소', style: TextStyle(fontSize: 13)),
+                    child: const Text('노쇼 처리', style: TextStyle(fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -204,7 +264,7 @@ class _OrderCard extends StatelessWidget {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('$customerName 픽업 완료 처리됐어요'),
+                          content: Text('$customerName 픽업 완료! (노쇼 가결제 자동 취소됨)'),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -214,7 +274,7 @@ class _OrderCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
-                    child: const Text('픽업 확인',
+                    child: const Text('현장결제 & 픽업 확인',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600)),
                   ),
@@ -230,7 +290,7 @@ class _OrderCard extends StatelessWidget {
                   Icon(LucideIcons.checkCircle2,
                       size: 14, color: Colors.grey[400]),
                   const SizedBox(width: 4),
-                  Text('픽업 완료',
+                  Text('픽업 완료 · 가결제 자동 취소됨',
                       style:
                           TextStyle(fontSize: 12, color: Colors.grey[400])),
                 ],

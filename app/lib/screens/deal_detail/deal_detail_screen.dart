@@ -440,75 +440,287 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
     );
   }
 
+  // [Antigravity | 2026-08-21] 수정범위: _showReservationDialog — 스윙 킥보드 방식 노쇼 방지 가결제(Hold) 및 결제수단 선택 바텀시트
   void _showReservationDialog(BuildContext context) {
     final deal = widget.deal;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String selectedMethod = '신용/체크카드';
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) {
         bool isSubmitting = false;
         return StatefulBuilder(
-        builder: (ctx, setDialogState) => Padding(
-            padding: const EdgeInsets.all(24),
+          builder: (ctx, setDialogState) => Padding(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              16,
+              24,
+              MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                    width: 40, height: 4,
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 20),
-                Text(deal.title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        '노쇼 방지 가결제',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '방문 시 100% 자동 취소',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green[600],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  deal.title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${deal.storeName} · ${deal.storeCategory}',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 14),
+
+                // 가격 요약
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '가결제 보증금액',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        '${Formatters.price(deal.discountedPrice)}원',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 스윙 방식 노쇼 방지 안내 박스
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(LucideIcons.shieldCheck, size: 16, color: const Color(0xFF10B981)),
+                          SizedBox(width: 6),
+                          Text(
+                            '스윙 방식 노쇼 방지 보증금 정책',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '• 지금 잡히는 금액은 예약 보증용 가결제(Hold)입니다.\n'
+                        '• 매장 방문 픽업 시 가결제는 즉시 100% 자동 취소됩니다.\n'
+                        '• 현장에서 카드/현금/동백전 등 원하시는 수단으로 결제하세요.\n'
+                        '• 픽업 마감 시간까지 미방문(노쇼) 시에만 위약금으로 청구됩니다.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 결제 수단 선택
+                const Text(
+                  '가결제 수단',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
-                Text('${Formatters.price(deal.discountedPrice)}원',
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                Row(
+                  children: [
+                    _buildPaymentMethodChip('신용/체크카드', selectedMethod, () {
+                      AppHaptics.selection();
+                      setDialogState(() => selectedMethod = '신용/체크카드');
+                    }),
+                    const SizedBox(width: 8),
+                    _buildPaymentMethodChip('토스페이', selectedMethod, () {
+                      AppHaptics.selection();
+                      setDialogState(() => selectedMethod = '토스페이');
+                    }),
+                    const SizedBox(width: 8),
+                    _buildPaymentMethodChip('카카오페이', selectedMethod, () {
+                      AppHaptics.selection();
+                      setDialogState(() => selectedMethod = '카카오페이');
+                    }),
+                  ],
+                ),
                 const SizedBox(height: 20),
+
+                // 가결제 및 예약 버튼
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: isSubmitting ? null : () async {
-                      setDialogState(() => isSubmitting = true);
-                      final messenger = ScaffoldMessenger.of(context);
-                      final nav = Navigator.of(context);
-                      final ok = await context.read<ReservationProvider>().reserve(deal);
-                      if (!context.mounted) return;
-                      if (ok) AppHaptics.success();
-                      nav.pop();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(ok ? '예약 완료! 픽업 시간에 방문해 주세요' : '예약할 수 없어요 (품절 또는 이미 예약됨)'),
-                          action: ok ? SnackBarAction(
-                            label: '내역 보기',
-                            textColor: Colors.white,
-                            onPressed: () => nav.push(
-                              MaterialPageRoute(
-                                  builder: (_) => const ReservationScreen()),
-                            ),
-                          ) : null,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            setDialogState(() => isSubmitting = true);
+                            final messenger = ScaffoldMessenger.of(context);
+                            final nav = Navigator.of(context);
+                            final ok = await context
+                                .read<ReservationProvider>()
+                                .reserve(deal, paymentMethod: selectedMethod);
+                            if (!context.mounted) return;
+                            if (ok) AppHaptics.success();
+                            nav.pop();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(ok
+                                    ? '가결제 완료! 매장 방문 픽업 시 가결제는 자동 취소됩니다'
+                                    : '예약할 수 없어요 (품절 또는 이미 예약됨)'),
+                                action: ok
+                                    ? SnackBarAction(
+                                        label: '내역 보기',
+                                        textColor: Colors.white,
+                                        onPressed: () => nav.push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ReservationScreen(),
+                                          ),
+                                        ),
+                                      )
+                                    : null,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                     child: isSubmitting
                         ? const SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('예약 확정',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            '💳 ${Formatters.price(deal.discountedPrice)}원 가결제하고 예약하기',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                // [Claude | 2026-08-21] 수정범위: 예약 확정 버튼 onPressed — 예약 성공 시 AppHaptics.success() 더블 햅틱 추가
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPaymentMethodChip(
+    String label,
+    String current,
+    VoidCallback onTap,
+  ) {
+    final selected = label == current;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primary
+                  : Colors.grey.withValues(alpha: 0.2),
+              width: selected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? AppColors.primary : null,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

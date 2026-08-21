@@ -97,7 +97,8 @@ class ReservationProvider extends ChangeNotifier {
   bool isReserved(String dealId) =>
       _reservations.any((r) => r.deal.id == dealId && r.status == '진행중');
 
-  Future<bool> reserve(Deal deal) async {
+  // [Antigravity | 2026-08-21] 수정범위: reserve() — 노쇼 방지 보증금 가결제(Hold) 정보(payment_status, deposit_amount, payment_method) 저장
+  Future<bool> reserve(Deal deal, {String paymentMethod = '신용/체크카드'}) async {
     if (_userId.isEmpty) return false; // 비로그인 시 예약 불가
     if (isReserved(deal.id)) return false;
     if (deal.remainingStock <= 0) return false;
@@ -107,6 +108,10 @@ class ReservationProvider extends ChangeNotifier {
       userId: _userId,
       deal: deal,
       reservedAt: DateTime.now(),
+      status: '진행중',
+      paymentStatus: 'holding',
+      depositAmount: deal.discountedPrice,
+      paymentMethod: paymentMethod,
     );
     _reservations.insert(0, temp);
     notifyListeners();
@@ -116,11 +121,13 @@ class ReservationProvider extends ChangeNotifier {
         'user_id': _userId,
         'deal_id': deal.id,
         'status': '진행중',
+        'payment_status': 'holding',
+        'deposit_amount': deal.discountedPrice,
+        'payment_method': paymentMethod,
         'reserved_at': DateTime.now().toUtc().toIso8601String(),
       });
 
       // Fix #3: atomic decrement — remaining_stock > 0 조건 서버에서 재검증
-      // Supabase RPC `decrement_stock` 가 있으면 사용, 없으면 조건부 update fallback
       try {
         await _supabase.rpc('decrement_stock', params: {'deal_id': deal.id});
       } catch (_) {
@@ -144,19 +151,56 @@ class ReservationProvider extends ChangeNotifier {
     }
   }
 
+  // [Antigravity | 2026-08-21] 수정범위: complete() — 매장 픽업 완료 확인 시 노쇼 가결제 즉시 자동 취소(released, 0원 청구) 처리
   Future<void> complete(String id) async {
     try {
       await _supabase
           .from('reservations')
-          .update({'status': '픽업완료'})
+          .update({
+            'status': '픽업완료',
+            'payment_status': 'released',
+          })
           .eq('id', id);
       final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
       final cIdx = _reservations.indexWhere((r) => r.id == id);
-      if (mIdx != -1) _merchantReservations[mIdx].status = '픽업완료';
-      if (cIdx != -1) _reservations[cIdx].status = '픽업완료';
+      if (mIdx != -1) {
+        _merchantReservations[mIdx].status = '픽업완료';
+        _merchantReservations[mIdx].paymentStatus = 'released';
+      }
+      if (cIdx != -1) {
+        _reservations[cIdx].status = '픽업완료';
+        _reservations[cIdx].paymentStatus = 'released';
+      }
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('픽업 완료 처리 실패', e, st);
+      lastError = e.toString();
+    }
+  }
+
+  // [Antigravity | 2026-08-21] 수정범위: markNoShow() — 마감 미방문 노쇼 발생 시 보증금 위약금 청구(captured) 처리
+  Future<void> markNoShow(String id) async {
+    try {
+      await _supabase
+          .from('reservations')
+          .update({
+            'status': '노쇼',
+            'payment_status': 'captured',
+          })
+          .eq('id', id);
+      final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
+      final cIdx = _reservations.indexWhere((r) => r.id == id);
+      if (mIdx != -1) {
+        _merchantReservations[mIdx].status = '노쇼';
+        _merchantReservations[mIdx].paymentStatus = 'captured';
+      }
+      if (cIdx != -1) {
+        _reservations[cIdx].status = '노쇼';
+        _reservations[cIdx].paymentStatus = 'captured';
+      }
+      notifyListeners();
+    } catch (e, st) {
+      AppLogger.error('노쇼 처리 실패', e, st);
       lastError = e.toString();
     }
   }
@@ -170,10 +214,13 @@ class ReservationProvider extends ChangeNotifier {
 
   Future<void> cancel(String id) async {
     try {
-      // 취소 상태로 변경
+      // 취소 상태로 변경 및 가결제 해제
       await _supabase
           .from('reservations')
-          .update({'status': '취소'})
+          .update({
+            'status': '취소',
+            'payment_status': 'cancelled',
+          })
           .eq('id', id);
       // 해당 딜 찾아서 atomic increment_stock RPC 호출
       final reservation = _findReservation(id);
@@ -190,8 +237,14 @@ class ReservationProvider extends ChangeNotifier {
       // 로컬 상태 반영
       final uIdx = _reservations.indexWhere((r) => r.id == id);
       final mIdx = _merchantReservations.indexWhere((r) => r.id == id);
-      if (uIdx != -1) _reservations[uIdx].status = '취소';
-      if (mIdx != -1) _merchantReservations[mIdx].status = '취소';
+      if (uIdx != -1) {
+        _reservations[uIdx].status = '취소';
+        _reservations[uIdx].paymentStatus = 'cancelled';
+      }
+      if (mIdx != -1) {
+        _merchantReservations[mIdx].status = '취소';
+        _merchantReservations[mIdx].paymentStatus = 'cancelled';
+      }
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('예약 취소 처리 실패', e, st);
