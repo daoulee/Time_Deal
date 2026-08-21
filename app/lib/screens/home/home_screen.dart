@@ -139,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: '다른 카테고리를 확인해보세요',
                   )
                 : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 96),
                     itemCount: filtered.length,
                     itemBuilder: (_, i) => DealCard(deal: filtered[i]),
                   ),

@@ -407,7 +407,7 @@ class _MapScreenState extends State<MapScreen> {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
-            bottom: _selectedDeal != null ? 168 : -220,
+            bottom: _selectedDeal != null ? 245 : -240,
             left: 16,
             right: 16,
             child: IgnorePointer(
@@ -422,7 +422,7 @@ class _MapScreenState extends State<MapScreen> {
 
           // 내 위치 버튼
           Positioned(
-            bottom: 160,
+            bottom: 238,
             right: 16,
             child: FloatingActionButton.small(
               heroTag: 'locate',
@@ -443,10 +443,11 @@ class _MapScreenState extends State<MapScreen> {
           Positioned(
             bottom: 0, left: 0, right: 0,
             child: Container(
+              padding: const EdgeInsets.only(bottom: 74),
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
+                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.94),
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                    const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),

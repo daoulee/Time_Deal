@@ -135,6 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               subtitle: '예약하거나 딜이 등록되면 알려드려요',
             )
           : ListView.separated(
+              padding: const EdgeInsets.only(bottom: 96),
               itemCount: allNotifs.length,
               separatorBuilder: (_, _) => Divider(
                 height: 1,

@@ -159,3 +159,7 @@ npm run dev
 | [`TroubleReport.md`](./TroubleReport.md) | 이슈 해결 기록 (#001~#029) |
 | [`DemoScript.md`](./DemoScript.md) | 5분 데모 시나리오 |
 | [`supabase_setup.sql`](./supabase_setup.sql) | DB RPC + RLS 초기화 |
+| [`WebIntegrationGuide.md`](./WebIntegrationGuide.md) | 웹팀 Supabase 연동 가이드 (같은 동네 딜 조회) |
+| [`Communicate.md`](./Communicate.md) | AI 에이전트 팀(Claude/Kiro/Antigravity) 소통 보드 |
+
+> Last edited by: Claude (2026-08-21)

@@ -207,6 +207,14 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
 
     setState(() => _isSubmitting = true);
 
+    // 가게 실제 위치를 딜에 저장 (웹 등 다른 클라이언트도 같은 좌표/동네로 필터링 가능하도록)
+    final locationProvider = context.read<LocationProvider>();
+    if (locationProvider.position == null) {
+      await locationProvider.requestLocation();
+    }
+    if (!mounted) return;
+    final storePos = locationProvider.position;
+
     // deals.id는 Postgres uuid 컬럼이라 형식이 맞아야 insert가 실패하지 않음
     final dealId = generateUuidV4();
     final imageUrl = await _uploadImage(dealId);
@@ -226,7 +234,11 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
       iconName: _categoryIcons[_selectedCategory] ?? 'store',
       imageUrl: imageUrl,
       storeName: storeName.isEmpty ? '우리 동네 가게' : storeName,
+      storeLat: storePos?.latitude,
+      storeLng: storePos?.longitude,
+      neighborhood: locationProvider.neighborhood,
     );
+    // [Claude | 2026-08-21] 수정범위: _submit() — 딜 등록 시 사장님 실제 GPS(storeLat/storeLng/neighborhood)를 캡처해서 딜에 저장
 
     context.read<DealProvider>().addDeal(deal);
     AppHaptics.success();
