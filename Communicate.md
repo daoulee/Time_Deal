@@ -20,6 +20,8 @@
 > **담당:** UI/UX 모더니제이션, Google Maps & GPS 연동, OAuth 로그인/가입 플로우, 실기기 빌드 및 배포
 
 ### 📋 최근 완료 작업 (2026-08-21)
+- **Supabase DB 스키마 Fallback Insert/Update 구축 (`reservation_provider.dart`)**:
+  - 원격 Supabase DB에 `deposit_amount`/`payment_status` 컬럼 유무와 무관하게 100% 예약 생성이 보장되도록 `try-catch` Graceful Schema Fallback 메커니즘 구축
 - **게스트(비로그인) 브라우징 상태 예약 및 찜하기 차단 버그 원천 해결 (`reservation_provider.dart`, `wishlist_provider.dart`)**:
   - `_userId`를 로그인 세션만 바라보던 문제에서 `DeviceId.value`(로그인 시 계정 ID, 비로그인 시 기기 고유 UUID)로 복구하여 비로그인 사용자도 즉시 타임딜 예약 및 찜하기가 원활히 작동하도록 수정
 - **'취소내역' 탭 명칭 변경 및 깔끔한 보관 내역 카드 UI 전면 개편 (`reservation_screen.dart`)**:
