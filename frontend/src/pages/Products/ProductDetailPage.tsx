@@ -43,7 +43,7 @@ import {
 } from "@/lib/api";
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
 import { isTossPaymentsConfigured } from "@/lib/toss-payments";
-import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
+import { useLocationStore } from "@/shared/location/LocationContext";
 
 type AddressMode = "manual" | "gps";
 
@@ -131,8 +131,7 @@ export default function ProductDetailPage() {
   >("reservation_only");
   const [addressMode, setAddressMode] = useState<AddressMode>("manual");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [locating, setLocating] = useState(false);
-  const [locateError, setLocateError] = useState<string | null>(null);
+  const { locating, error: locateError, locateByGps } = useLocationStore();
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [wishlisted, setWishlisted] = useState(false);
@@ -161,48 +160,9 @@ export default function ProductDetailPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLocate = () => {
-    if (!navigator.geolocation) {
-      setLocateError("이 브라우저에서는 위치 조회를 지원하지 않습니다.");
-      return;
-    }
-    setLocating(true);
-    setLocateError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const coordLabel = `위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`;
-        if (!isGoogleMapsConfigured) {
-          setDeliveryAddress(coordLabel);
-          setLocating(false);
-          return;
-        }
-        void loadGoogleMaps()
-          .then((maps) =>
-             
-            new (maps as any).Geocoder().geocode({
-              location: { lat: latitude, lng: longitude },
-            })
-          )
-           
-          .then((response: any) => {
-            setDeliveryAddress(
-              response.results?.[0]?.formatted_address ?? coordLabel
-            );
-          })
-          .catch(() => setDeliveryAddress(coordLabel))
-          .finally(() => setLocating(false));
-      },
-      (geoError) => {
-        setLocating(false);
-        setLocateError(
-          geoError.code === geoError.PERMISSION_DENIED
-            ? "위치 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요."
-            : "현재 위치를 확인하지 못했습니다."
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+  const handleLocate = async () => {
+    const label = await locateByGps();
+    if (label) setDeliveryAddress(label);
   };
 
   useEffect(() => {
