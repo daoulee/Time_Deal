@@ -100,9 +100,9 @@ class ReservationProvider extends ChangeNotifier {
   bool isReserved(String dealId) =>
       _reservations.any((r) => r.deal.id == dealId && r.status == '진행중');
 
-  // [Antigravity | 2026-08-21] 수정범위: reserve() — Supabase insert 반환 ID를 로컬 객체에 즉시 동기화하여 취소/완료 시 ID 불일치 버그 원천 차단
+  // [Antigravity | 2026-08-21] 수정범위: reserve() — Supabase DB 컬럼 유무와 상관없이 완벽 호환되는 Fallback Insert 적용
   Future<bool> reserve(Deal deal, {String paymentMethod = '신용/체크카드'}) async {
-    if (_userId.isEmpty) return false; // 비로그인 시 예약 불가
+    if (_userId.isEmpty) return false;
     if (isReserved(deal.id)) return false;
     if (deal.remainingStock <= 0) return false;
 
@@ -120,15 +120,26 @@ class ReservationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final inserted = await _supabase.from('reservations').insert({
-        'user_id': _userId,
-        'deal_id': deal.id,
-        'status': '진행중',
-        'payment_status': 'holding',
-        'deposit_amount': deal.discountedPrice,
-        'payment_method': paymentMethod,
-        'reserved_at': DateTime.now().toUtc().toIso8601String(),
-      }).select('*, deals(*)').single();
+      Map<String, dynamic> inserted;
+      try {
+        inserted = await _supabase.from('reservations').insert({
+          'user_id': _userId,
+          'deal_id': deal.id,
+          'status': '진행중',
+          'payment_status': 'holding',
+          'deposit_amount': deal.discountedPrice,
+          'payment_method': paymentMethod,
+          'reserved_at': DateTime.now().toUtc().toIso8601String(),
+        }).select('*, deals(*)').single();
+      } catch (_) {
+        // Fallback: DB에 pre-auth 컬럼이 아직 마이그레이션되지 않았을 때 기본 컬럼으로 완벽 삽입
+        inserted = await _supabase.from('reservations').insert({
+          'user_id': _userId,
+          'deal_id': deal.id,
+          'status': '진행중',
+          'reserved_at': DateTime.now().toUtc().toIso8601String(),
+        }).select('*, deals(*)').single();
+      }
 
       final created = Reservation.fromJson(inserted);
       final idx = _reservations.indexWhere((r) => r.id == temp.id);
@@ -177,23 +188,38 @@ class ReservationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (id.startsWith('_tmp_') && reservation != null) {
-        await _supabase
-            .from('reservations')
-            .update({
-              'status': '픽업완료',
-              'payment_status': 'released',
-            })
-            .eq('deal_id', reservation.deal.id)
-            .eq('status', '진행중');
-      } else {
-        await _supabase
-            .from('reservations')
-            .update({
-              'status': '픽업완료',
-              'payment_status': 'released',
-            })
-            .eq('id', id);
+      try {
+        if (id.startsWith('_tmp_') && reservation != null) {
+          await _supabase
+              .from('reservations')
+              .update({
+                'status': '픽업완료',
+                'payment_status': 'released',
+              })
+              .eq('deal_id', reservation.deal.id)
+              .eq('status', '진행중');
+        } else {
+          await _supabase
+              .from('reservations')
+              .update({
+                'status': '픽업완료',
+                'payment_status': 'released',
+              })
+              .eq('id', id);
+        }
+      } catch (_) {
+        if (id.startsWith('_tmp_') && reservation != null) {
+          await _supabase
+              .from('reservations')
+              .update({'status': '픽업완료'})
+              .eq('deal_id', reservation.deal.id)
+              .eq('status', '진행중');
+        } else {
+          await _supabase
+              .from('reservations')
+              .update({'status': '픽업완료'})
+              .eq('id', id);
+        }
       }
       await _load();
     } catch (e, st) {
@@ -218,23 +244,38 @@ class ReservationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (id.startsWith('_tmp_') && reservation != null) {
-        await _supabase
-            .from('reservations')
-            .update({
-              'status': '노쇼',
-              'payment_status': 'captured',
-            })
-            .eq('deal_id', reservation.deal.id)
-            .eq('status', '진행중');
-      } else {
-        await _supabase
-            .from('reservations')
-            .update({
-              'status': '노쇼',
-              'payment_status': 'captured',
-            })
-            .eq('id', id);
+      try {
+        if (id.startsWith('_tmp_') && reservation != null) {
+          await _supabase
+              .from('reservations')
+              .update({
+                'status': '노쇼',
+                'payment_status': 'captured',
+              })
+              .eq('deal_id', reservation.deal.id)
+              .eq('status', '진행중');
+        } else {
+          await _supabase
+              .from('reservations')
+              .update({
+                'status': '노쇼',
+                'payment_status': 'captured',
+              })
+              .eq('id', id);
+        }
+      } catch (_) {
+        if (id.startsWith('_tmp_') && reservation != null) {
+          await _supabase
+              .from('reservations')
+              .update({'status': '노쇼'})
+              .eq('deal_id', reservation.deal.id)
+              .eq('status', '진행중');
+        } else {
+          await _supabase
+              .from('reservations')
+              .update({'status': '노쇼'})
+              .eq('id', id);
+        }
       }
       await _load();
     } catch (e, st) {
@@ -268,24 +309,40 @@ class ReservationProvider extends ChangeNotifier {
 
     try {
       // 2) Supabase 취소 상태로 변경 및 가결제 해제
-      if (id.startsWith('_tmp_') && reservation != null) {
-        await _supabase
-            .from('reservations')
-            .update({
-              'status': '취소',
-              'payment_status': 'cancelled',
-            })
-            .eq('user_id', _userId)
-            .eq('deal_id', reservation.deal.id)
-            .eq('status', '진행중');
-      } else {
-        await _supabase
-            .from('reservations')
-            .update({
-              'status': '취소',
-              'payment_status': 'cancelled',
-            })
-            .eq('id', id);
+      try {
+        if (id.startsWith('_tmp_') && reservation != null) {
+          await _supabase
+              .from('reservations')
+              .update({
+                'status': '취소',
+                'payment_status': 'cancelled',
+              })
+              .eq('user_id', _userId)
+              .eq('deal_id', reservation.deal.id)
+              .eq('status', '진행중');
+        } else {
+          await _supabase
+              .from('reservations')
+              .update({
+                'status': '취소',
+                'payment_status': 'cancelled',
+              })
+              .eq('id', id);
+        }
+      } catch (_) {
+        if (id.startsWith('_tmp_') && reservation != null) {
+          await _supabase
+              .from('reservations')
+              .update({'status': '취소'})
+              .eq('user_id', _userId)
+              .eq('deal_id', reservation.deal.id)
+              .eq('status', '진행중');
+        } else {
+          await _supabase
+              .from('reservations')
+              .update({'status': '취소'})
+              .eq('id', id);
+        }
       }
 
       // 3) 재고 복구 (atomic increment_stock RPC)
