@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../core/theme/app_colors.dart';
 import '../core/utils/app_haptics.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/map/map_screen.dart';
@@ -36,7 +37,28 @@ class _MainScaffoldState extends State<MainScaffold> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // [Antigravity | 2026-08-21] 수정범위: MainScaffold — Apple Liquid Glass + Toss 인터랙션 플로팅 캡슐 내비게이션 바 전면 구현
+    // 라이트/다크 모드별 일체감 있는 유리 질감 테마 정의
+    final capsuleBg = isDark
+        ? const Color(0xFF1A1B20).withValues(alpha: 0.90)
+        : Colors.white.withValues(alpha: 0.88);
+    final capsuleBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.08);
+    final capsuleShadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.45)
+        : Colors.black.withValues(alpha: 0.08);
+
+    final activeItemBg = AppColors.primary;
+    const activeItemIconColor = Colors.white;
+
+    final inactiveItemBg = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.04);
+    final inactiveItemIconColor = isDark
+        ? Colors.white.withValues(alpha: 0.70)
+        : Colors.black.withValues(alpha: 0.55);
+
+    // [Antigravity | 2026-08-21] 수정범위: MainScaffold — Apple Liquid Glass + Toss 인터랙션 플로팅 캡슐 내비게이션 바 라이트/다크 테마 완벽 동기화
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _currentIndex, children: _screens),
@@ -58,9 +80,9 @@ class _MainScaffoldState extends State<MainScaffold> {
               borderRadius: BorderRadius.circular(36),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.22),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
+                  color: capsuleShadowColor,
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                   spreadRadius: -2,
                 ),
               ],
@@ -72,10 +94,10 @@ class _MainScaffoldState extends State<MainScaffold> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF16171B).withValues(alpha: 0.90),
+                    color: capsuleBg,
                     borderRadius: BorderRadius.circular(36),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.16),
+                      color: capsuleBorderColor,
                       width: 1,
                     ),
                   ),
@@ -99,16 +121,14 @@ class _MainScaffoldState extends State<MainScaffold> {
                               width: isActive ? 58 : 46,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: isActive
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.06),
+                                color: isActive ? activeItemBg : inactiveItemBg,
                                 borderRadius: BorderRadius.circular(isActive ? 24 : 23),
                                 boxShadow: isActive
                                     ? [
                                         BoxShadow(
-                                          color: Colors.white.withValues(alpha: 0.25),
+                                          color: AppColors.primary.withValues(alpha: 0.35),
                                           blurRadius: 10,
-                                          spreadRadius: 1,
+                                          spreadRadius: 0,
                                         ),
                                       ]
                                     : null,
@@ -122,8 +142,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                                     isActive ? item.activeIcon : item.icon,
                                     size: isActive ? 22 : 20,
                                     color: isActive
-                                        ? const Color(0xFF16171B)
-                                        : Colors.white.withValues(alpha: 0.75),
+                                        ? activeItemIconColor
+                                        : inactiveItemIconColor,
                                   ),
                                 ),
                               ),

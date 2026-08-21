@@ -67,6 +67,7 @@ class MyPageScreen extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0,
+                systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
               ),
             ),
           ),
