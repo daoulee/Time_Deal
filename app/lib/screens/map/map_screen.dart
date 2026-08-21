@@ -9,6 +9,7 @@ import '../../core/models/deal.dart';
 import '../../core/providers/deal_provider.dart';
 import '../../core/providers/location_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
 import '../../core/utils/formatters.dart';
 import '../deal_detail/deal_detail_screen.dart';
 
@@ -258,6 +259,22 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  int? _prevRadiusKm;
+
+  double _zoomForRadius(int km) {
+    switch (km) {
+      case 1:
+        return 14.3;
+      case 3:
+        return 13.0;
+      case 5:
+        return 12.1;
+      case 10:
+      default:
+        return 10.9;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final allDeals = context.watch<DealProvider>().deals;
@@ -282,10 +299,21 @@ class _MapScreenState extends State<MapScreen> {
       _prevMapCenter = currentCenter;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(currentCenter, 15.0),
+          CameraUpdate.newLatLngZoom(currentCenter, _zoomForRadius(loc.radiusKm)),
         );
       });
     }
+
+    // 반경 변경 시 카메라 줌 자동 조절
+    if (_prevRadiusKm != null && _prevRadiusKm != loc.radiusKm) {
+      _prevRadiusKm = loc.radiusKm;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(currentCenter, _zoomForRadius(loc.radiusKm)),
+        );
+      });
+    }
+    _prevRadiusKm ??= loc.radiusKm;
 
     return Scaffold(
       body: Stack(
@@ -294,7 +322,7 @@ class _MapScreenState extends State<MapScreen> {
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: _initialCenter,
-              zoom: 15.0,
+              zoom: _zoomForRadius(loc.radiusKm),
             ),
             onMapCreated: _onMapCreated,
             style: Theme.of(context).brightness == Brightness.dark
@@ -306,8 +334,8 @@ class _MapScreenState extends State<MapScreen> {
                 circleId: const CircleId('user_radius_circle'),
                 center: currentCenter,
                 radius: loc.radiusKm * 1000.0,
-                fillColor: AppColors.primary.withValues(alpha: 0.06),
-                strokeColor: AppColors.primary.withValues(alpha: 0.35),
+                fillColor: AppColors.primary.withValues(alpha: 0.16),
+                strokeColor: AppColors.primary.withValues(alpha: 0.85),
                 strokeWidth: 2,
               ),
             },
@@ -326,7 +354,8 @@ class _MapScreenState extends State<MapScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: GestureDetector(
-                  onTap: () => _showRadiusPicker(context, loc),
+                  onTap: () => _showRadiusPicker(
+                      context, loc, _mapController, currentCenter, _zoomForRadius),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
@@ -563,8 +592,14 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-/// [Antigravity | 2026-08-21] 수정범위: _showRadiusPicker — 사용자가 원하는 탐색 반경(1km, 3km, 5km, 10km)을 즉시 변경
-void _showRadiusPicker(BuildContext context, LocationProvider loc) {
+/// [Antigravity | 2026-08-21] 수정범위: _showRadiusPicker — 사용자가 원하는 탐색 반경(1km, 3km, 5km, 10km)을 즉시 변경하고 구글맵 카메라를 오렌지 반경 원 크기에 맞게 자동 줌
+void _showRadiusPicker(
+  BuildContext context,
+  LocationProvider loc,
+  GoogleMapController? mapController,
+  LatLng center,
+  double Function(int) zoomForRadius,
+) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -620,7 +655,11 @@ void _showRadiusPicker(BuildContext context, LocationProvider loc) {
                           ),
                         ),
                         onPressed: () {
+                          AppHaptics.selection();
                           loc.setRadiusKm(r);
+                          mapController?.animateCamera(
+                            CameraUpdate.newLatLngZoom(center, zoomForRadius(r)),
+                          );
                           Navigator.pop(ctx);
                         },
                         child: Text(
