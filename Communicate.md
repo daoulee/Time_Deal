@@ -20,6 +20,12 @@
 > **담당:** UI/UX 모더니제이션, Google Maps & GPS 연동, OAuth 로그인/가입 플로우, 실기기 빌드 및 배포
 
 ### 📋 최근 완료 작업 (2026-08-21)
+- **게스트(비로그인) 브라우징 상태 예약 및 찜하기 차단 버그 원천 해결 (`reservation_provider.dart`, `wishlist_provider.dart`)**:
+  - `_userId`를 로그인 세션만 바라보던 문제에서 `DeviceId.value`(로그인 시 계정 ID, 비로그인 시 기기 고유 UUID)로 복구하여 비로그인 사용자도 즉시 타임딜 예약 및 찜하기가 원활히 작동하도록 수정
+- **'취소내역' 탭 명칭 변경 및 깔끔한 보관 내역 카드 UI 전면 개편 (`reservation_screen.dart`)**:
+  - 탭 명칭을 `취소` ➔ `취소내역`으로 변경
+  - 취소된 카드에서는 혼란을 주던 `[스마트 픽업 티켓 & 길찾기 보기]` 액션 버튼을 제거하고, `취소 완료 (가결제 자동 해제)` 조용한 보관 배지만 노출하여 사용자 혼란 원천 방지
+  - 마이페이지 요약 스탯(`예약 내역`)에서 취소된 건을 제외하고 실제 유효 예약 건수만 정확히 집계하도록 개선
 - **예약 내역(ReservationScreen) 당겨서 새로고침(Pull-to-Refresh) 탑재 및 Supabase DB 상태 완전 동기화**:
   - `ReservationScreen` 내 `RefreshIndicator.adaptive`를 장착하여 사용자가 언제든 아래로 당겨 Supabase 최신 상태로 즉시 재동기화 가능
   - Supabase `reservations` 테이블에 잔류해 있던 떡볶이 세트 예약 행을 REST API를 통해 '취소' 상태로 완벽 정리
