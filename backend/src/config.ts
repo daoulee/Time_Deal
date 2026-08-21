@@ -15,6 +15,8 @@ export const config = {
   supabaseUrl: read("SUPABASE_URL"),
   supabaseAnonKey: read("SUPABASE_ANON_KEY"),
   supabaseServiceRoleKey: read("SUPABASE_SERVICE_ROLE_KEY"),
+  mobileSupabaseUrl: read("MOBILE_SUPABASE_URL"),
+  mobileSupabaseAnonKey: read("MOBILE_SUPABASE_ANON_KEY"),
   publicBackendUrl: read("PUBLIC_BACKEND_URL"),
   enableSampleData: read("ENABLE_SAMPLE_DATA") === "true" && nodeEnv !== "production",
   productImageBucket: read("PRODUCT_IMAGE_BUCKET") || "product-images",
@@ -27,6 +29,7 @@ export const config = {
 } as const;
 
 export const isSupabaseConfigured = (): boolean => Boolean(config.supabaseUrl && config.supabaseAnonKey && config.supabaseServiceRoleKey);
+export const isMobileSupabaseConfigured = (): boolean => Boolean(config.mobileSupabaseUrl && config.mobileSupabaseAnonKey);
 export const isTossConfigured = (): boolean => Boolean(config.tossSecretKey);
 export const isAllowedRedirectOrigin = (origin: string): boolean => config.authRedirectOrigins.includes(origin);
 export const passwordResetRedirect = (): string => `${config.authRedirectOrigins[0] ?? "http://localhost:3100"}/auth/reset-password`;

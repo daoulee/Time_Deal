@@ -24,6 +24,14 @@ const imageUploadRequest = z.object({ fileName: z.string().min(1).max(120).regex
 type AuctionRow = Record<string, any>;
 type BidRow = Record<string, any>;
 
+// 입찰 목록에 노출되는 이름은 개인정보 보호를 위해 가운데 글자를 가립니다. (예: 엄태훈 -> 엄*훈)
+function maskName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length <= 1) return trimmed;
+  if (trimmed.length === 2) return `${trimmed[0]}*`;
+  return `${trimmed[0]}${"*".repeat(trimmed.length - 2)}${trimmed[trimmed.length - 1]}`;
+}
+
 const mapAuction = (row: AuctionRow, bids: BidRow[] = []) => ({
   id: row.id,
   title: row.title,
@@ -47,7 +55,7 @@ const mapAuction = (row: AuctionRow, bids: BidRow[] = []) => ({
     sellerHandlesDelivery: row.seller_handles_delivery,
   },
   feePromo: row.fee_promo,
-  bids: bids.map((bid) => ({ userId: bid.user_id, userName: bid.profiles?.name ?? "이웃", amount: bid.amount, bidTime: bid.created_at })),
+  bids: bids.map((bid) => ({ userId: bid.user_id, userName: maskName(bid.profiles?.name ?? "이웃"), amount: bid.amount, bidTime: bid.created_at })),
 });
 
 // 낙관적 지연 만료: live→payment_pending(낙찰 있음)/completed(유찰), payment_pending→re_auction(+페널티)

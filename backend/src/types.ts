@@ -4,4 +4,5 @@
  * 새 역할을 추가하면 SQL app_role과 권한 미들웨어도 함께 변경해야 합니다.
  */
 export type AppRole="user"|"seller"|"admin"; export type CurrentUser={id:string;email:string;name:string;emailVerified:boolean;role:AppRole};
-declare module "hono" { interface ContextVariableMap { currentUser:CurrentUser|null } }
+export type MobileUser={id:string;email:string};
+declare module "hono" { interface ContextVariableMap { currentUser:CurrentUser|null; mobileUser:MobileUser|null; mobileToken:string|null } }

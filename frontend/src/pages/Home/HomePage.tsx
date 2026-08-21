@@ -133,35 +133,40 @@ const HERO_SLIDES = [
     tag: "",
     title: "신선함을 먼저 생각하는 \n우리 동네 타임딜",
     desc: "성수동 소상공인 마감 재고 최대 70% 타임딜 오픈!\n이웃들과 함께 모여 확정 할인가로 당일 픽업하세요.",
-    img: "https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?auto=format&fit=crop&w=1600&q=80",
+    // 신선한 과일·채소가 가득한 로컬 마켓/장보기 이미지
+    img: "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "5",
     tag: "",
     title: "갓 구운 빵을\n오늘 바로 반값에",
     desc: "성수 명품 베이커리 당일 식빵·소금빵 반값 할인!\n골든 타임 한정으로 갓 구운 풍미 그대로 만납니다.",
-    img: "https://images.unsplash.com/photo-1663904460424-91895028aa9e?auto=format&fit=crop&w=1600&q=80",
+    // 갓 구워진 윤기 나는 크루아상·소금빵·식빵 베이커리 이미지
+    img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "2",
     tag: "",
     title: "퇴근길 도보 5분,\n우리 동네 픽업 특가",
     desc: "도보 5분 내 매장 픽업 퇴근길 전 품목 균일가 특가!\n동네 이웃과 함께 바로 픽업하는 초간편 공구.",
-    img: "https://images.unsplash.com/photo-1628689469838-524a4a973b8e?auto=format&fit=crop&w=1600&q=80",
+    // 퇴근길 픽업하기 좋은 정갈한 포장 요리 및 델리 박스 이미지
+    img: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "4",
     tag: "",
     title: "오늘 아침 산란,\n특란 30구 신선특가",
     desc: "당일 산란한 신선란만 골라 담은 타임딜!\n아침 든든하게 채우는 신선식품을 지금 만나보세요.",
-    img: "https://images.unsplash.com/photo-1690983329845-638ec321647d?auto=format&fit=crop&w=1600&q=80",
+    // 신선한 갈색 달걀/신선란 트레이 이미지
+    img: "https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&w=1600&q=80",
   },
   {
     id: "9",
     tag: "",
     title: "친환경 제철 야채,\n오늘만 이 가격",
     desc: "산지에서 바로 온 친환경 방울토마토 타임딜!\n건강한 한 끼를 동네 이웃과 함께 나눠보세요.",
-    img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1600&q=80",
+    // 산지직송 느낌의 싱싱한 완숙 방울토마토 및 야채 이미지
+    img: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=1600&q=80",
   },
 ];
 
@@ -1641,7 +1646,7 @@ export default function HomePage() {
               userSelect: "none",
             }}
           >
-          직판장 경매
+            직판장 경매
           </button>
         </div>
       </nav>

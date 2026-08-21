@@ -45,6 +45,11 @@ export default function AuctionDetailPage() {
   useEffect(() => { if (paymentSecondsLeft === 0) void load(); }, [paymentSecondsLeft, load]);
 
   const minBid = useMemo(() => { if (!auction) return 0; return auction.highestBidderId || auction.currentPrice > auction.startPrice ? auction.currentPrice + auction.minBidIncrement : auction.currentPrice; }, [auction]);
+  const winnerName = useMemo(() => {
+    if (!auction?.highestBidderId) return null;
+    const winningBid = auction.bids.find((entry) => entry.userId === auction.highestBidderId);
+    return winningBid?.userName ?? null;
+  }, [auction]);
 
   const bid = async (amount: number) => {
     if (!id || !session?.user) { navigate("/auth"); return; }
@@ -85,6 +90,7 @@ export default function AuctionDetailPage() {
           <div className="detail-price"><span>현재가</span><strong>{formatPrice(auction.currentPrice)}</strong></div>
 
           {isLive && <p className="deal-detail-countdown">경매 마감까지 {formatCountdown(auction.endsAt, nowMs)}</p>}
+          {!isLive && winnerName && <p className="deal-detail-countdown">🎉 낙찰자: <strong>{winnerName}</strong>{isWinner ? " (나)" : ""}</p>}
 
           <div className="auction-escrow-info">
             <ShieldCheck size={18} />
@@ -119,7 +125,7 @@ export default function AuctionDetailPage() {
       {showPaymentModal && (
         <div className="auction-payment-modal-backdrop">
           <div className="auction-payment-modal">
-            <h2>낙찰을 축하합니다!</h2>
+            <h2>{session?.user?.name ? `${session.user.name}님, 낙찰을 축하합니다!` : "낙찰을 축하합니다!"}</h2>
             <p className="auction-payment-countdown">결제 남은 시간 <strong>{formatCountdown(auction.paymentDeadline!, nowMs)}</strong></p>
             <p className="muted-copy">5분 이내 결제하지 않으면 낙찰이 자동 취소되고 이 상품에 재입찰할 수 없습니다.</p>
 

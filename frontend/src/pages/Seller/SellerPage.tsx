@@ -14,7 +14,7 @@ import { AUCTION_STATUS_LABEL, feeRateLabel, type AuctionBid, type AuctionItem, 
 import { formatPrice } from "@/shared/catalog";
 
 const info: Record<string, [string, string]> = {
-  "/seller": ["판매자 대시보드", "상품·fulfillment·문의와 예약 금액을 실시간 집계합니다."], "/seller/products": ["상품 관리", "상품을 수정·숨김·검수 요청하고 이미지와 재고를 관리합니다."], "/seller/products/new": ["상품 등록", "상품·사진·타임딜을 한 번에 등록하면 즉시 판매가 시작됩니다."], "/seller/orders": ["주문 현황", "판매자별 fulfillment를 정방향으로 처리합니다."], "/seller/analytics": ["통계·픽업", "판매 현황·수익과 품목별 실적을 그래프로 확인합니다."], "/seller/auction": ["🐟 직판장 경매", "경매를 등록하고 진행 상태를 관리합니다."], "/seller/settlement": ["경매 정산", "낙찰 대금 에스크로 상태와 정산 내역을 확인합니다."], "/seller/restock-requests": ["재입고 요청", "고객이 보낸 재입고 요청을 확인하고 예상 입고일을 답변합니다."], "/seller/inquiries": ["판매자 문의", "배정된 고객 문의 대화를 확인하고 답변합니다."],
+  "/seller": ["판매자 대시보드", "상품·fulfillment·문의와 예약 금액을 실시간 집계합니다."], "/seller/products": ["상품 관리", "상품을 수정·숨김·검수 요청하고 이미지와 재고를 관리합니다."], "/seller/products/new": ["상품 등록", "상품·사진·타임딜을 한 번에 등록하면 즉시 판매가 시작됩니다."], "/seller/orders": ["주문 현황", "판매자별 fulfillment를 정방향으로 처리합니다."], "/seller/analytics": ["통계·픽업", "판매 현황·수익과 품목별 실적을 그래프로 확인합니다."], "/seller/auction": ["직판장 경매", "경매를 등록하고 진행 상태를 관리합니다."], "/seller/settlement": ["경매 정산", "낙찰 대금 에스크로 상태와 정산 내역을 확인합니다."], "/seller/restock-requests": ["재입고 요청", "고객이 보낸 재입고 요청을 확인하고 예상 입고일을 답변합니다."], "/seller/inquiries": ["판매자 문의", "배정된 고객 문의 대화를 확인하고 답변합니다."],
 };
 const str = (item: RawRecord, key: string) => String(item[key] ?? ""); const num = (item: RawRecord, key: string) => Number(item[key] ?? 0);
 const date = (input?: string) => input ? new Date(input).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }) : "-";
