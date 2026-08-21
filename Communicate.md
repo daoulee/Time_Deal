@@ -20,6 +20,10 @@
 > **담당:** UI/UX 모더니제이션, Google Maps & GPS 연동, OAuth 로그인/가입 플로우, 실기기 빌드 및 배포
 
 ### 📋 최근 완료 작업 (2026-08-21)
+- **예약 완료 시 부드러운 '예약 완료 !' 스프링 미니 팝업 모달 신규 탑재 (`deal_detail_screen.dart`)**:
+  - 가결제 예약 성공 즉시 토스/애플 스타일의 부드러운 `Curves.easeOutBack` 스프링 팝업 창 노출
+  - 체크 서클 아이콘, 매장/상품명 요약, 가결제 보증금 및 '매장 방문 픽업 시 100% 자동 취소' 안심 안내 박스 표시
+  - `[스마트 티켓 확인하기]` 버튼 클릭 시 자연스럽게 `PickupTicketScreen`으로 전환
 - **Supabase DB 스키마 Fallback Insert/Update 구축 (`reservation_provider.dart`)**:
   - 원격 Supabase DB에 `deposit_amount`/`payment_status` 컬럼 유무와 무관하게 100% 예약 생성이 보장되도록 `try-catch` Graceful Schema Fallback 메커니즘 구축
 - **게스트(비로그인) 브라우징 상태 예약 및 찜하기 차단 버그 원천 해결 (`reservation_provider.dart`, `wishlist_provider.dart`)**:
