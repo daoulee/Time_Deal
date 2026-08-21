@@ -14,7 +14,7 @@ import '../../core/utils/formatters.dart';
 import '../../widgets/countdown_timer.dart';
 import '../../widgets/stock_gauge.dart';
 import '../auth/login_screen.dart';
-import '../my_page/reservation_screen.dart';
+import '../reservation/pickup_ticket_screen.dart';
 import '../store/store_screen.dart';
 
 class DealDetailScreen extends StatefulWidget {
@@ -626,32 +626,29 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
                             setDialogState(() => isSubmitting = true);
                             final messenger = ScaffoldMessenger.of(context);
                             final nav = Navigator.of(context);
-                            final ok = await context
-                                .read<ReservationProvider>()
-                                .reserve(deal, paymentMethod: selectedMethod);
+                            final rp = context.read<ReservationProvider>();
+                            final ok = await rp.reserve(deal, paymentMethod: selectedMethod);
                             if (!context.mounted) return;
-                            if (ok) AppHaptics.success();
-                            nav.pop();
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(ok
-                                    ? '가결제 완료! 매장 방문 픽업 시 가결제는 자동 취소됩니다'
-                                    : '예약할 수 없어요 (품절 또는 이미 예약됨)'),
-                                action: ok
-                                    ? SnackBarAction(
-                                        label: '내역 보기',
-                                        textColor: Colors.white,
-                                        onPressed: () => nav.push(
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const ReservationScreen(),
-                                          ),
-                                        ),
-                                      )
-                                    : null,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                            if (ok) {
+                              AppHaptics.success();
+                              nav.pop();
+                              final newReservation = rp.all.isNotEmpty ? rp.all.first : null;
+                              if (newReservation != null) {
+                                nav.push(
+                                  MaterialPageRoute(
+                                    builder: (_) => PickupTicketScreen(reservation: newReservation),
+                                  ),
+                                );
+                              }
+                            } else {
+                              nav.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('예약할 수 없어요 (품절 또는 이미 예약됨)'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
                           },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,

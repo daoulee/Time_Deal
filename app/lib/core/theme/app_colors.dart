@@ -4,6 +4,7 @@ class AppColors {
   // UX: 핫핑크(#FF005F) → 오렌지레드(#FF4500)로 변경. 긴박감은 유지하되 눈 피로 감소
   static const primary = Color(0xFFFF4500);
   static const primaryDark = Color(0xFFCC3700);
+  static const discountRed = Color(0xFFEF4444);
 
   // UX: 보조 텍스트 통일 컬러. 기존 Colors.grey[400~600] 혼재 → 단일값으로 일관성 확보
   static const textSecondary = Color(0xFF858585);
