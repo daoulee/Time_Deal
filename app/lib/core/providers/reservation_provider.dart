@@ -23,6 +23,8 @@ class ReservationProvider extends ChangeNotifier {
     _load();
   }
 
+  Future<void> refresh() => _load();
+
   Future<void> _load() async {
     if (_userId.isEmpty) return; // 비로그인 시 조회 스킵
     // 내 예약 목록 (user_id 기준)

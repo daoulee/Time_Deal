@@ -68,27 +68,40 @@ class _ReservationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = context.watch<ReservationProvider>().byStatus(status);
+    final rp = context.watch<ReservationProvider>();
+    final items = rp.byStatus(status);
 
-    if (items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(LucideIcons.clipboardList, size: 48, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text('$status 예약이 없어요',
-                style: TextStyle(fontSize: 14, color: Colors.grey[400])),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => _ReservationCard(reservation: items[i]),
+    return RefreshIndicator.adaptive(
+      color: AppColors.primary,
+      onRefresh: () async {
+        AppHaptics.selection();
+        await rp.refresh();
+      },
+      child: items.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.clipboardList, size: 48, color: Colors.grey[300]),
+                      const SizedBox(height: 12),
+                      Text('$status 예약이 없어요',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[400])),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (_, i) => _ReservationCard(reservation: items[i]),
+            ),
     );
   }
 }
