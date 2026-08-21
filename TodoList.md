@@ -113,7 +113,7 @@
   - [x] `_NotifTile` — `Container` → `Material` 래핑 (잉크 스플래시 정상화)
 - [x] **실기기 설치 완료** — GreenVision iPhone (iOS 26.5.2) USB-C 연결, release 모드 7일 유효
 - [x] **Git push** — github.com/daoulee/Time_Deal.git (README 충돌 해결 후 완료, 2026-08-13)
-- [ ] 전체 플로우 E2E 테스트 (소비자 / 사장님 기기 동시) — 남은 필수 항목
+- [x] 전체 플로우 E2E 테스트 (소비자 / 사장님 기기 동시 및 가결제/스마트티켓/취소내역/Fallback 종합 검증 완료, 2026-08-21)
 
 ### 3-B. 문서 정리
 - [x] `Report.md` 업데이트 (2026-08-08)
@@ -125,7 +125,7 @@
 ### 3-C. 발표 리허설
 - [ ] 두 기기 동시 데모 리허설 (3회 이상)
 - [ ] 발표 사이트 최종 확인
-- [ ] Supabase 무료 티어 usage 확인 (rate limit 주의)
+- [x] Supabase 무료 티어 usage 확인 (REST API 정상 쿼리 및 rate limit 안전 확인, 2026-08-21)
 - [x] **Supabase SQL Editor에서 `supabase_setup.sql` 실행** (decrement_stock RPC 등록, 2026-08-10)
 
 ---
