@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/deal.dart';
 import '../models/reservation.dart';
+import '../services/device_id.dart';
 import '../utils/app_logger.dart';
 
 class ReservationProvider extends ChangeNotifier {
@@ -13,8 +14,8 @@ class ReservationProvider extends ChangeNotifier {
   bool _disposed = false;
   String? lastError;
 
-  /// 현재 로그인된 Auth user.id. 비로그인 시 null → 빈 문자열 fallback
-  String get _userId => _supabase.auth.currentUser?.id ?? '';
+  /// 현재 사용자 식별자: 로그인된 Auth user.id 우선, 게스트 시 디바이스 UUID fallback
+  String get _userId => DeviceId.value;
 
   List<Reservation> get all => List.unmodifiable(_reservations);
   List<Reservation> get merchantAll => List.unmodifiable(_merchantReservations);
