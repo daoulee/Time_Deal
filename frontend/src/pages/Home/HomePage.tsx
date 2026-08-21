@@ -23,64 +23,10 @@ import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
-import { THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
+import { CATEGORY_GROUPS, THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
 import { getCatalog } from "@/shared/services/catalog";
 import { discountPercentOf, formatPrice as formatDealPrice, type Product } from "@/shared/catalog";
 import { getCart, getMyNotifications, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
-
-// ── 마켓컬리 스타일 2단 카테고리 데이터 ──
-const categoryData: Record<string, string[]> = {
-  "채소·과일": [
-    "친환경",
-    "제철과일",
-    "국산과일",
-    "수입과일",
-    "간편과일",
-    "냉동·견과일",
-  ],
-  신선식품: [
-    "정육·가공육",
-    "달걀·알류",
-    "수산·해산물",
-    "건어물",
-    "반찬·메인요리",
-  ],
-  "베이커리·델리": [
-    "식빵·모닝빵",
-    "베이글·식사빵",
-    "케이크·타르트",
-    "쿠키·스콘",
-    "샌드위치·샐러드",
-  ],
-  "간편식·밀키트": [
-    "국·탕·찌개",
-    "볶음·찜요리",
-    "파스타·면류",
-    "냉동볶음밥",
-    "떡볶이·분식",
-  ],
-  "면·양념·오일": [
-    "라면·국수",
-    "파스타면·소스",
-    "오일·식초",
-    "설탕·소금·조미료",
-    "장류·가루",
-  ],
-  "음료·우유": [
-    "우유·두유",
-    "생수·탄산수",
-    "과일·채소즙",
-    "커피·티백",
-    "요거트·디저트",
-  ],
-  "생활용품·뷰티": [
-    "화장지·물티슈",
-    "세탁세제·섬유유연제",
-    "주방세제",
-    "스킨케어",
-    "헤어·바디케어",
-  ],
-};
 
 // ── 검색어 순위 높은 순서대로 정확히 10개 키워드 리스트 ──
 const POPULAR_SEARCH_KEYWORDS = [
@@ -268,6 +214,18 @@ const INITIAL_REOPEN_ITEMS = [
     tags: ["신선보장", "골목 특가"],
   },
 ];
+
+// ── 현재 설정된 동네를 상품명 지역 접두어로 변환 (기본값은 성동구의 대표 동네) ──
+function deriveRegionLabel(location: string): string {
+  const trimmed = location.trim();
+  const withoutBunji = trimmed.replace(/\s*\d+가$/, "");
+  if (withoutBunji.endsWith("구")) return "성수동";
+  return withoutBunji || "성수동";
+}
+
+function applyRegionLabel(text: string, regionLabel: string): string {
+  return text.replace(/성수동|성수/g, regionLabel);
+}
 
 interface DealProduct {
   id: string;
@@ -683,24 +641,31 @@ export default function HomePage() {
     setter(e.currentTarget.scrollLeft > 10);
   };
 
+  // ── 설정된 동네에 맞춰 상품명 지역 접두어를 실시간으로 치환 ──
+  const regionLabel = useMemo(() => deriveRegionLabel(currentLocation), [currentLocation]);
+  const localizedProducts = useMemo(
+    () => PRODUCTS_DATA.map((item) => ({ ...item, name: applyRegionLabel(item.name, regionLabel) })),
+    [regionLabel],
+  );
+
   const rankingItems = useMemo(() => {
-    return [...PRODUCTS_DATA]
+    return [...localizedProducts]
       .filter((item) => RANKING_PARTICIPANTS[item.id] !== undefined)
       .sort((a, b) => RANKING_PARTICIPANTS[b.id] - RANKING_PARTICIPANTS[a.id])
       .slice(0, 10);
-  }, []);
+  }, [localizedProducts]);
 
   const categoryRankingItems = useMemo(() => {
     if (rankingCategoryTab === "전체") {
-      return PRODUCTS_DATA.slice(0, 9);
+      return localizedProducts.slice(0, 9);
     }
-    const matched = PRODUCTS_DATA.filter(
+    const matched = localizedProducts.filter(
       (item) =>
         item.category.includes(rankingCategoryTab) ||
         item.name.includes(rankingCategoryTab),
     );
-    return (matched.length > 0 ? matched : PRODUCTS_DATA).slice(0, 9);
-  }, [rankingCategoryTab]);
+    return (matched.length > 0 ? matched : localizedProducts).slice(0, 9);
+  }, [rankingCategoryTab, localizedProducts]);
 
   const renderProductCard = (item: DealProduct) => {
     return (
@@ -1451,10 +1416,14 @@ export default function HomePage() {
                       padding: "8px 0",
                     }}
                   >
-                    {Object.keys(categoryData).map((catName) => (
+                    {Object.keys(CATEGORY_GROUPS).map((catName) => (
                       <div
                         key={catName}
                         onMouseEnter={() => setHoveredCategory(catName)}
+                        onClick={() => {
+                          setIsCategoryMenuOpen(false);
+                          navigate(`/products?category=${encodeURIComponent(catName)}`);
+                        }}
                         style={{
                           padding: "11px 18px",
                           fontSize: 14,
@@ -1490,6 +1459,10 @@ export default function HomePage() {
                     }}
                   >
                     <div
+                      onClick={() => {
+                        setIsCategoryMenuOpen(false);
+                        navigate(`/products?category=${encodeURIComponent(hoveredCategory)}`);
+                      }}
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
@@ -1497,17 +1470,17 @@ export default function HomePage() {
                         marginBottom: 4,
                         borderBottom: `1px solid ${TOKENS.colors.borderLight}`,
                         paddingBottom: 6,
+                        cursor: "pointer",
                       }}
                     >
                       {hoveredCategory} 전체보기
                     </div>
-                    {categoryData[hoveredCategory]?.map((subItem) => (
+                    {CATEGORY_GROUPS[hoveredCategory]?.map((subItem) => (
                       <div
                         key={subItem}
                         onClick={() => {
-                          setSelectedCategory(subItem);
                           setIsCategoryMenuOpen(false);
-                          showToast(`[${subItem}] 카테고리가 선택되었습니다.`);
+                          navigate(`/products?category=${encodeURIComponent(hoveredCategory)}&sub=${encodeURIComponent(subItem)}`);
                         }}
                         style={{
                           fontSize: 14,
@@ -2592,7 +2565,7 @@ export default function HomePage() {
                 padding: "4px 2px",
               }}
             >
-              {PRODUCTS_DATA.slice(2, 10).map((item) => (
+              {localizedProducts.slice(2, 10).map((item) => (
                 <div
                   key={item.id}
                   style={{
@@ -2978,7 +2951,7 @@ export default function HomePage() {
             }}
           >
             {["10", "4", "8", "6"]
-              .map((id) => PRODUCTS_DATA.find((p) => p.id === id))
+              .map((id) => localizedProducts.find((p) => p.id === id))
               .filter((item): item is DealProduct => Boolean(item))
               .map((item) => (
                 <div
