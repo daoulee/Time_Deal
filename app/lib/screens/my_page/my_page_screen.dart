@@ -209,7 +209,7 @@ class MyPageScreen extends StatelessWidget {
               _ModernStatCard(
                 icon: LucideIcons.calendarCheck,
                 label: '예약 내역',
-                value: '${rp.all.length}',
+                value: '${rp.all.where((r) => r.status != '취소').length}',
                 unit: '건',
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const ReservationScreen())),

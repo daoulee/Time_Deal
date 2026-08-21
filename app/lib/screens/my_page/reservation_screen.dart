@@ -45,14 +45,13 @@ class _ReservationScreenState extends State<ReservationScreen>
           tabs: const [
             Tab(text: '진행중'),
             Tab(text: '픽업완료'),
-            Tab(text: '취소'),
+            Tab(text: '취소내역'),
           ],
         ),
-        // [Claude | 2026-08-21] 수정범위: TabBar dividerColor 추가 — M3 기본 전체폭 구분선(검은 줄) 제거
       ),
       body: TabBarView(
         controller: _tab,
-        children: [
+        children: const [
           _ReservationList(status: '진행중'),
           _ReservationList(status: '픽업완료'),
           _ReservationList(status: '취소'),
@@ -70,6 +69,7 @@ class _ReservationList extends StatelessWidget {
   Widget build(BuildContext context) {
     final rp = context.watch<ReservationProvider>();
     final items = rp.byStatus(status);
+    final emptyLabel = status == '취소' ? '취소된 내역이 없어요' : '$status 예약이 없어요';
 
     return RefreshIndicator.adaptive(
       color: AppColors.primary,
@@ -88,7 +88,7 @@ class _ReservationList extends StatelessWidget {
                     children: [
                       Icon(LucideIcons.clipboardList, size: 48, color: Colors.grey[300]),
                       const SizedBox(height: 12),
-                      Text('$status 예약이 없어요',
+                      Text(emptyLabel,
                           style: TextStyle(fontSize: 14, color: Colors.grey[400])),
                     ],
                   ),
@@ -113,26 +113,33 @@ class _ReservationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = reservation;
+    final isCancelled = r.status == '취소';
 
     return Material(
       color: Theme.of(context).cardTheme.color,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          AppHaptics.selection();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => PickupTicketScreen(reservation: r),
-            ),
-          );
-        },
+        onTap: isCancelled
+            ? null
+            : () {
+                AppHaptics.selection();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PickupTicketScreen(reservation: r),
+                  ),
+                );
+              },
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            border: Border.all(
+              color: isCancelled
+                  ? Colors.grey.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.15),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,11 +150,17 @@ class _ReservationCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
+                      color: isCancelled
+                          ? Colors.grey.withValues(alpha: 0.08)
+                          : AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Icon(r.deal.icon, size: 22, color: AppColors.primary),
+                      child: Icon(
+                        r.deal.icon,
+                        size: 22,
+                        color: isCancelled ? Colors.grey[400] : AppColors.primary,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -155,12 +168,19 @@ class _ReservationCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(r.deal.storeName,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        Text(
+                          r.deal.storeName,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        ),
                         const SizedBox(height: 2),
-                        Text(r.deal.title,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700)),
+                        Text(
+                          r.deal.title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isCancelled ? Colors.grey[600] : null,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -171,7 +191,7 @@ class _ReservationCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      r.status,
+                      isCancelled ? '취소 완료' : r.status,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -188,96 +208,103 @@ class _ReservationCard extends StatelessWidget {
                 children: [
                   Icon(LucideIcons.tag, size: 14, color: Colors.grey[400]),
                   const SizedBox(width: 6),
-                  Text('${r.formattedPrice}원',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary)),
+                  Text(
+                    '${r.formattedPrice}원',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isCancelled ? Colors.grey[500] : AppColors.primary,
+                    ),
+                  ),
                   const Spacer(),
                   Icon(LucideIcons.clock, size: 13, color: Colors.grey[400]),
                   const SizedBox(width: 4),
-                  Text(r.formattedDate,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  Text(
+                    r.formattedDate,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // [Antigravity | 2026-08-21] 수정범위: _ReservationCard — 스윙 방식 노쇼 방지 가결제(Hold) 상태 배너
+              // 가결제 상태 배너
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: r.status == '픽업완료'
-                      ? const Color(0xFF10B981).withValues(alpha: 0.08)
-                      : r.status == '진행중'
-                          ? AppColors.primary.withValues(alpha: 0.06)
-                          : Colors.grey.withValues(alpha: 0.08),
+                  color: isCancelled
+                      ? Colors.grey.withValues(alpha: 0.06)
+                      : r.status == '픽업완료'
+                          ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                          : AppColors.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      r.status == '픽업완료'
-                          ? LucideIcons.checkCircle2
-                          : r.status == '진행중'
-                              ? LucideIcons.shieldAlert
-                              : LucideIcons.info,
+                      isCancelled
+                          ? LucideIcons.info
+                          : r.status == '픽업완료'
+                              ? LucideIcons.checkCircle2
+                              : LucideIcons.shieldAlert,
                       size: 14,
-                      color: r.status == '픽업완료'
-                          ? const Color(0xFF10B981)
-                          : r.status == '진행중'
-                              ? AppColors.primary
-                              : Colors.grey[600],
+                      color: isCancelled
+                          ? Colors.grey[500]
+                          : r.status == '픽업완료'
+                              ? const Color(0xFF10B981)
+                              : AppColors.primary,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        r.status == '진행중'
-                            ? '노쇼 보증금 ${r.formattedDeposit}원 가결제 홀드중 (방문 시 자동 취소)'
+                        isCancelled
+                            ? '예약 취소 완료 (가결제 보증금 0원 자동 해제)'
                             : r.status == '픽업완료'
                                 ? '가결제 100% 자동 취소 완료 (0원 청구)'
-                                : r.paymentStatusLabel,
+                                : '노쇼 보증금 ${r.formattedDeposit}원 가결제 홀드중 (방문 시 자동 취소)',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: r.status == '픽업완료'
-                              ? const Color(0xFF10B981)
-                              : r.status == '진행중'
-                                  ? AppColors.primary
-                                  : Colors.grey[600],
+                          color: isCancelled
+                              ? Colors.grey[600]
+                              : r.status == '픽업완료'
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.primary,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
 
-              // 스마트 픽업 티켓 열기 버튼
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(LucideIcons.ticket, size: 15, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      '스마트 픽업 티켓 & 길찾기 보기',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+              // 진행중 / 픽업완료 상태일 때만 스마트 픽업 티켓 열기 버튼 노출 (취소된 내역에는 미노출)
+              if (!isCancelled) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.ticket, size: 15, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      const Text(
+                        '스마트 픽업 티켓 & 길찾기 보기',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(LucideIcons.chevronRight, size: 14, color: AppColors.primary),
-                  ],
+                      const SizedBox(width: 4),
+                      Icon(LucideIcons.chevronRight, size: 14, color: AppColors.primary),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
