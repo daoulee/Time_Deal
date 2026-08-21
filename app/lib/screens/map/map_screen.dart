@@ -460,14 +460,27 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    height: 92,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: deals.length,
-                      itemBuilder: (_, i) {
+                  deals.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: Text(
+                              '현재 반경 내 진행 중인 타임딜이 없어요',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[500]),
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          height: 92,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: deals.length,
+                            itemBuilder: (_, i) {
                         final deal = deals[i];
                         final isSelected = _selectedDeal?.id == deal.id;
                         return GestureDetector(

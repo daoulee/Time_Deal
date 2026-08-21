@@ -9,7 +9,7 @@ import '../utils/app_logger.dart';
 class DealProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
 
-  List<Deal> _deals = List.from(mockDeals);
+  List<Deal> _deals = [];
   RealtimeChannel? _channel;
   Timer? _expiryTimer;
   bool _disposed = false;
@@ -37,15 +37,10 @@ class DealProvider extends ChangeNotifier {
           .gt('expires_at', DateTime.now().toUtc().toIso8601String())
           .order('created_at', ascending: false) as List<dynamic>;
       final loaded = data.map((j) => Deal.fromJson(j as Map<String, dynamic>)).toList();
-      // Supabase에 실제 딜이 있으면 사용, 없으면 mock 유지 (데모용)
-      if (loaded.isNotEmpty) {
-        _deals = loaded;
-      }
+      _deals = loaded;
     } catch (e, st) {
-      AppLogger.error('Failed to load deals', e, st);
+      AppLogger.error('Failed to load deals from Supabase', e, st);
       error = e.toString();
-      if (_disposed) return;
-      notifyListeners();
     }
     _applyDistancesIfKnown();
     if (_disposed) return;
@@ -90,12 +85,7 @@ class DealProvider extends ChangeNotifier {
     }
   }
 
-  // 실제 동네가 확인되기 전엔 빈 문자열 — generateMockDeals()가 빈 값이면 '우리동네'로 대체 표시함
-  String _currentNeighborhood = '';
-
   void updateDistances(double userLat, double userLng, {String? neighborhood, double? centerLat, double? centerLng}) {
-    // 시뮬레이터 기본 GPS(미국 쿠퍼티노 등) 대응: 기준 좌표에서 50km 넘게 벗어나면
-    // 실제 GPS 대신 기준 좌표(딜 중심)를 사용해 거리가 비정상적으로 크게 뜨는 것 방지
     final refLat = centerLat ?? dealCenter.lat;
     final refLng = centerLng ?? dealCenter.lng;
     final distToCenter = GeoUtils.haversine(userLat, userLng, refLat, refLng);
@@ -106,21 +96,11 @@ class DealProvider extends ChangeNotifier {
       _lastLat = userLat;
       _lastLng = userLng;
     }
-    if (neighborhood != null && neighborhood.isNotEmpty) {
-      _currentNeighborhood = neighborhood;
-    }
-
-    // 등록된 딜이 mock 딜뿐이라면, 사용자의 실제 GPS/동네 주변으로 mock 딜을 동적 생성
-    final onlyMocks = _deals.every((d) => d.id.startsWith('mock_'));
-    if (onlyMocks) {
-      _deals = generateMockDeals(userLat, userLng, _currentNeighborhood);
-    }
 
     _applyDistancesIfKnown();
     notifyListeners();
   }
-  // [Claude | 2026-08-21] 수정범위: updateDistances() — Kiro 지적사항 #2, 50km 초과 시 기준 좌표로 폴백하는 로직 복원 (시뮬레이터 GPS 대응)
-  // [Claude | 2026-08-21] 수정범위: _currentNeighborhood 초기값 — Kiro 지적사항 #3, 하드코딩된 '비산동' 대신 빈 문자열로 변경
+  // [Antigravity | 2026-08-21] 수정범위: DealProvider — 데모 목(mock) 데이터 전면 제거, Supabase 실시간 백엔드 데이터만 바인딩
 
   void _applyDistancesIfKnown() {
     if (_lastLat == null || _lastLng == null) return;
