@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { apiFailure, apiSuccess } from "../../http.js";
 import { getAnonSupabase, getAdminSupabase } from "../../supabase.js";
+import { translateAuthErrorMessage } from "../../auth-error.js";
 
 export const emailOtpRouter = new Hono();
 const emailInput = z.object({ email: z.string().email(), redirectTo: z.string().url().optional() });
@@ -34,7 +35,7 @@ emailOtpRouter.post("/send", async (c) => {
         emailRedirectTo: parsed.data.redirectTo,
       },
     });
-    if (error) return c.json(apiFailure("OTP_SEND_FAILED", error.message), 400);
+    if (error) return c.json(apiFailure("OTP_SEND_FAILED", translateAuthErrorMessage(error.message, "인증 코드를 보내지 못했습니다.")), 400);
     return c.json(apiSuccess({ sent: true, email: parsed.data.email }));
   } catch {
     return c.json(apiFailure("SUPABASE_UNCONFIGURED", "Supabase 환경변수를 먼저 설정하세요."), 503);
@@ -51,7 +52,7 @@ emailOtpRouter.post("/verify", async (c) => {
       token: parsed.data.token,
       type: parsed.data.type,
     });
-    if (error || !data.user || !data.session) return c.json(apiFailure("OTP_VERIFY_FAILED", error?.message ?? "인증 코드가 만료되었거나 올바르지 않습니다."), 401);
+    if (error || !data.user || !data.session) return c.json(apiFailure("OTP_VERIFY_FAILED", translateAuthErrorMessage(error?.message, "인증 코드가 만료되었거나 올바르지 않습니다.")), 401);
 
     const { data: profile } = await getAdminSupabase().from("profiles").select("name,role").eq("id", data.user.id).maybeSingle();
     return c.json(apiSuccess({ accessToken: data.session.access_token, user: userView(data.user, profile) }));

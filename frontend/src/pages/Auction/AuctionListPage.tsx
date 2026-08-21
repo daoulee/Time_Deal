@@ -62,7 +62,7 @@ export default function AuctionListPage() {
       <section className="page-hero compact">
         <div>
           <p>LIVE AUCTION</p>
-          <h1>🐟 직판장 경매</h1>
+          <h1>직판장 경매</h1>
           <span>오늘 들어온 산지 직송 수산물을 실시간 경매로 만나보세요. 낙찰 대금은 에스크로로 안전하게 보호됩니다.</span>
         </div>
       </section>

@@ -52,8 +52,8 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
     if (!session?.user) { setCartCount(0); setNotifications([]); setUnreadCount(0); return; }
     let active = true;
     const refresh = () => {
-      void getCart().then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });
-      void getMyNotifications().then((result) => { if (active && result.ok) { setNotifications(result.data?.notifications ?? []); setUnreadCount(result.data?.unreadCount ?? 0); } });
+      void getCart({ silent: true }).then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });
+      void getMyNotifications({ silent: true }).then((result) => { if (active && result.ok) { setNotifications(result.data?.notifications ?? []); setUnreadCount(result.data?.unreadCount ?? 0); } });
     };
     refresh();
     const timer = setInterval(refresh, 30000);

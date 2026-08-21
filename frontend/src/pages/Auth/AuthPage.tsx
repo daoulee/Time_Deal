@@ -11,6 +11,7 @@ import { authClient, setAuthToken } from "@/lib/auth";
 import { apiFetch, applySellerAccount, sendEmailOtp as requestEmailOtp, updateMyProfile } from "@/lib/api";
 import { isSupabaseAuthConfigured, startKakaoAuth, startNaverAuth } from "@/lib/supabase-auth";
 import { normalizeApiError, readResponseBody } from "@/lib/api-error";
+import { translateAuthErrorMessage } from "@/lib/auth-error";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
@@ -85,7 +86,7 @@ export default function AuthPage() {
         navigate("/", { replace: true });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "이메일 인증에 실패했습니다.");
+      toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "이메일 인증에 실패했습니다.") : "이메일 인증에 실패했습니다.");
     } finally {
       setSubmitting(false);
     }
@@ -93,12 +94,12 @@ export default function AuthPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mode === "forgot") { setSubmitting(true); try { const response = await apiFetch("/auth/forgot-password", { method: "POST", auth: false, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); if (!response.ok) throw new Error(normalizeApiError(await readResponseBody(response)).message); toast.success("비밀번호 초기화 메일을 보냈습니다."); setMode("signin"); } catch (error) { toast.error(error instanceof Error ? error.message : "초기화 요청에 실패했습니다."); } finally { setSubmitting(false); } return; }
+    if (mode === "forgot") { setSubmitting(true); try { const response = await apiFetch("/auth/forgot-password", { method: "POST", auth: false, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); if (!response.ok) throw new Error(normalizeApiError(await readResponseBody(response)).message); toast.success("비밀번호 초기화 메일을 보냈습니다."); setMode("signin"); } catch (error) { toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "초기화 요청에 실패했습니다.") : "초기화 요청에 실패했습니다."); } finally { setSubmitting(false); } return; }
     if (mode === "signup" && !(agreements.age && agreements.terms && agreements.privacy)) { toast.error("필수 약관에 모두 동의해야 가입할 수 있습니다."); return; }
     setSubmitting(true);
     try {
       const result = mode === "signup" ? await authClient.signUp.email({ name, email, password }) : await authClient.signIn.email({ email, password });
-      if (result.error) throw new Error(result.error.message ?? "인증에 실패했습니다.");
+      if (result.error) throw new Error(translateAuthErrorMessage(result.error.message, "인증에 실패했습니다."));
       if (mode === "signup") {
         if (!result.data?.token) { toast.success(wantsSeller ? "인증 메일을 확인한 뒤 로그인하고, 마이페이지에서 판매자 신청을 완료해 주세요." : "인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; }
         if (agreements.marketing) void updateMyProfile({ marketingOptIn: true }).catch(() => {});
@@ -110,7 +111,7 @@ export default function AuthPage() {
         navigate("/", { replace: true }); return;
       }
       toast.success("로그인했습니다."); navigate("/", { replace: true });
-    } catch (error) { toast.error(error instanceof Error ? error.message : "인증에 실패했습니다."); }
+    } catch (error) { toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "인증에 실패했습니다.") : "인증에 실패했습니다."); }
     finally { setSubmitting(false); }
   }
 
@@ -120,7 +121,7 @@ export default function AuthPage() {
       const response = await apiFetch("/email-verification/verify-code", { method: "POST", auth: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: verificationCode }) });
       if (!response.ok) throw new Error(normalizeApiError(await readResponseBody(response)).message);
       toast.success("이메일 인증을 완료했습니다."); navigate("/", { replace: true });
-    } catch (error) { toast.error(error instanceof Error ? error.message : "인증에 실패했습니다."); }
+    } catch (error) { toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "인증에 실패했습니다.") : "인증에 실패했습니다."); }
     finally { setSubmitting(false); }
   }
 
@@ -135,7 +136,7 @@ export default function AuthPage() {
         <div className="auth-card">
           <Link to="/" className="brand auth-brand" aria-label="타임딜 홈"><img src="/images/deal-logo.png" alt="" className="brand-logo" /></Link>
           {verificationEmail ? (
-            <><div className="auth-heading"><StatusBadge type="live">이메일 인증</StatusBadge><h2>인증 코드를 입력해 주세요.</h2><p>{verificationEmail}로 보낸 6자리 코드입니다.</p></div><form onSubmit={onVerify}><label><span>인증 코드</span><div className="input-wrap"><Mail /><input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></div></label><button className="primary-button full" disabled={submitting || verificationCode.length !== 6}>{submitting ? "확인 중..." : "이메일 인증 완료"}</button><button className="text-button" type="button" disabled={submitting || resendWaitSeconds > 0} onClick={() => void sendVerificationCode().then(() => toast.success("인증 코드를 다시 보냈습니다.")).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "재전송 실패"))}>{resendWaitSeconds > 0 ? `${resendWaitSeconds}초 후 재전송` : "인증 코드 다시 받기"}</button></form></>
+            <><div className="auth-heading"><StatusBadge type="live">이메일 인증</StatusBadge><h2>인증 코드를 입력해 주세요.</h2><p>{verificationEmail}로 보낸 6자리 코드입니다.</p></div><form onSubmit={onVerify}><label><span>인증 코드</span><div className="input-wrap"><Mail /><input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></div></label><button className="primary-button full" disabled={submitting || verificationCode.length !== 6}>{submitting ? "확인 중..." : "이메일 인증 완료"}</button><button className="text-button" type="button" disabled={submitting || resendWaitSeconds > 0} onClick={() => void sendVerificationCode().then(() => toast.success("인증 코드를 다시 보냈습니다.")).catch((error: unknown) => toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "재전송에 실패했습니다.") : "재전송에 실패했습니다."))}>{resendWaitSeconds > 0 ? `${resendWaitSeconds}초 후 재전송` : "인증 코드 다시 받기"}</button></form></>
           ) : (
             <>
               <div className="auth-tabs">{(["signin", "signup"] as Mode[]).map((item) => <button key={item} type="button" className={mode === item ? "active" : ""} onClick={() => setMode(item)}>{item === "signin" ? "로그인" : "회원가입"}</button>)}</div>
@@ -148,7 +149,7 @@ export default function AuthPage() {
                 {mode === "signup" && <div className="terms-group"><label className="check-label"><input type="checkbox" checked={agreements.age} onChange={(event) => setAgreements({ ...agreements, age: event.target.checked })} required /> (필수) 만 14세 이상입니다</label><label className="check-label"><input type="checkbox" checked={agreements.terms} onChange={(event) => setAgreements({ ...agreements, terms: event.target.checked })} required /> (필수) 이용약관에 동의합니다</label><label className="check-label"><input type="checkbox" checked={agreements.privacy} onChange={(event) => setAgreements({ ...agreements, privacy: event.target.checked })} required /> (필수) 개인정보 수집 및 이용에 동의합니다</label><label className="check-label"><input type="checkbox" checked={agreements.marketing} onChange={(event) => setAgreements({ ...agreements, marketing: event.target.checked })} /> (선택) 이벤트·혜택 정보 수신에 동의합니다</label></div>}
                 <button className="primary-button full" disabled={submitting || (mode === "signup" && !(agreements.age && agreements.terms && agreements.privacy))}>{submitting ? "처리 중..." : mode === "signup" ? "회원가입" : mode === "forgot" ? "재설정 메일 받기" : "로그인"}</button></form><button className="text-button" type="button" onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}>{mode === "forgot" ? "로그인으로 돌아가기" : "비밀번호를 잊으셨나요?"}</button></>
               )}
-              <div className="auth-social-actions"><button className="secondary-button full kakao-button" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startKakaoAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "카카오 로그인에 실패했습니다."))}>카카오로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button><button className="secondary-button full naver-button" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startNaverAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "네이버 로그인에 실패했습니다."))}>네이버로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button>{mode !== "otp" && <button className="text-button" type="button" onClick={() => { setMode("otp"); setOtpSent(false); setOtpCode(""); }}>이메일 인증번호로 로그인</button>}</div>
+              <div className="auth-social-actions"><button className="secondary-button full kakao-button" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startKakaoAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "카카오 로그인에 실패했습니다.") : "카카오 로그인에 실패했습니다."))}>카카오로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button><button className="secondary-button full naver-button" type="button" disabled={!isSupabaseAuthConfigured} onClick={() => void startNaverAuth(`${window.location.origin}/auth`).catch((error: unknown) => toast.error(error instanceof Error ? translateAuthErrorMessage(error.message, "네이버 로그인에 실패했습니다.") : "네이버 로그인에 실패했습니다."))}>네이버로 로그인{!isSupabaseAuthConfigured ? " · 설정 필요" : ""}</button>{mode !== "otp" && <button className="text-button" type="button" onClick={() => { setMode("otp"); setOtpSent(false); setOtpCode(""); }}>이메일 인증번호로 로그인</button>}</div>
             </>
           )}
         </div>

@@ -427,8 +427,8 @@ export default function HomePage() {
     if (!session?.user) { setCartCount(0); setNotifications([]); setUnreadCount(0); return; }
     let active = true;
     const refresh = () => {
-      void getCart().then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });
-      void getMyNotifications().then((result) => { if (active && result.ok) { setNotifications(result.data?.notifications ?? []); setUnreadCount(result.data?.unreadCount ?? 0); } });
+      void getCart({ silent: true }).then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });
+      void getMyNotifications({ silent: true }).then((result) => { if (active && result.ok) { setNotifications(result.data?.notifications ?? []); setUnreadCount(result.data?.unreadCount ?? 0); } });
     };
     refresh();
     const timer = setInterval(refresh, 30000);
@@ -1641,7 +1641,7 @@ export default function HomePage() {
               userSelect: "none",
             }}
           >
-            🐟 직판장 경매
+          직판장 경매
           </button>
         </div>
       </nav>
@@ -3262,8 +3262,7 @@ export default function HomePage() {
               <b style={{ color: TOKENS.colors.textMuted, fontWeight: 500 }}>
                 (주)타임딜컴퍼니
               </b>{" "}
-              · 대표이사 김성수 · 사업자등록번호 123-45-67890 · 통신판매업신고
-              제2026-서울성동-0123호
+              · 팀: 연리 엄태훈 최다울 이동교
             </div>
             <div style={{ marginBottom: 4 }}>
               주소 서울특별시 성동구 성수이로 20길 16, 4층 (성수동2가) ·

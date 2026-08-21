@@ -3,13 +3,18 @@
  * 모든 변경은 사유 입력과 서버의 admin 권한 재검증을 거쳐 감사 로그에 기록됩니다.
  */
 import { LoaderCircle, PackageCheck, RefreshCw, Send, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DashboardShell } from "@/shared/layout/DashboardShell";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { closePickupLocation, closePickupSlot, createPickupLocation, createPickupSlot, deleteAdminAuction, getAdminDashboard, getAdminInquiries, getAdminItems, getAdminOrders, getAdminResearch, getAdminUsers, getSellerApplications, moderateContent, moderateDeal, moderateProduct, replyAdminInquiry, reviewSellerApplication, updateAdminInquiry, updateAdminUser, updateFulfillmentStatus, updatePickupLocation, updatePickupSlot, type Inquiry, type Order, type RawRecord } from "@/lib/api";
 import { AUCTION_STATUS_LABEL } from "@/shared/auction";
 import { formatPrice } from "@/shared/catalog";
+
+type StatPeriod = "week" | "month" | "year";
+const startOfWeek = (input: Date) => { const d = new Date(input); const day = d.getDay(); d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day)); d.setHours(0, 0, 0, 0); return d; };
+const bucketLabel = (iso: string, period: StatPeriod) => { const d = new Date(iso); if (period === "year") return `${d.getFullYear()}년`; if (period === "month") return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`; const monday = startOfWeek(d); return `${monday.getMonth() + 1}/${monday.getDate()}주`; };
 
 const info: Record<string, [string, string]> = {
   "/admin": ["운영 현황", "핵심 리소스와 처리 대기량을 실시간으로 집계합니다."], "/admin/orders": ["주문 운영", "전체 주문과 판매자별 fulfillment 단계를 확인·변경합니다."], "/admin/users": ["사용자 관리", "역할과 계정 정지 상태를 변경합니다."], "/admin/sellers": ["판매자 신청", "입점 신청을 승인하거나 사유와 함께 반려합니다."], "/admin/products": ["상품·딜 관리", "상품 검수와 타임딜 활성화·종료를 운영합니다."], "/admin/auctions": ["🐟 직판장 경매 관리", "등록된 경매를 조회하고 필요 시 삭제합니다."], "/admin/inquiries": ["문의 관리", "문의 배정·우선순위·상태·답변을 관리합니다."], "/admin/reviews": ["리뷰 관리", "리뷰 노출을 숨기거나 복구합니다."], "/admin/community": ["커뮤니티 관리", "게시글과 신고를 처리합니다."], "/admin/pickups": ["픽업 운영", "장소·슬롯을 생성·수정·비활성화합니다."], "/admin/audit-logs": ["감사 로그", "운영 변경의 actor·대상·사유를 조회합니다."], "/admin/research": ["카테고리 통계", "상품 수와 평균 정상가를 현재 DB 스냅샷으로 분석합니다."],
@@ -23,10 +28,34 @@ function Empty({ text }: { text: string }) { return <div className="empty-state 
 const askReason = (label: string) => { const reason = window.prompt(`${label} 사유를 2자 이상 입력하세요.`)?.trim() ?? ""; return reason.length >= 2 ? reason : null; };
 
 function DashboardPanel() {
-  const [data, setData] = useState<Record<string, number> | null>(null); const [error, setError] = useState<string | null>(null);
-  useEffect(() => { void getAdminDashboard().then((result) => result.ok ? setData(result.data?.dashboard ?? null) : setError(result.error?.message ?? "운영 현황을 집계하지 못했습니다.")); }, []);
+  const [data, setData] = useState<Record<string, number> | null>(null); const [orders, setOrders] = useState<Order[]>([]); const [error, setError] = useState<string | null>(null); const [period, setPeriod] = useState<StatPeriod>("week");
+  useEffect(() => {
+    void getAdminDashboard().then((result) => result.ok ? setData(result.data?.dashboard ?? null) : setError(result.error?.message ?? "운영 현황을 집계하지 못했습니다."));
+    void getAdminOrders().then((result) => { if (result.ok) setOrders(result.data?.orders ?? []); });
+  }, []);
+  const trend = useMemo(() => {
+    const byBucket = new Map<string, { revenue: number; orders: number }>();
+    for (const order of orders) {
+      if (!order.createdAt) continue;
+      const key = bucketLabel(order.createdAt, period);
+      const bucket = byBucket.get(key) ?? { revenue: 0, orders: 0 };
+      bucket.revenue += order.totalAmount; bucket.orders += 1;
+      byBucket.set(key, bucket);
+    }
+    return Array.from(byBucket.entries()).map(([label, value]) => ({ label, ...value }));
+  }, [orders, period]);
   if (!data && !error) return <Loading text="관리자 운영 지표를 집계하는 중입니다." />;
-  return <><Feedback error={error} notice={null} /><div className="metric-grid">{Object.entries(data ?? {}).map(([key, value]) => <article key={key}><span><ShieldCheck /></span><p>{key}</p><strong>{value}</strong></article>)}</div></>;
+  return <>
+    <Feedback error={error} notice={null} />
+    <div className="metric-grid">{Object.entries(data ?? {}).map(([key, value]) => <article key={key}><span><ShieldCheck /></span><p>{key}</p><strong>{value}</strong></article>)}</div>
+    <section className="dashboard-panel spaced-panel">
+      <div className="panel-title-row">
+        <div><p>REVENUE TREND</p><h2>매출·주문 추이</h2></div>
+        <div className="stat-toggle">{(["week", "month", "year"] as const).map((value) => <button key={value} type="button" className={period === value ? "active" : ""} onClick={() => setPeriod(value)}>{value === "week" ? "주" : value === "month" ? "달" : "년"}</button>)}</div>
+      </div>
+      {trend.length === 0 ? <Empty text="집계할 주문 데이터가 없습니다." /> : <ResponsiveContainer width="100%" height={260}><AreaChart data={trend}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="label" fontSize={11} stroke="var(--muted-foreground)" /><YAxis yAxisId="revenue" fontSize={11} stroke="var(--muted-foreground)" width={90} tickFormatter={(value: number) => formatPrice(value)} /><YAxis yAxisId="orders" orientation="right" fontSize={11} stroke="var(--chart-3)" width={50} allowDecimals={false} /><Tooltip formatter={(value, name) => name === "매출" ? formatPrice(Number(value)) : `${Number(value)}건`} contentStyle={{ fontSize: 12, borderRadius: 8 }} /><Area yAxisId="revenue" type="monotone" dataKey="revenue" name="매출" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.16} /><Area yAxisId="orders" type="monotone" dataKey="orders" name="주문 수" stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.08} /></AreaChart></ResponsiveContainer>}
+    </section>
+  </>;
 }
 
 function OrdersPanel() {

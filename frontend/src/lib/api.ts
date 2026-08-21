@@ -4,19 +4,23 @@
  */
 import { apiUrl } from "@/lib/api-base";
 import { notifyApiError } from "@/lib/api-error";
-import { getAuthToken, setAuthToken } from "@/lib/auth";
+import { clearAuthToken, getAuthToken, setAuthToken } from "@/lib/auth";
 import { supabaseAuthClient } from "@/lib/supabase-auth";
 import type { AuctionItem, AuctionSettlement, DeliveryMethod } from "@/shared/auction";
 
-export type ApiFetchInit = RequestInit & { auth?: boolean };
+export type ApiFetchInit = RequestInit & { auth?: boolean; silent?: boolean };
 export type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string; details?: unknown } };
 export type ApiCallResult<T> = { ok: boolean; status: number; data: T | null; error: { code: string; message: string } | null };
 export type RawRecord = Record<string, unknown>;
 
 export async function apiFetch(path: string, init?: ApiFetchInit) {
-  const { auth = true, ...requestInit } = init ?? {}; const token = auth ? getAuthToken() : "";
+  const { auth = true, silent = false, ...requestInit } = init ?? {}; const token = auth ? getAuthToken() : "";
   const response = await fetch(apiUrl(path), { ...requestInit, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...requestInit.headers } });
-  if (!response.ok) await notifyApiError(response); return response;
+  if (!response.ok) {
+    if (response.status === 401 && token) clearAuthToken();
+    if (!silent) await notifyApiError(response);
+  }
+  return response;
 }
 export async function requestData<T>(path: string, init?: ApiFetchInit): Promise<ApiCallResult<T>> {
   try {
@@ -132,13 +136,13 @@ export async function getWishlist() { return requestData<{ items: RawRecord[] }>
 export async function getWishlistIds() { return requestData<{ productIds: string[] }>("/wishlist/ids"); }
 export async function toggleWishlist(productId: string) { return requestData<{ liked: boolean }>(`/wishlist/${encodeURIComponent(productId)}/toggle`, { method: "POST" }); }
 
-export async function getCart() { return requestData<{ items: RawRecord[] }>("/cart"); }
+export async function getCart(init?: ApiFetchInit) { return requestData<{ items: RawRecord[] }>("/cart", init); }
 export async function addToCart(productId: string, quantity = 1) { return requestData<{ item: RawRecord }>("/cart", json("POST", { productId, quantity })); }
 export async function updateCartItem(id: string, quantity: number) { return requestData<{ item: RawRecord }>(`/cart/${encodeURIComponent(id)}`, json("PATCH", { quantity })); }
 export async function removeCartItem(id: string) { return requestData<{ deleted: boolean }>(`/cart/${encodeURIComponent(id)}`, { method: "DELETE" }); }
 export async function clearCart() { return requestData<{ cleared: boolean }>("/cart", { method: "DELETE" }); }
 
-export async function getMyNotifications() { return requestData<{ notifications: RawRecord[]; unreadCount: number }>("/notifications"); }
+export async function getMyNotifications(init?: ApiFetchInit) { return requestData<{ notifications: RawRecord[]; unreadCount: number }>("/notifications", init); }
 export async function markNotificationRead(id: string) { return requestData<{ read: boolean }>(`/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }); }
 export async function markAllNotificationsRead() { return requestData<{ read: boolean }>("/notifications/read-all", { method: "POST" }); }
 export async function getMyRestockRequests() { return requestData<{ requests: RawRecord[] }>("/restock-requests"); }

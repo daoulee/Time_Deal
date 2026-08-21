@@ -28,17 +28,17 @@ export function normalizeApiError(value: unknown): NormalizedApiError {
     if (isRecord(nestedError)) {
       return {
         code: typeof nestedError.code === "string" ? nestedError.code : "REQUEST_ERROR",
-        message: typeof nestedError.message === "string" ? nestedError.message : "Request failed"
+        message: typeof nestedError.message === "string" ? nestedError.message : "요청 처리에 실패했습니다."
       };
     }
 
     return {
       code: typeof value.code === "string" ? value.code : "REQUEST_ERROR",
-      message: typeof value.message === "string" ? value.message : "Request failed"
+      message: typeof value.message === "string" ? value.message : "요청 처리에 실패했습니다."
     };
   }
 
-  return { code: "REQUEST_ERROR", message: "Request failed" };
+  return { code: "REQUEST_ERROR", message: "요청 처리에 실패했습니다." };
 }
 
 export async function readResponseBody(response: Response) {
@@ -54,7 +54,7 @@ export async function readResponseBody(response: Response) {
   }
 }
 
-export async function notifyApiError(response: Response, fallbackMessage = "Request failed") {
+export async function notifyApiError(response: Response, fallbackMessage = "요청 처리에 실패했습니다.") {
   const body = await response.clone().text();
   const parsedBody = body
     ? (() => {

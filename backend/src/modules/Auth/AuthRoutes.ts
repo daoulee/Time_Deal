@@ -8,6 +8,7 @@ import { apiFailure, apiSuccess } from "../../http.js";
 import { getAdminSupabase, getAnonSupabase } from "../../supabase.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { passwordResetRedirect } from "../../config.js";
+import { translateAuthErrorMessage } from "../../auth-error.js";
 
 interface AuthUser { id: string; email?: string; email_confirmed_at?: string | null; user_metadata?: Record<string, unknown> }
 interface ProfileView { name?: string; role?: string }
@@ -20,7 +21,7 @@ authRouter.post("/sign-up", async (context) => {
   if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "회원가입 입력값을 확인하세요.", parsed.error.flatten()), 400);
   try {
     const { data, error } = await getAnonSupabase().auth.signUp({ email: parsed.data.email, password: parsed.data.password, options: { data: { name: parsed.data.name } } });
-    if (error || !data.user) return context.json(apiFailure("SIGNUP_FAILED", error?.message ?? "회원가입 실패"), 400);
+    if (error || !data.user) return context.json(apiFailure("SIGNUP_FAILED", translateAuthErrorMessage(error?.message, "회원가입에 실패했습니다.")), 400);
     if (data.session) await getAdminSupabase().from("profiles").upsert({ id: data.user.id, name: parsed.data.name, role: "user" });
     return context.json(apiSuccess({ accessToken: data.session?.access_token ?? null, user: userView(data.user, { name: parsed.data.name }) }), 201);
   } catch { return context.json(apiFailure("SUPABASE_UNCONFIGURED", "Supabase 환경변수를 설정하세요."), 503); }
@@ -31,7 +32,7 @@ authRouter.post("/sign-in", async (context) => {
   if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "이메일과 비밀번호를 확인하세요."), 400);
   try {
     const { data, error } = await getAnonSupabase().auth.signInWithPassword(parsed.data);
-    if (error || !data.user || !data.session) return context.json(apiFailure("SIGNIN_FAILED", error?.message ?? "로그인 실패"), 401);
+    if (error || !data.user || !data.session) return context.json(apiFailure("SIGNIN_FAILED", translateAuthErrorMessage(error?.message, "이메일 또는 비밀번호가 올바르지 않습니다.")), 401);
     const { data: profile } = await getAdminSupabase().from("profiles").select("name,role,is_suspended").eq("id", data.user.id).maybeSingle();
     if (profile?.is_suspended) return context.json(apiFailure("ACCOUNT_SUSPENDED", "정지된 계정입니다. 고객센터에 문의해 주세요."), 403);
     return context.json(apiSuccess({ accessToken: data.session.access_token, user: userView(data.user, profile ?? undefined) }));
@@ -45,7 +46,7 @@ authRouter.post("/forgot-password", async (context) => {
   if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "이메일을 확인하세요."), 400);
   try {
     const { error } = await getAnonSupabase().auth.resetPasswordForEmail(parsed.data.email, { redirectTo: passwordResetRedirect() });
-    if (error) return context.json(apiFailure("RESET_FAILED", error.message), 400);
+    if (error) return context.json(apiFailure("RESET_FAILED", translateAuthErrorMessage(error.message, "비밀번호 재설정 메일을 보내지 못했습니다.")), 400);
     return context.json(apiSuccess({ sent: true, redirectPath: "/auth/reset-password" }));
   } catch { return context.json(apiFailure("SUPABASE_UNCONFIGURED", "Supabase 환경변수를 설정하세요."), 503); }
 });
