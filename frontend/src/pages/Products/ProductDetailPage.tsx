@@ -60,52 +60,13 @@ function formatPickupDate(value: string) {
       });
 }
 
-// ── 성수동 실제 매장 부가 정보 매핑 ──
-const STORE_INFO_MAP: Record<
-  string,
-  {
-    storeName: string;
-    address: string;
-    phone: string;
-    hours: string;
-    notice: string;
-  }
-> = {
-  "seongsu-mealdo-bread": {
-    storeName: "밀도 성수본점",
-    address: "서울 성동구 왕십리로 96 (성수동1가)",
-    phone: "02-499-1112",
-    hours: "11:00 ~ 21:30 (픽업마감 21:00)",
-    notice: "당일 구운 신선한 식빵으로 수령 즉시 드시는 것을 권장합니다.",
-  },
-  "seongsu-jayeondo-saltbread": {
-    storeName: "자연도소금빵 성수점",
-    address: "서울 성동구 연무장길 56-1 (성수동2가)",
-    phone: "02-466-9921",
-    hours: "09:00 ~ 22:00 (픽업마감 21:30)",
-    notice: "100% 프랑스산 버터 사용. 에어프라이어 180도 3분 데우면 갓 구운 풍미를 즐길 수 있습니다.",
-  },
-  "seongsu-somoon-gamjatang": {
-    storeName: "소문난성수감자탕",
-    address: "서울 성동구 연무장길 45",
-    phone: "02-465-6580",
-    hours: "24시간 영업 (타임딜 픽업 21:00까지)",
-    notice: "밀키트 포장 상품으로 냄비에 부어 끓여 드실 수 있도록 포장됩니다.",
-  },
-  "seongsu-fruit-strawberry": {
-    storeName: "산지직송 뚝도청과",
-    address: "서울 성동구 성수이로 12길 8",
-    phone: "02-461-3320",
-    hours: "08:00 ~ 21:00",
-    notice: "당일 입고 생딸기로 냉장 보관 후 2일 이내 섭취 권장합니다.",
-  },
-};
-
+// ── 판매자별 매장 주소·전화·영업시간을 저장하는 백엔드 필드가 아직 없어, 상품명이
+// "[매장이름] 상품명" 형태면 그 매장이름만 실제로 추출하고 나머지는 안내 문구로 대체합니다. ──
 const DEFAULT_STORE = {
-  storeName: "성수 로컬 파트너 매장",
-  address: "서울 성동구 성수이로 20 (성수역 인근)",
-  phone: "02-1588-0000",
-  hours: "10:00 ~ 21:00 (픽업마감 20:30)",
+  storeName: "판매자 매장",
+  address: "픽업 장소는 주문 시 선택한 장소를 확인해 주세요.",
+  phone: "매장 전화번호는 문의하기로 확인해 주세요.",
+  hours: "영업시간은 매장마다 다를 수 있어요.",
   notice: "매장 카운터에서 타임딜 주문 내역(주문번호 또는 성함)을 보여주시면 즉시 픽업 가능합니다.",
 };
 
@@ -275,14 +236,12 @@ export default function ProductDetailPage() {
 
   const storeInfo = useMemo(() => {
     if (!product) return DEFAULT_STORE;
-    return (
-      STORE_INFO_MAP[product.id] || {
-        ...DEFAULT_STORE,
-        storeName: product.name.includes("]")
-          ? product.name.split("]")[0].replace("[", "")
-          : DEFAULT_STORE.storeName,
-      }
-    );
+    return {
+      ...DEFAULT_STORE,
+      storeName: product.name.includes("]")
+        ? product.name.split("]")[0].replace("[", "")
+        : DEFAULT_STORE.storeName,
+    };
   }, [product]);
 
   const discountRate = useMemo(() => {

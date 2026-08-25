@@ -29,7 +29,7 @@ import { ProductCard } from "@/shared/components/ProductCard";
 import { CATEGORY_GROUPS, THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
 import { getCatalog } from "@/shared/services/catalog";
 import { discountPercentOf, formatPrice as formatDealPrice, type Product } from "@/shared/catalog";
-import { getCart, getMyNotifications, getPopularSearchTerms, logSearchTerm, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
+import { getCart, getMyNotifications, getPopularSearchTerms, getReopenRequestCount, getWishlistIds, logSearchTerm, markAllNotificationsRead, markNotificationRead, toggleReopenRequest, toggleWishlist, type RawRecord } from "@/lib/api";
 
 // ── 검색어 순위 높은 순서대로 정확히 10개 키워드 리스트 ──
 const POPULAR_SEARCH_KEYWORDS = [
@@ -54,22 +54,6 @@ const MAIN_NAV_THEMES = [
   "신규오픈",
   "특가/공구",
   "모닝픽"
-];
-
-// ── 좌측 카테고리 메뉴 목록 ──
-const DROPDOWN_CATEGORIES = [
-  "전체",
-  "신선식품",
-  "베이커리",
-  "과일·야채",
-  "음식·반찬",
-  "생활용품",
-  "테크·가전",
-  "홈·리빙",
-  "뷰티",
-  "패션",
-  "여행",
-  "반려동물",
 ];
 
 // ── 히어로 배너 데이터 ──
@@ -162,209 +146,6 @@ const SNS_LINKS = [
   { label: "엑스", icon: FaXTwitter, url: "https://x.com/timedeal_official" },
 ];
 
-const RANKING_PARTICIPANTS: Record<string, number> = {
-  "1": 95,
-  "5": 89,
-  "2": 82,
-  "7": 77,
-  "3": 71,
-  "4": 68,
-  "8": 63,
-  "6": 58,
-  "9": 52,
-  "10": 49,
-};
-
-// ── 재오픈 요청 딜 데이터 ──
-const INITIAL_REOPEN_ITEMS = [
-  {
-    id: "re-1",
-    storeName: "성수 수제 함박공방",
-    name: "성수 육즙가득 수제 함박스테이크 2인 세트",
-    subtitle: "겉은 바삭하고 속은 촉촉한 30년 전통 수제 레시피",
-    originalPrice: 24000,
-    expectedPrice: 13900,
-    requestedCount: 128,
-    targetCount: 150,
-    image:
-      "https://images.unsplash.com/photo-1666013942642-b7b54ecafd7d?auto=format&fit=crop&w=800&q=80",
-    tags: ["품절 대란", "재오픈 임박"],
-  },
-  {
-    id: "re-2",
-    storeName: "밀도 성수점",
-    name: "천연 효모 유기농 밤식빵 & 소금 버터롤",
-    subtitle: "진한 천연 버터 풍미와 공주 밤이 듬뿍 들어간 시그니처",
-    originalPrice: 16000,
-    expectedPrice: 8900,
-    requestedCount: 94,
-    targetCount: 100,
-    image:
-      "https://images.unsplash.com/photo-1558745010-d2a3c21762ab?auto=format&fit=crop&w=800&q=80",
-    tags: ["달성률 94%", "요청 폭주"],
-  },
-  {
-    id: "re-3",
-    storeName: "뚝도청과",
-    name: "당일 직송 고당도 샤인머스캣 2송이",
-    subtitle: "평균 당도 18브릭스 이상 엄선, 알알이 터지는 과즙",
-    originalPrice: 28000,
-    expectedPrice: 15900,
-    requestedCount: 67,
-    targetCount: 80,
-    image:
-      "https://images.unsplash.com/photo-1641642399576-487909d0ddbc?auto=format&fit=crop&w=800&q=80",
-    tags: ["신선보장", "골목 특가"],
-  },
-];
-
-// ── 현재 설정된 동네를 상품명 지역 접두어로 변환 (기본값은 성동구의 대표 동네) ──
-function deriveRegionLabel(location: string): string {
-  const trimmed = location.trim();
-  const withoutBunji = trimmed.replace(/\s*\d+가$/, "");
-  if (withoutBunji.endsWith("구")) return "성수동";
-  return withoutBunji || "성수동";
-}
-
-function applyRegionLabel(text: string, regionLabel: string): string {
-  return text.replace(/성수동|성수/g, regionLabel);
-}
-
-interface DealProduct {
-  id: string;
-  tag: string;
-  category: string;
-  name: string;
-  dealPrice: number;
-  originalPrice: number;
-  discountRate: number;
-  image: string;
-  deadline: string;
-}
-
-const PRODUCTS_DATA: DealProduct[] = [
-  {
-    id: "1",
-    tag: "CHEF FAVORITES",
-    category: "음식·반찬",
-    name: "성수 수제 함박스테이크 & 구운 채소",
-    dealPrice: 12900,
-    originalPrice: 18000,
-    discountRate: 28,
-    image:
-      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "2",
-    tag: "CRAFT BURGER",
-    category: "과일·야채",
-    name: "산지직송 당도보장 논산 딸기 2팩",
-    dealPrice: 8500,
-    originalPrice: 12000,
-    discountRate: 29,
-    image:
-      "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "3",
-    tag: "WELLNESS",
-    category: "생활용품",
-    name: "도톰한 3겹 엠보싱 롤화장지 32롤",
-    dealPrice: 16900,
-    originalPrice: 25000,
-    discountRate: 32,
-    image:
-      "https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "4",
-    tag: "FAST & EASY",
-    category: "신선식품",
-    name: "당일 산란 신선한 특란 30구 (1판)",
-    dealPrice: 9900,
-    originalPrice: 15000,
-    discountRate: 34,
-    image:
-      "https://images.unsplash.com/photo-1690983329845-638ec321647d?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "5",
-    tag: "VEGETARIAN",
-    category: "베이커리",
-    name: "성수 명품 버터 소금빵 4개 세트",
-    dealPrice: 7900,
-    originalPrice: 12000,
-    discountRate: 34,
-    image:
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "6",
-    tag: "PREMIUM",
-    category: "신선식품",
-    name: "유기농 프리미엄 닭가슴살 샐러드 팩",
-    dealPrice: 4900,
-    originalPrice: 7500,
-    discountRate: 35,
-    image:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "7",
-    tag: "FAMILY FRIENDLY",
-    category: "음식·반찬",
-    name: "성수동 맛집 30년 전통 수제 모둠 순대",
-    dealPrice: 11000,
-    originalPrice: 16000,
-    discountRate: 31,
-    image:
-      "https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "8",
-    tag: "HEAT & EAT",
-    category: "음료·카페",
-    name: "스페셜티 더치 원액 500ml 1+1",
-    dealPrice: 13900,
-    originalPrice: 22000,
-    discountRate: 37,
-    image:
-      "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "9",
-    tag: "FRESH PICK",
-    category: "과일·야채",
-    name: "친환경 유기농 방울토마토 500g",
-    dealPrice: 5900,
-    originalPrice: 8900,
-    discountRate: 34,
-    image:
-      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-  {
-    id: "10",
-    tag: "DAILY ESSENTIAL",
-    category: "생활용품",
-    name: "천연 소재 부드러운 3겹 티슈 6롤",
-    dealPrice: 5900,
-    originalPrice: 8500,
-    discountRate: 31,
-    image:
-      "https://images.unsplash.com/photo-1584872238332-fe2b75566ab5?auto=format&fit=crop&w=600&q=80",
-    deadline: "오늘 마감",
-  },
-];
-
 export default function HomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -390,6 +171,21 @@ export default function HomePage() {
     if (recentCategories.length === 0) return [];
     return catalogProducts.filter((item) => recentCategories.includes(item.category)).slice(0, 4);
   }, [catalogProducts]);
+
+  // ── 실제 찜(위시리스트) 상태 ──
+  useEffect(() => {
+    if (!session?.user) { setWishlistIds(new Set()); return; }
+    let active = true;
+    void getWishlistIds().then((result) => { if (active && result.ok) setWishlistIds(new Set(result.data?.productIds ?? [])); });
+    return () => { active = false; };
+  }, [session?.user]);
+  const handleToggleWishlist = async (productId: string) => {
+    if (!session?.user) { navigate("/auth"); return; }
+    const wasLiked = wishlistIds.has(productId);
+    setWishlistIds((prev) => { const next = new Set(prev); if (wasLiked) next.delete(productId); else next.add(productId); return next; });
+    const result = await toggleWishlist(productId);
+    if (!result.ok) setWishlistIds((prev) => { const next = new Set(prev); if (wasLiked) next.add(productId); else next.delete(productId); return next; });
+  };
 
   // ── 장바구니 개수 및 알림 센터(실제 API) ──
   const [cartCount, setCartCount] = useState(0);
@@ -436,9 +232,8 @@ export default function HomePage() {
   const [manualAddress, setManualAddress] = useState("");
   const { currentLocation, recentLocations, locating: locatingHome, error: homeLocateError, locateByGps, setManualLocation, selectRecent, clearError } = useLocationStore();
 
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
-  const [votedReopenIds, setVotedReopenIds] = useState<Set<string>>(new Set());
-  const [reopenItems, setReopenItems] = useState(INITIAL_REOPEN_ITEMS);
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+  const [reopenStats, setReopenStats] = useState<Record<string, { count: number; requested: boolean }>>({});
 
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -458,20 +253,7 @@ export default function HomePage() {
   const walkScrollRef = useRef<HTMLDivElement>(null);
   const [canScrollWalkLeft, setCanScrollWalkLeft] = useState(false);
 
-  const RANKING_TABS = useMemo(() => {
-    const defaultTabs = [
-      "전체",
-      "신선식품",
-      "과일·야채",
-      "생활용품",
-      "베이커리",
-      "음식·반찬",
-    ];
-    return Array.from(new Set([...defaultTabs, ...DROPDOWN_CATEGORIES])).slice(
-      0,
-      6,
-    );
-  }, []);
+  const RANKING_TABS = useMemo(() => ["전체", ...Object.keys(CATEGORY_GROUPS)].slice(0, 6), []);
 
   // ── 검색어 순위 (실제 검색 데이터가 쌓이면 그걸로 대체) ──
   const [popularTerms, setPopularTerms] = useState<string[]>(POPULAR_SEARCH_KEYWORDS);
@@ -589,57 +371,33 @@ export default function HomePage() {
     showToast(`기준 동네가 [${entry.label}]로 설정되었습니다.`);
   };
 
-  const toggleLike = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        showToast("관심 딜 목록에서 제외되었습니다.");
-      } else {
-        next.add(id);
-        showToast("관심 딜로 저장되었습니다. ❤️");
-      }
-      return next;
+  // ── 재오픈 요청 후보(참여율이 목표에 가장 가까운 실제 딜) 및 실제 요청 집계 ──
+  const reopenCandidates = useMemo(() => {
+    return [...catalogProducts]
+      .filter((item) => item.target > 0)
+      .sort((a, b) => (b.participants / b.target) - (a.participants / a.target))
+      .slice(0, 4);
+  }, [catalogProducts]);
+  useEffect(() => {
+    if (reopenCandidates.length === 0) return;
+    let active = true;
+    void Promise.all(reopenCandidates.map((item) => getReopenRequestCount(item.id).then((result) => [item.id, result] as const))).then((entries) => {
+      if (!active) return;
+      setReopenStats((prev) => {
+        const next = { ...prev };
+        for (const [id, result] of entries) if (result.ok && result.data) next[id] = { count: result.data.count, requested: next[id]?.requested ?? false };
+        return next;
+      });
     });
-  };
-
-  const toggleReopenVote = (e: React.MouseEvent, id: string, name: string) => {
+    return () => { active = false; };
+  }, [reopenCandidates]);
+  const toggleReopenVote = async (e: React.MouseEvent, productId: string, name: string) => {
     e.stopPropagation();
-    const isVoted = votedReopenIds.has(id);
-    setVotedReopenIds((prev) => {
-      const next = new Set(prev);
-      if (isVoted) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-
-    setReopenItems((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          return {
-            ...item,
-            requestedCount: isVoted
-              ? item.requestedCount - 1
-              : item.requestedCount + 1,
-          };
-        }
-        return item;
-      }),
-    );
-
-    if (isVoted) {
-      showToast(`[${name}] 재오픈 요청이 취소되었습니다.`);
-    } else {
-      showToast(`🔔 [${name}] 재오픈 알림 요청이 완료되었습니다!`);
-    }
-  };
-
-  const formatPriceNum = (price: number) => {
-    return price.toLocaleString("ko-KR") + "원";
+    if (!session?.user) { navigate("/auth"); return; }
+    const result = await toggleReopenRequest(productId);
+    if (!result.ok || !result.data) return;
+    setReopenStats((prev) => ({ ...prev, [productId]: { count: result.data!.count, requested: result.data!.requested } }));
+    showToast(result.data.requested ? `🔔 [${name}] 재오픈 알림 요청이 완료되었습니다!` : `[${name}] 재오픈 요청이 취소되었습니다.`);
   };
 
   const handleScroll = (
@@ -661,182 +419,17 @@ export default function HomePage() {
     setter(e.currentTarget.scrollLeft > 10);
   };
 
-  // ── 설정된 동네에 맞춰 상품명 지역 접두어를 실시간으로 치환 ──
-  const regionLabel = useMemo(() => deriveRegionLabel(currentLocation), [currentLocation]);
-  const localizedProducts = useMemo(
-    () => PRODUCTS_DATA.map((item) => ({ ...item, name: applyRegionLabel(item.name, regionLabel) })),
-    [regionLabel],
-  );
-
-  const rankingItems = useMemo(() => {
-    return [...localizedProducts]
-      .filter((item) => RANKING_PARTICIPANTS[item.id] !== undefined)
-      .sort((a, b) => RANKING_PARTICIPANTS[b.id] - RANKING_PARTICIPANTS[a.id])
-      .slice(0, 10);
-  }, [localizedProducts]);
+  const rankingItems = useMemo(() => [...catalogProducts].sort((a, b) => b.participants - a.participants).slice(0, 10), [catalogProducts]);
+  const walkPicks = useMemo(() => [...catalogProducts].sort((a, b) => discountPercentOf(b) - discountPercentOf(a)).slice(0, 8), [catalogProducts]);
+  const reorderPicks = useMemo(() => [...catalogProducts].sort((a, b) => a.dealPrice - b.dealPrice).slice(0, 4), [catalogProducts]);
 
   const categoryRankingItems = useMemo(() => {
     if (rankingCategoryTab === "전체") {
-      return localizedProducts.slice(0, 9);
+      return [...catalogProducts].sort((a, b) => b.participants - a.participants).slice(0, 9);
     }
-    const matched = localizedProducts.filter(
-      (item) =>
-        item.category.includes(rankingCategoryTab) ||
-        item.name.includes(rankingCategoryTab),
-    );
-    return (matched.length > 0 ? matched : localizedProducts).slice(0, 9);
-  }, [rankingCategoryTab, localizedProducts]);
-
-  const renderProductCard = (item: DealProduct) => {
-    return (
-      <article
-        key={item.id}
-        onClick={() => navigate(`/products/${item.id}`)}
-        style={{
-          background: "#ffffff",
-          borderRadius: 0,
-          border: "none",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          cursor: "pointer",
-          height: "100%",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            height: 330,
-            position: "relative",
-            background: "#f4f4f4",
-            borderRadius: 12,
-            overflow: "hidden",
-          }}
-        >
-          <img
-            src={item.image}
-            alt={item.name}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
-          <span
-            style={{
-              position: "absolute",
-              top: 10,
-              left: 10,
-              background: TOKENS.colors.badgeDiscount,
-              color: "#ffffff",
-              fontSize: 12,
-              fontWeight: 700,
-              padding: "4px 8px",
-              borderRadius: 0,
-            }}
-          >
-            {item.discountRate}% OFF
-          </span>
-          <button
-            onClick={(e) => toggleLike(e, item.id)}
-            style={{
-              position: "absolute",
-              top: 10,
-              right: 10,
-              background: "rgba(255,255,255,0.9)",
-              border: "none",
-              borderRadius: "50%",
-              width: 32,
-              height: 32,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            }}
-          >
-            <Heart
-              size={16}
-              color={
-                likedIds.has(item.id) ? TOKENS.colors.primaryOrange : "#888888"
-              }
-              fill={
-                likedIds.has(item.id) ? TOKENS.colors.primaryOrange : "none"
-              }
-            />
-          </button>
-        </div>
-
-        <div style={{ padding: "14px 2px 0" }}>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 400,
-              color: TOKENS.colors.textSubtle,
-              marginBottom: 4,
-            }}
-          >
-            {item.category}
-          </div>
-
-          <h3
-            style={{
-              fontSize: 15,
-              fontWeight: 400,
-              color: TOKENS.colors.textHeading,
-              margin: "0 0 8px 0",
-              lineHeight: "22px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              minHeight: 44,
-            }}
-          >
-            {item.name}
-          </h3>
-
-          <div>
-            {item.originalPrice > item.dealPrice && (
-              <del
-                style={{
-                  fontSize: 12,
-                  color: TOKENS.colors.textSubtle,
-                  display: "block",
-                  marginBottom: 2,
-                }}
-              >
-                {formatPriceNum(item.originalPrice)}
-              </del>
-            )}
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              {item.discountRate > 0 && (
-                <strong
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: TOKENS.colors.primaryOrange,
-                  }}
-                >
-                  {item.discountRate}%
-                </strong>
-              )}
-              <strong
-                style={{
-                  fontSize: 17,
-                  fontWeight: 700,
-                  color: TOKENS.colors.textHeading,
-                }}
-              >
-                {formatPriceNum(item.dealPrice)}
-              </strong>
-            </div>
-          </div>
-        </div>
-      </article>
-    );
-  };
+    const matched = catalogProducts.filter((item) => item.category === rankingCategoryTab);
+    return (matched.length > 0 ? matched : catalogProducts).slice(0, 9);
+  }, [rankingCategoryTab, catalogProducts]);
 
   return (
     <div
@@ -1284,11 +877,11 @@ export default function HomePage() {
               size={24}
               strokeWidth={1.5}
               color={
-                likedIds.size > 0
+                wishlistIds.size > 0
                   ? TOKENS.colors.primaryOrange
                   : TOKENS.colors.navy
               }
-              fill={likedIds.size > 0 ? TOKENS.colors.primaryOrange : "none"}
+              fill={wishlistIds.size > 0 ? TOKENS.colors.primaryOrange : "none"}
             />
           </div>
           <div
@@ -2188,7 +1781,7 @@ export default function HomePage() {
                         borderRadius: 0,
                       }}
                     >
-                      {item.discountRate}% OFF
+                      {discountPercentOf(item)}% OFF
                     </span>
                     <span
                       style={{
@@ -2242,7 +1835,7 @@ export default function HomePage() {
                             marginBottom: 2,
                           }}
                         >
-                          {formatPriceNum(item.originalPrice)}
+                          {formatDealPrice(item.originalPrice)}
                         </del>
                       )}
                       <div
@@ -2259,7 +1852,7 @@ export default function HomePage() {
                             color: TOKENS.colors.primaryOrange,
                           }}
                         >
-                          {item.discountRate}%
+                          {discountPercentOf(item)}%
                         </strong>
                         <strong
                           style={{
@@ -2268,7 +1861,7 @@ export default function HomePage() {
                             color: TOKENS.colors.textHeading,
                           }}
                         >
-                          {formatPriceNum(item.dealPrice)}
+                          {formatDealPrice(item.dealPrice)}
                         </strong>
                       </div>
                       <div
@@ -2278,7 +1871,7 @@ export default function HomePage() {
                           marginTop: 4,
                         }}
                       >
-                        🔥 {RANKING_PARTICIPANTS[item.id] || 50}명 참여중
+                        🔥 {item.participants}명 참여중
                       </div>
                     </div>
                   </div>
@@ -2447,7 +2040,7 @@ export default function HomePage() {
                           marginBottom: 2,
                         }}
                       >
-                        {formatPriceNum(item.originalPrice)}
+                        {formatDealPrice(item.originalPrice)}
                       </del>
                     )}
 
@@ -2458,7 +2051,7 @@ export default function HomePage() {
                         gap: 6,
                       }}
                     >
-                      {item.discountRate > 0 && (
+                      {discountPercentOf(item) > 0 && (
                         <strong
                           style={{
                             fontSize: 16,
@@ -2466,7 +2059,7 @@ export default function HomePage() {
                             color: TOKENS.colors.primaryOrange,
                           }}
                         >
-                          {item.discountRate}%
+                          {discountPercentOf(item)}%
                         </strong>
                       )}
                       <strong
@@ -2476,7 +2069,7 @@ export default function HomePage() {
                           color: TOKENS.colors.textHeading,
                         }}
                       >
-                        {formatPriceNum(item.dealPrice)}
+                        {formatDealPrice(item.dealPrice)}
                       </strong>
                     </div>
                   </div>
@@ -2601,15 +2194,15 @@ export default function HomePage() {
                 padding: "4px 2px",
               }}
             >
-              {localizedProducts.slice(2, 10).map((item) => (
+              {walkPicks.map((item) => (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${item.dealId ?? "walk"}`}
                   style={{
                     flex: "0 0 calc((100% - 60px) / 4)",
                     minWidth: 236,
                   }}
                 >
-                  {renderProductCard(item)}
+                  <ProductCard product={item} isWishlisted={wishlistIds.has(item.id)} onToggleWishlist={session?.user ? handleToggleWishlist : undefined} />
                 </div>
               ))}
             </div>
@@ -2669,8 +2262,8 @@ export default function HomePage() {
                 margin: 0,
               }}
             >
-              품절되어 아쉬웠던 인기 타임딜, 투표가 모이면 사장님께 타임딜 오픈
-              요청이 전달돼요!
+목표 수량에 가장 가까운 인기 타임딜이에요. 요청이 모이면 사장님께
+              추가 오픈 요청이 전달돼요!
             </p>
           </div>
 
@@ -2735,16 +2328,13 @@ export default function HomePage() {
                 padding: "4px 2px",
               }}
             >
-              {reopenItems.map((item) => {
-                const isVoted = votedReopenIds.has(item.id);
-                const progressPercent = Math.min(
-                  100,
-                  Math.round((item.requestedCount / item.targetCount) * 100),
-                );
+              {reopenCandidates.map((item) => {
+                const stats = reopenStats[item.id];
+                const isVoted = stats?.requested ?? false;
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${item.id}-${item.dealId ?? "reopen"}`}
                     style={{
                       flex: "0 0 calc((100% - 20px) / 2)",
                       minWidth: 480,
@@ -2757,7 +2347,7 @@ export default function HomePage() {
                       border: `1px solid ${TOKENS.colors.borderLight}`,
                       boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
                     }}
-                    onClick={(e) => toggleReopenVote(e, item.id, item.name)}
+                    onClick={(e) => void toggleReopenVote(e, item.id, item.name)}
                   >
                     <div
                       style={{
@@ -2789,20 +2379,17 @@ export default function HomePage() {
                           alignItems: "center",
                         }}
                       >
-                        {item.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            style={{
-                              color: "#ffffff",
-                              fontSize: 13,
-                              fontWeight: 700,
-                              textShadow: "0 1px 4px rgba(0,0,0,0.8)",
-                              letterSpacing: "-0.2px",
-                            }}
-                          >
-                            #{tag}
-                          </span>
-                        ))}
+                        <span
+                          style={{
+                            color: "#ffffff",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+                            letterSpacing: "-0.2px",
+                          }}
+                        >
+                          #{item.category}
+                        </span>
                       </div>
                     </div>
 
@@ -2823,16 +2410,6 @@ export default function HomePage() {
                         }}
                       >
                         <div>
-                          <div
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: TOKENS.colors.primaryOrange,
-                              marginBottom: 4,
-                            }}
-                          >
-                            {item.storeName}
-                          </div>
                           <h3
                             style={{
                               fontSize: 19,
@@ -2853,14 +2430,14 @@ export default function HomePage() {
                               lineHeight: "20px",
                             }}
                           >
-                            {item.subtitle}
+                            지금 {item.participants}명이 함께하고 있는 인기 타임딜이에요
                           </p>
                         </div>
 
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleReopenVote(e, item.id, item.name);
+                            void toggleReopenVote(e, item.id, item.name);
                           }}
                           style={{
                             background: "transparent",
@@ -2892,79 +2469,47 @@ export default function HomePage() {
                         style={{
                           paddingTop: 10,
                           borderTop: `1px solid ${TOKENS.colors.borderLight}`,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "baseline",
                         }}
                       >
                         <div
                           style={{
                             display: "flex",
-                            justifyContent: "space-between",
                             alignItems: "baseline",
-                            marginBottom: 8,
+                            gap: 6,
                           }}
                         >
-                          <div
+                          <strong
                             style={{
-                              display: "flex",
-                              alignItems: "baseline",
-                              gap: 6,
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color: TOKENS.colors.textHeading,
                             }}
                           >
-                            <span
-                              style={{
-                                fontSize: 13,
-                                color: TOKENS.colors.textSubtle,
-                              }}
-                            >
-                              예상 특가
-                            </span>
-                            <strong
-                              style={{
-                                fontSize: 18,
-                                fontWeight: 700,
-                                color: TOKENS.colors.textHeading,
-                              }}
-                            >
-                              {formatPriceNum(item.expectedPrice)}
-                            </strong>
+                            {formatDealPrice(item.dealPrice)}
+                          </strong>
+                          {item.originalPrice > item.dealPrice && (
                             <del
                               style={{
                                 fontSize: 13,
                                 color: TOKENS.colors.textSubtle,
                               }}
                             >
-                              {formatPriceNum(item.originalPrice)}
+                              {formatDealPrice(item.originalPrice)}
                             </del>
-                          </div>
-                          <span
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: TOKENS.colors.primaryOrange,
-                            }}
-                          >
-                            {item.requestedCount}명 요청 ({progressPercent}%)
-                          </span>
+                          )}
                         </div>
-
-                        <div
+                        <span
                           style={{
-                            width: "100%",
-                            height: 6,
-                            background: "#eaeaea",
-                            borderRadius: 0,
-                            overflow: "hidden",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: TOKENS.colors.primaryOrange,
                           }}
                         >
-                          <div
-                            style={{
-                              width: `${progressPercent}%`,
-                              height: "100%",
-                              background: TOKENS.colors.primaryOrange,
-                              borderRadius: 0,
-                              transition: "width 0.3s ease",
-                            }}
-                          />
-                        </div>
+                          {stats?.count ?? 0}명 재오픈 요청
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -2985,7 +2530,7 @@ export default function HomePage() {
                 color: TOKENS.colors.textHeading,
               }}
             >
-              💜 재구매만 500회 이상 기록!
+              💜 지금 가장 가성비 좋은 인기템
             </h2>
             <p
               style={{
@@ -3005,12 +2550,9 @@ export default function HomePage() {
               gap: 20,
             }}
           >
-            {["10", "4", "8", "6"]
-              .map((id) => localizedProducts.find((p) => p.id === id))
-              .filter((item): item is DealProduct => Boolean(item))
-              .map((item) => (
+            {reorderPicks.map((item) => (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${item.dealId ?? "reorder"}`}
                   style={{ display: "flex", flexDirection: "column" }}
                 >
                   <div
@@ -3047,7 +2589,7 @@ export default function HomePage() {
                         borderRadius: 0,
                       }}
                     >
-                      최대 {item.discountRate}% 쿠폰
+                      최대 {discountPercentOf(item)}% 할인
                     </span>
                   </div>
 
@@ -3080,7 +2622,7 @@ export default function HomePage() {
                           color: TOKENS.colors.primaryOrange,
                         }}
                       >
-                        {item.discountRate}%
+                        {discountPercentOf(item)}%
                       </strong>
                       <strong
                         style={{
@@ -3089,7 +2631,7 @@ export default function HomePage() {
                           color: TOKENS.colors.textHeading,
                         }}
                       >
-                        {formatPriceNum(item.dealPrice)}
+                        {formatDealPrice(item.dealPrice)}
                       </strong>
                     </div>
                   </div>
