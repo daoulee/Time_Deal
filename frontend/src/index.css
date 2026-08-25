@@ -33,6 +33,9 @@
 }
 @layer base { * { @apply border-border; box-sizing: border-box; } html { scroll-behavior: smooth; overflow-x: hidden; } body { @apply bg-background text-foreground; margin: 0; min-width: 320px; overflow-x: hidden; font-family: var(--font-sans); } button, a, input, select, textarea { font: inherit; } button, a { -webkit-tap-highlight-color: transparent; } img { display: block; max-width: 100%; } :focus-visible { outline: 3px solid color-mix(in oklch, var(--ring) 75%, white); outline-offset: 3px; } }
 
+/* @section: accessibility */
+html.large-text { zoom: 1.18; }
+
 /* @section: global-layout */
 .site-frame { min-height: 100vh; background: var(--background); }
 .skip-link { position: fixed; z-index: 100; left: 1rem; top: -4rem; background: var(--foreground); color: var(--background); padding: .75rem 1rem; border-radius: .5rem; } .skip-link:focus { top: 1rem; }

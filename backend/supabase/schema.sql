@@ -621,4 +621,11 @@ alter table public.notifications enable row level security;
 create policy "own notifications read" on public.notifications for select using (auth.uid() = user_id);
 create policy "own notifications update" on public.notifications for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+create table if not exists public.search_terms (
+  term text primary key,
+  search_count integer not null default 0,
+  last_searched_at timestamptz not null default now()
+);
+alter table public.search_terms enable row level security;
+
 commit;

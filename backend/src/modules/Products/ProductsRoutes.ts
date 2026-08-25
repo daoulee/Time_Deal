@@ -3,6 +3,7 @@
  * Supabase 미연결 시 샘플은 개발의 명시적 ENABLE_SAMPLE_DATA=true에서만 반환합니다.
  */
 import { Hono } from "hono";
+import { z } from "zod";
 import { apiFailure, apiSuccess } from "../../http.js";
 import { config, isSupabaseConfigured } from "../../config.js";
 import { requireAuth } from "../../middleware/auth.js";
@@ -51,4 +52,22 @@ catalogRouter.post("/products/:id/reopen-request", requireAuth, async (context) 
   if (error) return context.json(apiFailure("SAVE_FAILED", "요청을 저장하지 못했습니다."), 500);
   const { count } = await supabase.from("reopen_requests").select("*", { count: "exact", head: true }).eq("product_id", productId);
   return context.json(apiSuccess({ requested: true, count: count ?? 0 }), 201);
+});
+
+// ── 실제 검색 데이터를 쌓아 인기 검색어를 계산합니다. 로그인 여부와 무관하게 기록합니다. ──
+catalogRouter.post("/search-log", async (context) => {
+  if (!isSupabaseConfigured()) return context.json(apiSuccess({ logged: false }));
+  const parsed = z.object({ term: z.string().min(1).max(60) }).strict().safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "검색어를 확인하세요."), 400);
+  const term = parsed.data.term.trim();
+  if (!term) return context.json(apiFailure("INVALID_INPUT", "검색어를 확인하세요."), 400);
+  const supabase = getAdminSupabase();
+  const { data: existing } = await supabase.from("search_terms").select("search_count").eq("term", term).maybeSingle();
+  const { error } = await supabase.from("search_terms").upsert({ term, search_count: (existing?.search_count ?? 0) + 1, last_searched_at: new Date().toISOString() });
+  return error ? context.json(apiFailure("SAVE_FAILED", "검색어를 기록하지 못했습니다."), 400) : context.json(apiSuccess({ logged: true }));
+});
+catalogRouter.get("/search-terms/popular", async (context) => {
+  if (!isSupabaseConfigured()) return context.json(apiSuccess({ terms: [] }));
+  const { data, error } = await getAdminSupabase().from("search_terms").select("term,search_count").order("search_count", { ascending: false }).limit(10);
+  return error ? context.json(apiFailure("QUERY_FAILED", "인기 검색어를 조회하지 못했습니다."), 502) : context.json(apiSuccess({ terms: (data ?? []).map((row) => row.term) }));
 });

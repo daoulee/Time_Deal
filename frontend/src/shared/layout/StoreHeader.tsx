@@ -21,8 +21,9 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
+import { useLargeText } from "@/shared/hooks/useLargeText";
 import { CATEGORY_GROUPS, THEME_ROUTE, type ThemeKey } from "@/shared/categoryData";
-import { getCart, getMyNotifications, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
+import { getCart, getMyNotifications, getPopularSearchTerms, logSearchTerm, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
 
 const TOKENS = {
   navy: "#1a1a1a",
@@ -57,6 +58,7 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
   const isCommunityActive = location.pathname.startsWith("/community");
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
+  const { enabled: largeText, toggle: toggleLargeText } = useLargeText();
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") ?? "");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -119,22 +121,29 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── 추천 검색어 필터링 ──
+  // ── 추천 검색어 필터링 (실제 검색 데이터가 쌓이면 그걸로 대체) ──
+  const [popularTerms, setPopularTerms] = useState<string[]>(POPULAR_SEARCH_KEYWORDS);
+  useEffect(() => {
+    void getPopularSearchTerms().then((result) => {
+      if (result.ok && result.data && result.data.terms.length > 0) setPopularTerms(result.data.terms);
+    });
+  }, []);
   const searchSuggestions = useMemo(() => {
     const trimmed = searchTerm.trim().toLowerCase();
     if (!trimmed) {
-      return POPULAR_SEARCH_KEYWORDS.slice(0, 10);
+      return popularTerms.slice(0, 10);
     }
-    const matched = POPULAR_SEARCH_KEYWORDS.filter((kw) =>
+    const matched = popularTerms.filter((kw) =>
       kw.toLowerCase().includes(trimmed)
     );
     return matched.length > 0 ? matched.slice(0, 10) : [trimmed];
-  }, [searchTerm]);
+  }, [searchTerm, popularTerms]);
 
   const executeSearch = (keyword: string) => {
     const trimmed = keyword.trim();
     setIsSearchFocused(false);
     setSearchTerm(trimmed);
+    if (trimmed) void logSearchTerm(trimmed);
     navigate(trimmed ? `/products?q=${encodeURIComponent(trimmed)}` : "/products");
   };
 
@@ -259,6 +268,22 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
             </span>
           </>
         )}
+        <span
+          style={{
+            width: 1,
+            height: 13,
+            background: TOKENS.borderDivider,
+            margin: "0 10px",
+            display: "inline-block",
+          }}
+        />
+        <span
+          style={{ cursor: "pointer", color: largeText ? TOKENS.primaryOrange : "#333333", fontWeight: largeText ? 700 : 400 }}
+          onClick={toggleLargeText}
+          title="큰 글씨 모드"
+        >
+          가 큰글씨
+        </span>
         <span
           style={{
             width: 1,

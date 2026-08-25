@@ -44,6 +44,7 @@ import {
 import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
 import { isTossPaymentsConfigured } from "@/lib/toss-payments";
 import { useLocationStore } from "@/shared/location/LocationContext";
+import { recordCategoryView } from "@/lib/recent-categories";
 
 type AddressMode = "manual" | "gps";
 
@@ -170,7 +171,9 @@ export default function ProductDetailPage() {
     void getCatalog()
       .then((result) => {
         if (!active) return;
-        setProduct(result.products.find((item) => String(item.id) === String(id)));
+        const found = result.products.find((item) => String(item.id) === String(id));
+        setProduct(found);
+        if (found) recordCategoryView(found.category);
         setCatalogSource(result.source);
         setCatalogNotice(
           result.notice ??

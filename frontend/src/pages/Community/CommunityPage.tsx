@@ -11,6 +11,7 @@ import { authClient } from "@/lib/auth";
 import { apiFetch, getCommunityImageUploadUrl, uploadProductImage } from "@/lib/api";
 
 const MAX_IMAGES = 5;
+const SUCCESS_STORY_TAG = "[우리가게 이야기]";
 
 interface Post {
   id: string;
@@ -46,6 +47,7 @@ export default function CommunityPage() {
 
   // ── 검색 상태 ──
   const [searchQuery, setSearchQuery] = useState("");
+  const [storyOnly, setStoryOnly] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -68,14 +70,14 @@ export default function CommunityPage() {
     void load();
   }, []);
 
-  // ── 검색 필터링된 게시글 목록 ──
+  // ── 검색·성공스토리 필터링된 게시글 목록 ──
   const filteredPosts = useMemo(() => {
+    let list = posts;
+    if (storyOnly) list = list.filter((p) => p.title.startsWith(SUCCESS_STORY_TAG));
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return posts;
-    return posts.filter(
-      (p) => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q)
-    );
-  }, [posts, searchQuery]);
+    if (q) list = list.filter((p) => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
+    return list;
+  }, [posts, searchQuery, storyOnly]);
 
   const addImages = (files: FileList | null) => {
     if (!files) return;
@@ -188,13 +190,22 @@ export default function CommunityPage() {
               <h2 style={{ fontSize: "22px", fontWeight: 700, color: "#1a1a1a", margin: 0 }}>이웃 게시글</h2>
             </div>
             {session?.user ? (
-              <button
-                type="button"
-                onClick={() => { if (writing) resetForm(); else setWriting(true); }}
-                style={{ background: "#ff5722", border: "none", color: "#ffffff", padding: "10px 18px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <Plus size={17} /> {writing ? "취소" : "글쓰기"}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => { if (writing) resetForm(); else { setWriting(true); setTitle(`${SUCCESS_STORY_TAG} `); } }}
+                  style={{ background: "#ffffff", border: "1px solid #ff5722", color: "#ff5722", padding: "10px 18px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  우리가게 이야기 쓰기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { if (writing) resetForm(); else setWriting(true); }}
+                  style={{ background: "#ff5722", border: "none", color: "#ffffff", padding: "10px 18px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <Plus size={17} /> {writing ? "취소" : "글쓰기"}
+                </button>
+              </div>
             ) : (
               <Link
                 to="/auth"
@@ -203,6 +214,24 @@ export default function CommunityPage() {
                 로그인 후 글쓰기
               </Link>
             )}
+          </div>
+
+          {/* ── 전체/성공스토리 필터 탭 ── */}
+          <div style={{ display: "flex", gap: 8, marginBottom: "16px" }}>
+            <button
+              type="button"
+              onClick={() => setStoryOnly(false)}
+              style={{ padding: "7px 16px", borderRadius: 20, border: `1px solid ${!storyOnly ? "#ff5722" : "#cbd5e1"}`, background: !storyOnly ? "#fff5f2" : "#ffffff", color: !storyOnly ? "#ff5722" : "#666", fontWeight: !storyOnly ? 700 : 500, fontSize: 13, cursor: "pointer" }}
+            >
+              전체 게시글
+            </button>
+            <button
+              type="button"
+              onClick={() => setStoryOnly(true)}
+              style={{ padding: "7px 16px", borderRadius: 20, border: `1px solid ${storyOnly ? "#ff5722" : "#cbd5e1"}`, background: storyOnly ? "#fff5f2" : "#ffffff", color: storyOnly ? "#ff5722" : "#666", fontWeight: storyOnly ? 700 : 500, fontSize: 13, cursor: "pointer" }}
+            >
+              🏪 우리가게 이야기
+            </button>
           </div>
 
           {/* ── 게시글 제목 검색창 ── */}
@@ -313,8 +342,13 @@ export default function CommunityPage() {
 
                     {/* 우측: 본문 내용 및 인터랙션 */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#1a1a1a", margin: "0 0 10px 0", lineHeight: 1.4 }}>
-                        {post.title}
+                      <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#1a1a1a", margin: "0 0 10px 0", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
+                        {post.title.startsWith(SUCCESS_STORY_TAG) && (
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#ff5722", background: "#fff5f2", border: "1px solid #ffccbc", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}>
+                            🏪 우리가게 이야기
+                          </span>
+                        )}
+                        <span>{post.title.startsWith(SUCCESS_STORY_TAG) ? post.title.slice(SUCCESS_STORY_TAG.length).trim() : post.title}</span>
                       </h3>
 
                       <p style={{ fontSize: "14px", color: "#333333", margin: "0 0 16px 0", lineHeight: 1.6, whiteSpace: "pre-wrap", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>

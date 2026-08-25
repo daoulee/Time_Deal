@@ -59,6 +59,9 @@ export type ImpactStats = { totalSavings: number; rescuedItems: number; particip
 export async function getImpactStats() { return requestData<ImpactStats>("/impact", { auth: false }); }
 export async function getMyImpact() { return requestData<{ totalSavings: number; rescuedItems: number; orderCount: number }>("/me/impact"); }
 
+export async function logSearchTerm(term: string) { return requestData<{ logged: boolean }>("/search-log", { ...json("POST", { term }), auth: false, silent: true }); }
+export async function getPopularSearchTerms() { return requestData<{ terms: string[] }>("/search-terms/popular", { auth: false, silent: true }); }
+
 export async function getReopenRequestCount(productId: string) { return requestData<{ count: number }>(`/products/${encodeURIComponent(productId)}/reopen-request-count`, { auth: false }); }
 export async function toggleReopenRequest(productId: string) { return requestData<{ requested: boolean; count: number }>(`/products/${encodeURIComponent(productId)}/reopen-request`, { method: "POST" }); }
 export type SellerReopenRequest = { productId: string; productName: string; requestCount: number; latestRequestedAt: string };

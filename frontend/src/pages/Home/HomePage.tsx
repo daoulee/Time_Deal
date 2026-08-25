@@ -23,10 +23,13 @@ import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
+import { useLargeText } from "@/shared/hooks/useLargeText";
+import { getRecentCategories } from "@/lib/recent-categories";
+import { ProductCard } from "@/shared/components/ProductCard";
 import { CATEGORY_GROUPS, THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
 import { getCatalog } from "@/shared/services/catalog";
 import { discountPercentOf, formatPrice as formatDealPrice, type Product } from "@/shared/catalog";
-import { getCart, getMyNotifications, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
+import { getCart, getMyNotifications, getPopularSearchTerms, logSearchTerm, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
 
 // ── 검색어 순위 높은 순서대로 정확히 10개 키워드 리스트 ──
 const POPULAR_SEARCH_KEYWORDS = [
@@ -366,17 +369,27 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
+  const { enabled: largeText, toggle: toggleLargeText } = useLargeText();
 
-  // ── 모닝픽 배너에 쓸 실제 상품(아침 픽업 어울리는 상품 1개) ──
+  // ── 모닝픽 배너 + 개인화 추천에 쓸 실제 상품 목록 ──
   const [morningPick, setMorningPick] = useState<Product | null>(null);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   useEffect(() => {
     let active = true;
     void getCatalog().then((result) => {
       if (!active) return;
       setMorningPick(result.products.find(isMorningPick) ?? null);
+      setCatalogProducts(result.products);
     });
     return () => { active = false; };
   }, []);
+
+  // ── 최근 본 카테고리 기반 개인화 추천 ──
+  const recommendedProducts = useMemo(() => {
+    const recentCategories = getRecentCategories(3);
+    if (recentCategories.length === 0) return [];
+    return catalogProducts.filter((item) => recentCategories.includes(item.category)).slice(0, 4);
+  }, [catalogProducts]);
 
   // ── 장바구니 개수 및 알림 센터(실제 API) ──
   const [cartCount, setCartCount] = useState(0);
@@ -460,23 +473,30 @@ export default function HomePage() {
     );
   }, []);
 
-  // ── 검색어 순위 높은 순서대로 정확히 10개 필터링 ──
+  // ── 검색어 순위 (실제 검색 데이터가 쌓이면 그걸로 대체) ──
+  const [popularTerms, setPopularTerms] = useState<string[]>(POPULAR_SEARCH_KEYWORDS);
+  useEffect(() => {
+    void getPopularSearchTerms().then((result) => {
+      if (result.ok && result.data && result.data.terms.length > 0) setPopularTerms(result.data.terms);
+    });
+  }, []);
   const searchSuggestions = useMemo(() => {
     const trimmed = searchTerm.trim().toLowerCase();
     if (!trimmed) {
-      return POPULAR_SEARCH_KEYWORDS.slice(0, 10);
+      return popularTerms.slice(0, 10);
     }
-    const matched = POPULAR_SEARCH_KEYWORDS.filter((kw) =>
+    const matched = popularTerms.filter((kw) =>
       kw.toLowerCase().includes(trimmed),
     );
     return matched.length > 0 ? matched.slice(0, 10) : [trimmed];
-  }, [searchTerm]);
+  }, [searchTerm, popularTerms]);
 
   // ── 검색 실행 함수 (엔터 / 클릭 공통) ──
   const executeSearch = (keyword: string) => {
     const target = keyword.trim();
     if (!target) return;
     setIsSearchFocused(false);
+    void logSearchTerm(target);
     navigate(`/products?q=${encodeURIComponent(target)}`);
   };
 
@@ -914,6 +934,22 @@ export default function HomePage() {
             </span>
           </>
         )}
+        <span
+          style={{
+            width: 1,
+            height: 13,
+            background: TOKENS.colors.borderDivider,
+            margin: "0 10px",
+            display: "inline-block",
+          }}
+        />
+        <span
+          style={{ cursor: "pointer", color: largeText ? TOKENS.colors.primaryOrange : "#333333", fontWeight: largeText ? 700 : 400 }}
+          onClick={toggleLargeText}
+          title="큰 글씨 모드"
+        >
+          가 큰글씨
+        </span>
         <span
           style={{
             width: 1,
@@ -2579,6 +2615,25 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* 최근 본 카테고리 기반 개인화 추천 */}
+        {recommendedProducts.length > 0 && (
+          <section style={{ marginBottom: 80 }}>
+            <div style={{ marginBottom: 20 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: TOKENS.colors.primaryOrange, fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+                회원님을 위한 추천
+              </span>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: TOKENS.colors.textHeading, margin: 0 }}>
+                최근 관심 있게 보신 카테고리의 마감특가예요
+              </h2>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 20 }}>
+              {recommendedProducts.map((item) => (
+                <ProductCard key={`${item.id}-${item.dealId ?? "catalog"}`} product={item} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* [순서 5] 이 딜 다시 열어주세요! */}
         <section
