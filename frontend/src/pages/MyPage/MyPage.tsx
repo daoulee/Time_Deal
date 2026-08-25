@@ -13,6 +13,7 @@ import {
   MessageSquareText,
   PackageCheck,
   PackagePlus,
+  PiggyBank,
   Send,
   ShieldCheck,
   Star,
@@ -39,6 +40,7 @@ import {
   getMyOrders,
   getMyParticipations,
   getMyProfile,
+  getMyImpact,
   getMyRestockRequests,
   getMyReviews,
   getMySellerApplication,
@@ -59,6 +61,7 @@ import { formatPrice } from "@/shared/catalog";
 
 const menu = [
   ["/mypage", "내 정보", UserRound],
+  ["/mypage/impact", "나의 절약 리포트", PiggyBank],
   ["/mypage/deals", "참여 딜", TimerReset],
   ["/mypage/orders", "주문", PackageCheck],
   ["/mypage/auctions", "낙찰 내역", Gavel],
@@ -72,6 +75,7 @@ const menu = [
 
 const details: Record<string, [string, string]> = {
   "/mypage": ["내 정보", "이름·전화번호·관심 지역·마케팅 수신을 관리합니다."],
+  "/mypage/impact": ["나의 절약 리포트", "수령 완료한 주문을 기준으로 내가 아낀 금액과 함께한 횟수를 확인합니다."],
   "/mypage/deals": ["참여 딜", "주문으로 확정된 공동구매 참여 현황을 확인합니다."],
   "/mypage/orders": ["주문", "픽업 장소·슬롯과 현장 결제 또는 예약 주문 상태를 확인합니다."],
   "/mypage/auctions": ["낙찰 내역", "직판장 경매 낙찰 건의 에스크로·수령 상태를 확인합니다."],
@@ -278,6 +282,55 @@ function ProfilePanel({ onName }: { onName: (name: string) => void }) {
           {busy && <LoaderCircle className="spin-icon" size={15} />}저장
         </button>
       </form>
+    </section>
+  );
+}
+
+function ImpactPanel() {
+  const [stats, setStats] = useState<{ totalSavings: number; rescuedItems: number; orderCount: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getMyImpact().then((result) => {
+      setLoading(false);
+      if (result.ok) setStats(result.data);
+      else setError(result.error?.message ?? "절약 리포트를 불러오지 못했습니다.");
+    });
+  }, []);
+
+  if (loading) return <Loading text="절약 리포트를 불러오는 중입니다." />;
+  return (
+    <section className="dashboard-panel">
+      <div className="panel-title-row">
+        <div>
+          <p>MY IMPACT</p>
+          <h2>나의 절약 리포트</h2>
+        </div>
+        <StatusBadge type="live">수령 완료 기준</StatusBadge>
+      </div>
+      <Feedback error={error} notice={null} />
+      {!stats || stats.orderCount === 0 ? (
+        <Empty title="아직 집계할 수령 완료 주문이 없습니다." text="주문 후 픽업까지 완료하면 절약 리포트가 표시됩니다." />
+      ) : (
+        <div className="profile-grid compact-profile">
+          <article>
+            <span>누적 절약 금액</span>
+            <strong>{formatPrice(stats.totalSavings)}</strong>
+            <small>정가 대비 할인가로 아낀 금액입니다.</small>
+          </article>
+          <article>
+            <span>함께 구제한 상품</span>
+            <strong>{stats.rescuedItems.toLocaleString("ko-KR")}개</strong>
+            <small>마감 전 타임딜로 픽업해 폐기를 막은 수량입니다.</small>
+          </article>
+          <article>
+            <span>참여 횟수</span>
+            <strong>{stats.orderCount.toLocaleString("ko-KR")}회</strong>
+            <small>수령까지 완료한 주문 건수입니다.</small>
+          </article>
+        </div>
+      )}
     </section>
   );
 }
@@ -1544,6 +1597,7 @@ export default function MyPage() {
 
   const panels: Record<string, React.ReactNode> = {
     "/mypage": <ProfilePanel onName={onName} />,
+    "/mypage/impact": <ImpactPanel />,
     "/mypage/deals": <ParticipationsPanel />,
     "/mypage/orders": <OrdersPanel />,
     "/mypage/auctions": <AuctionOrdersPanel />,

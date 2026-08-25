@@ -974,6 +974,27 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
           >
             동네 딜
           </button>
+          <button
+            type="button"
+            onClick={() => navigate("/impact")}
+            style={{
+              border: `1.5px solid ${TOKENS.primaryOrange}`,
+              borderRadius: 24,
+              padding: "7px 16px",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#000000",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexShrink: 0,
+              background: TOKENS.primaryLight,
+              marginLeft: 8,
+              cursor: "pointer",
+            }}
+          >
+            우리의 임팩트
+          </button>
         </div>
       </nav>
 

@@ -317,8 +317,15 @@ function SellerRestockRequestsPanel() {
     if (!result.ok) return setError(result.error?.message ?? "답변을 저장하지 못했습니다.");
     setNotice("재입고 요청에 답변했습니다."); await load();
   };
+  // 상품별 재입고 요청 건수를 집계해 발주가 시급한 상품을 먼저 보여준다.
+  const demandInsights = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) counts.set(str((item.products ?? {}) as RawRecord, "name") || "상품", (counts.get(str((item.products ?? {}) as RawRecord, "name") || "상품") ?? 0) + 1);
+    return [...counts.entries()].filter(([, count]) => count >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  }, [items]);
   if (loading) return <Loading text="재입고 요청을 불러오는 중입니다." />;
   return <section className="dashboard-panel"><div className="panel-title-row"><div><p>RESTOCK REQUESTS</p><h2>재입고 요청</h2></div><button className="secondary-button" onClick={() => void load()}><RefreshCw size={15} /> 새로고침</button></div><Feedback error={error} notice={notice} />
+    {demandInsights.length > 0 && <div className="order-notice" style={{ display: "flex", alignItems: "flex-start", gap: 8 }}><TrendingUp size={16} style={{ flexShrink: 0, marginTop: 2 }} /><span><b>발주 추천</b> — {demandInsights.map(([name, count]) => `${name} (${count}건)`).join(", ")} 재입고 요청이 많습니다. 발주를 고려해보세요.</span></div>}
     {items.length === 0 ? <Empty title="재입고 요청이 없습니다." text="고객이 주문 내역에서 재입고를 요청하면 여기에 표시됩니다." /> : <div className="operation-list">{items.map((item) => {
       const products = (item.products ?? {}) as RawRecord; const profiles = (item.profiles ?? {}) as RawRecord; const answered = str(item, "status") === "answered";
       return <article className="operation-card" key={str(item, "id")}>

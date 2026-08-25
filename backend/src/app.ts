@@ -14,6 +14,7 @@ import { authRouter } from "./modules/Auth/AuthRoutes.js";
 import { communityRouter } from "./modules/Community/CommunityRoutes.js";
 import { inquiryRouter } from "./modules/Inquiry/InquiryRoutes.js";
 import { emailOtpRouter } from "./modules/Auth/EmailOtpRoutes.js";
+import { impactRouter } from "./modules/Impact/ImpactRoutes.js";
 import { supabaseSessionRouter } from "./modules/Auth/SupabaseSessionRoutes.js";
 import { myPageRouter } from "./modules/MyPage/MyPageRoutes.js";
 import { neighborhoodRouter } from "./modules/Neighborhood/NeighborhoodRoutes.js";
@@ -63,6 +64,7 @@ app.route("/api", ordersRouter);
 app.route("/api", paymentsRouter);
 app.route("/api", auctionRouter);
 app.route("/api", neighborhoodRouter);
+app.route("/api", impactRouter);
 app.notFound((context) => context.json(apiFailure("NOT_FOUND", "요청한 API를 찾을 수 없습니다."), 404));
 app.onError((error, context) => { console.error(JSON.stringify({ level: "error", requestId: context.res.headers.get("x-request-id"), message: error.message })); return context.json(apiFailure("INTERNAL_ERROR", "서버 오류가 발생했습니다."), 500); });
 
