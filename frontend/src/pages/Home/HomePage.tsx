@@ -23,7 +23,6 @@ import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
-import { useLargeText } from "@/shared/hooks/useLargeText";
 import { getGuestCartCount } from "@/lib/guest-cart";
 import { getRecentCategories } from "@/lib/recent-categories";
 import { ProductCard } from "@/shared/components/ProductCard";
@@ -151,7 +150,6 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
-  const { enabled: largeText, toggle: toggleLargeText } = useLargeText();
 
   // ── 모닝픽 배너 + 개인화 추천에 쓸 실제 상품 목록 ──
   const [morningPick, setMorningPick] = useState<Product | null>(null);
@@ -528,22 +526,6 @@ export default function HomePage() {
             </span>
           </>
         )}
-        <span
-          style={{
-            width: 1,
-            height: 13,
-            background: TOKENS.colors.borderDivider,
-            margin: "0 10px",
-            display: "inline-block",
-          }}
-        />
-        <span
-          style={{ cursor: "pointer", color: largeText ? TOKENS.colors.primaryOrange : "#333333", fontWeight: largeText ? 700 : 400 }}
-          onClick={toggleLargeText}
-          title="큰 글씨 모드"
-        >
-          가 큰글씨
-        </span>
         <span
           style={{
             width: 1,
