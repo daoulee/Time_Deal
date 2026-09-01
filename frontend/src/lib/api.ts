@@ -127,8 +127,8 @@ export async function updateAdminInquiry(id: string, input: { status?: string; p
 export async function replyAdminInquiry(id: string, message: string, isInternal = false) { return requestData<{ message: InquiryMessage }>(`/admin/inquiries/${encodeURIComponent(id)}/messages`, json("POST", { message, isInternal })); }
 export async function getAdminResearch() { return requestData<{ research: { generatedAt: string; source: string; categories: Array<{ category: string; productCount: number; averagePrice: number }> } }>("/admin-research"); }
 
-export async function getMyProfile() { return requestData<{ profile: RawRecord }>("/me/profile"); }
-export async function updateMyProfile(input: { name?: string; phone?: string; preferredRegion?: string; marketingOptIn?: boolean }) { return requestData<{ profile: RawRecord }>("/me/profile", json("PATCH", input)); }
+export async function getMyProfile(silent = false) { return requestData<{ profile: RawRecord }>("/me/profile", { silent }); }
+export async function updateMyProfile(input: { name?: string; phone?: string; preferredRegion?: string; marketingOptIn?: boolean }, silent = false) { return requestData<{ profile: RawRecord }>("/me/profile", { ...json("PATCH", input), silent }); }
 export async function getMySellerApplication() { return requestData<{ application: RawRecord | null }>("/me/seller-application"); }
 export async function applySellerAccount(input: { businessName: string; businessNumber: string }) { return requestData<{ application: RawRecord }>("/me/seller-application", json("POST", input)); }
 export async function getMyParticipations() { return requestData<{ participations: RawRecord[] }>("/participations"); }
