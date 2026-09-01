@@ -36,6 +36,8 @@ const EmailPolicyPage = lazy(() => import("@/pages/Legal/EmailPolicyPage"));
 const MyPage = lazy(() => import("@/pages/MyPage/MyPage"));
 const SellerPage = lazy(() => import("@/pages/Seller/SellerPage"));
 const AdminPage = lazy(() => import("@/pages/Admin/AdminPage"));
+const SellerDemoPage = lazy(() => import("@/pages/Demo/SellerDemoPage"));
+const AdminDemoPage = lazy(() => import("@/pages/Demo/AdminDemoPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFound/NotFoundPage"));
 const RouteFallback = () => <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}><span className="spin-icon" style={{ width: 28, height: 28, border: "2.5px solid #e2e8f0", borderTopColor: "#ff5722", borderRadius: "50%" }} /></div>;
 const queryClient = new QueryClient();
@@ -44,7 +46,7 @@ const sellerPaths = ["/seller", "/seller/products", "/seller/products/new", "/se
 const adminPaths = ["/admin", "/admin/orders", "/admin/users", "/admin/sellers", "/admin/products", "/admin/inquiries", "/admin/reviews", "/admin/community", "/admin/pickups", "/admin/audit-logs", "/admin/research", "/admin/restock-requests"];
 const App = () => <QueryClientProvider client={queryClient}><TooltipProvider><ThemeProvider><LocationProvider><Sonner position="top-center" richColors /><BrowserRouter><Suspense fallback={<RouteFallback />}><Routes>
   <Route path="/" element={<HomePage />} /><Route path="/products" element={<ProductsPage />} /><Route path="/products/:id" element={<ProductDetailPage />} /><Route path="/map" element={<MapPage />} /><Route path="/neighborhood" element={<NeighborhoodPage />} /><Route path="/impact" element={<ImpactPage />} /><Route path="/community" element={<CommunityPage />} /><Route path="/community/:id" element={<CommunityPostPage />} /><Route path="/inquiry" element={<InquiryPage />} /><Route path="/notices" element={<NoticePage />} /><Route path="/faq" element={<FaqPage />} /><Route path="/about" element={<AboutPage />} /><Route path="/terms" element={<TermsPage />} /><Route path="/privacy" element={<PrivacyPage />} /><Route path="/email-policy" element={<EmailPolicyPage />} /><Route path="/auth" element={<AuthPage />} /><Route path="/auth/reset-password" element={<ResetPasswordPage />} />
-  <Route path="/payments/toss/checkout" element={<RequireAuth><TossCheckoutPage /></RequireAuth>} /><Route path="/payments/toss/success" element={<RequireAuth><TossSuccessPage /></RequireAuth>} /><Route path="/payments/toss/fail" element={<RequireAuth><TossFailPage /></RequireAuth>} /><Route path="/cart" element={<CartPage />} />
+  <Route path="/payments/toss/checkout" element={<RequireAuth><TossCheckoutPage /></RequireAuth>} /><Route path="/payments/toss/success" element={<RequireAuth><TossSuccessPage /></RequireAuth>} /><Route path="/payments/toss/fail" element={<RequireAuth><TossFailPage /></RequireAuth>} /><Route path="/cart" element={<CartPage />} /><Route path="/seller-demo" element={<SellerDemoPage />} /><Route path="/admin-demo" element={<AdminDemoPage />} />
   {myPagePaths.map((path) => <Route key={path} path={path} element={<RequireAuth><MyPage /></RequireAuth>} />)}
   {sellerPaths.map((path) => <Route key={path} path={path} element={<RequireSeller><SellerPage /></RequireSeller>} />)}
   {adminPaths.map((path) => <Route key={path} path={path} element={<RequireAdmin><AdminPage /></RequireAdmin>} />)}

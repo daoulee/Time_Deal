@@ -2714,6 +2714,46 @@ export default function HomePage() {
             style={{
               display: "flex",
               flexWrap: "wrap",
+              justifyContent: "flex-end",
+              gap: 4,
+              marginTop: -14,
+              marginBottom: 20,
+              fontSize: 12,
+            }}
+          >
+            {[
+              { label: "판매자 센터 데모", to: "/seller-demo" },
+              { label: "관리자 콘솔 데모", to: "/admin-demo" },
+            ].map((item, idx, arr) => (
+              <span key={item.label} style={{ display: "flex", alignItems: "center" }}>
+                <span
+                  onClick={() => navigate(item.to)}
+                  style={{
+                    cursor: "pointer",
+                    color: TOKENS.colors.textMuted,
+                    fontWeight: 500,
+                  }}
+                >
+                  {item.label}
+                </span>
+                {idx < arr.length - 1 && (
+                  <span
+                    style={{
+                      width: 1,
+                      height: 10,
+                      background: TOKENS.colors.borderDivider,
+                      margin: "0 10px",
+                    }}
+                  />
+                )}
+              </span>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
               gap: 4,
               marginBottom: 20,
               fontSize: 13,
