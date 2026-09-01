@@ -6,7 +6,6 @@
  */
 import {
   Check,
-  CheckCircle2,
   Clock,
   Crosshair,
   Heart,
