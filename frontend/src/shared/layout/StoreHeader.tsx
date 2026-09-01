@@ -21,7 +21,6 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
-import { useLargeText } from "@/shared/hooks/useLargeText";
 import { getGuestCartCount } from "@/lib/guest-cart";
 import { CATEGORY_GROUPS, THEME_ROUTE, type ThemeKey } from "@/shared/categoryData";
 import { getCart, getMyNotifications, getPopularSearchTerms, logSearchTerm, markAllNotificationsRead, markNotificationRead, type RawRecord } from "@/lib/api";
@@ -59,7 +58,6 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
   const isCommunityActive = location.pathname.startsWith("/community");
   const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
-  const { enabled: largeText, toggle: toggleLargeText } = useLargeText();
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get("q") ?? "");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -269,22 +267,6 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
             </span>
           </>
         )}
-        <span
-          style={{
-            width: 1,
-            height: 13,
-            background: TOKENS.borderDivider,
-            margin: "0 10px",
-            display: "inline-block",
-          }}
-        />
-        <span
-          style={{ cursor: "pointer", color: largeText ? TOKENS.primaryOrange : "#333333", fontWeight: largeText ? 700 : 400 }}
-          onClick={toggleLargeText}
-          title="큰 글씨 모드"
-        >
-          가 큰글씨
-        </span>
         <span
           style={{
             width: 1,
