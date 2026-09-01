@@ -1,13 +1,17 @@
 /**
  * 실제 장바구니(cart_items) API로 담아둔 상품을 모아 픽업 장소·슬롯·결제수단을 선택해
  * 한 번에 여러 상품을 주문하는 화면입니다. 결제 생성은 기존 /orders API를 그대로 재사용합니다.
+ * 비로그인 방문자는 localStorage 임시 장바구니를 쓰고, 로그인하면 자동으로 실제 장바구니에 합쳐집니다.
  */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LoaderCircle, Minus, Plus, Trash2 } from "lucide-react";
 import { AppShell } from "@/shared/layout/AppShell";
+import { authClient } from "@/lib/auth";
 import { formatPrice } from "@/shared/catalog";
+import { getCatalog } from "@/shared/services/catalog";
 import {
+  addToCart,
   clearCart,
   createOrder,
   getCart,
@@ -18,6 +22,7 @@ import {
   type PickupLocation,
   type PickupSlot,
 } from "@/lib/api";
+import { clearGuestCart, getGuestCart, removeGuestCartItem, updateGuestCartItem } from "@/lib/guest-cart";
 import { isTossPaymentsConfigured } from "@/lib/toss-payments";
 
 type CartItem = {
@@ -32,6 +37,8 @@ const PAYMENT_LABELS: Record<string, string> = { on_site: "현장 결제", reser
 
 export default function CartPage() {
   const navigate = useNavigate();
+  const { data: session } = authClient.useSession();
+  const isGuest = !session?.user;
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<PickupLocation[]>([]);
@@ -42,8 +49,36 @@ export default function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadGuestCart = async () => {
+    const guestItems = getGuestCart();
+    if (guestItems.length === 0) { setItems([]); return; }
+    const catalog = await getCatalog();
+    const next: CartItem[] = guestItems.map((entry) => {
+      const product = catalog.products.find((item) => item.id === entry.productId);
+      return {
+        id: entry.productId,
+        productId: entry.productId,
+        quantity: entry.quantity,
+        product: product ? { id: product.id, name: product.name, image: product.image, category: product.category, regularPrice: product.originalPrice, status: "active" } : null,
+        deal: product?.dealId ? { id: product.dealId, dealPrice: product.dealPrice } : null,
+      };
+    });
+    setItems(next);
+  };
+
   const load = async () => {
     setLoading(true);
+    if (isGuest) {
+      await loadGuestCart();
+      setLoading(false);
+      return;
+    }
+    // 로그인 상태인데 아직 안 옮겨진 비회원 장바구니가 있으면 실제 장바구니로 합친다.
+    const guestItems = getGuestCart();
+    if (guestItems.length > 0) {
+      await Promise.all(guestItems.map((entry) => addToCart(entry.productId, entry.quantity)));
+      clearGuestCart();
+    }
     const result = await getCart();
     setLoading(false);
     if (result.ok) setItems((result.data?.items ?? []) as unknown as CartItem[]);
@@ -53,7 +88,8 @@ export default function CartPage() {
   useEffect(() => {
     void load();
     void getPickupLocations().then((result) => { if (result.ok) setLocations(result.data?.locations ?? []); });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest]);
 
   useEffect(() => {
     if (!locationId) { setSlots([]); setSlotId(""); return; }
@@ -65,20 +101,23 @@ export default function CartPage() {
   const total = orderableItems.reduce((sum, item) => sum + (item.deal?.dealPrice ?? 0) * item.quantity, 0);
 
   const changeQuantity = async (item: CartItem, next: number) => {
-    if (next < 1) { await remove(item.id); return; }
+    if (next < 1) { await remove(item); return; }
     if (next > 20) return;
     setItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, quantity: next } : row)));
+    if (isGuest) { updateGuestCartItem(item.productId, next); return; }
     const result = await updateCartItem(item.id, next);
     if (!result.ok) { setError(result.error?.message ?? "수량을 변경하지 못했습니다."); await load(); }
   };
 
-  const remove = async (id: string) => {
-    setItems((prev) => prev.filter((row) => row.id !== id));
-    const result = await removeCartItem(id);
+  const remove = async (item: CartItem) => {
+    setItems((prev) => prev.filter((row) => row.id !== item.id));
+    if (isGuest) { removeGuestCartItem(item.productId); return; }
+    const result = await removeCartItem(item.id);
     if (!result.ok) { setError(result.error?.message ?? "삭제하지 못했습니다."); await load(); }
   };
 
   const checkout = async () => {
+    if (isGuest) { navigate("/auth"); return; }
     if (!locationId || !slotId) { setError("픽업 장소와 수령 슬롯을 선택해 주세요."); return; }
     if (!orderableItems.length) { setError("주문 가능한 상품이 없습니다."); return; }
     setSubmitting(true);
@@ -106,6 +145,11 @@ export default function CartPage() {
         <div><p>CART</p><h1>장바구니</h1><span>담아둔 상품을 한 번에 픽업 장소·시간을 선택해 주문하세요.</span></div>
       </section>
       <section className="section-wrap">
+        {isGuest && items.length > 0 && (
+          <div className="order-notice" style={{ marginBottom: 16 }}>
+            로그인하지 않아도 장바구니는 이 브라우저에 그대로 남아있어요. 주문하시려면 결제 직전에 로그인만 하시면 됩니다.
+          </div>
+        )}
         {loading ? (
           <div className="order-loading"><LoaderCircle className="spin-icon" /> 장바구니를 불러오는 중입니다.</div>
         ) : items.length === 0 ? (
@@ -128,7 +172,7 @@ export default function CartPage() {
                     <span style={{ minWidth: 20, textAlign: "center", fontSize: 14 }}>{item.quantity}</span>
                     <button type="button" onClick={() => void changeQuantity(item, item.quantity + 1)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer" }}><Plus size={14} /></button>
                   </div>
-                  <button type="button" onClick={() => void remove(item.id)} aria-label="삭제" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => void remove(item)} aria-label="삭제" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}><Trash2 size={16} /></button>
                 </div>
               ))}
               {unavailableItems.length > 0 && (
@@ -138,7 +182,7 @@ export default function CartPage() {
                     <div key={item.id} style={{ display: "flex", gap: 14, padding: 14, border: "1px dashed var(--border)", borderRadius: 12, alignItems: "center", opacity: 0.6, marginBottom: 8 }}>
                       <img src={item.product?.image} alt={item.product?.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, background: "var(--muted)" }} />
                       <span style={{ flex: 1, fontSize: 13 }}>{item.product?.name ?? "삭제된 상품"}</span>
-                      <button type="button" onClick={() => void remove(item.id)} aria-label="삭제" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}><Trash2 size={16} /></button>
+                      <button type="button" onClick={() => void remove(item)} aria-label="삭제" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}><Trash2 size={16} /></button>
                     </div>
                   ))}
                 </div>
@@ -177,7 +221,7 @@ export default function CartPage() {
                 disabled={submitting || !orderableItems.length}
                 onClick={() => void checkout()}
               >
-                {submitting ? "주문 접수 중..." : "주문 접수하기"}
+                {submitting ? "주문 접수 중..." : isGuest ? "로그인하고 주문하기" : "주문 접수하기"}
               </button>
             </div>
           </div>

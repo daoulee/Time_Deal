@@ -24,6 +24,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
 import { useLargeText } from "@/shared/hooks/useLargeText";
+import { getGuestCartCount } from "@/lib/guest-cart";
 import { getRecentCategories } from "@/lib/recent-categories";
 import { ProductCard } from "@/shared/components/ProductCard";
 import { CATEGORY_GROUPS, THEME_ROUTE, isMorningPick } from "@/shared/categoryData";
@@ -193,7 +194,7 @@ export default function HomePage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   useEffect(() => {
-    if (!session?.user) { setCartCount(0); setNotifications([]); setUnreadCount(0); return; }
+    if (!session?.user) { setCartCount(getGuestCartCount()); setNotifications([]); setUnreadCount(0); return; }
     let active = true;
     const refresh = () => {
       void getCart({ silent: true }).then((result) => { if (active && result.ok) setCartCount((result.data?.items ?? []).length); });

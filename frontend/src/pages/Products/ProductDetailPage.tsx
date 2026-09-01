@@ -45,6 +45,7 @@ import { getCatalog, type CatalogSource } from "@/shared/services/catalog";
 import { isTossPaymentsConfigured } from "@/lib/toss-payments";
 import { useLocationStore } from "@/shared/location/LocationContext";
 import { recordCategoryView } from "@/lib/recent-categories";
+import { addToGuestCart } from "@/lib/guest-cart";
 
 type AddressMode = "manual" | "gps";
 
@@ -288,7 +289,11 @@ export default function ProductDetailPage() {
   };
 
   const handleAddToCart = async () => {
-    if (!session?.user) { navigate("/auth"); return; }
+    if (!session?.user) {
+      addToGuestCart(product.id, quantity);
+      setNotice("장바구니에 담았습니다. 결제 직전에 로그인만 하면 돼요.");
+      return;
+    }
     setAddingToCart(true);
     const result = await addToCart(product.id, quantity);
     setAddingToCart(false);
@@ -609,25 +614,15 @@ export default function ProductDetailPage() {
               </div>
 
               {/* 주문 폼 영역 (플랫 카드 룩) */}
-              {!session?.user ? (
-                <div className="order-login-prompt">
-                  <MapPin size={20} />
-                  <div>
-                    <strong>주문하려면 로그인이 필요합니다.</strong>
-                    <span>로그인 후 픽업 장소와 수령 슬롯을 선택할 수 있습니다.</span>
-                  </div>
-                  <Link className="secondary-button" to="/auth">로그인</Link>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    background: "#ffffff",
-                    border: "none",
-                    borderRadius: 4,
-                    padding: "20px 22px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
-                  }}
-                >
+              <div
+                style={{
+                  background: "#ffffff",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "20px 22px",
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                }}
+              >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #f1f5f9", paddingBottom: 10 }}>
                     <div>
                       <p style={{ fontSize: 11, fontWeight: 700, color: "#ff5722", margin: 0, letterSpacing: "0.5px" }}>ORDER & PICKUP</p>
@@ -738,6 +733,8 @@ export default function ProductDetailPage() {
                     )}
                   </div>
 
+                  {session?.user ? (
+                  <>
                   {/* 3. 픽업 장소 (커스텀 2단 드롭다운) */}
                   <div ref={locationRef} style={{ position: "relative", marginBottom: 14 }}>
                     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4a5568", marginBottom: 6 }}>
@@ -1010,6 +1007,17 @@ export default function ProductDetailPage() {
                     )}
                     {locateError && <small style={{ color: "#ef4444", fontSize: 11, marginTop: 4, display: "block" }}>{locateError}</small>}
                   </div>
+                  </>
+                  ) : (
+                    <div className="order-login-prompt" style={{ marginBottom: 14 }}>
+                      <MapPin size={20} />
+                      <div>
+                        <strong>픽업 장소·시간을 선택하려면 로그인이 필요합니다.</strong>
+                        <span>로그인 후 픽업 장소와 수령 슬롯을 선택하고 바로 주문할 수 있습니다.</span>
+                      </div>
+                      <Link className="secondary-button" to="/auth">로그인</Link>
+                    </div>
+                  )}
 
                   {/* 총 주문 금액 및 접수 버튼 */}
                   <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1045,8 +1053,8 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void handleCreateOrder()}
-                      disabled={submitting || !locationId || !slotId || !product.dealId}
+                      onClick={() => (session?.user ? void handleCreateOrder() : navigate("/auth"))}
+                      disabled={submitting || !product.dealId || (!!session?.user && (!locationId || !slotId))}
                       style={{
                         flex: 1,
                         height: 46,
@@ -1056,8 +1064,8 @@ export default function ProductDetailPage() {
                         borderRadius: 3,
                         fontSize: 15,
                         fontWeight: 700,
-                        cursor: submitting || !locationId || !slotId ? "not-allowed" : "pointer",
-                        opacity: submitting || !locationId || !slotId ? 0.6 : 1,
+                        cursor: submitting || (!!session?.user && (!locationId || !slotId)) ? "not-allowed" : "pointer",
+                        opacity: submitting || (!!session?.user && (!locationId || !slotId)) ? 0.6 : 1,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -1081,8 +1089,7 @@ export default function ProductDetailPage() {
                       <>현장 픽업 시 카운터에서 확인 후 결제 또는 수령이 진행됩니다.</>
                     )}
                   </p>
-                </div>
-              )}
+              </div>
 
               <ul className="detail-checks" style={{ marginTop: 14 }}>
                 <li>
