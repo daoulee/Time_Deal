@@ -6,7 +6,7 @@ import { apiUrl } from "@/lib/api-base";
 import { notifyApiError } from "@/lib/api-error";
 import { clearAuthToken, getAuthToken, setAuthToken } from "@/lib/auth";
 import { supabaseAuthClient } from "@/lib/supabase-auth";
-import type { AuctionItem, AuctionSettlement, DeliveryMethod } from "@/shared/auction";
+import type { AuctionItem, DeliveryMethod } from "@/shared/auction";
 
 export type ApiFetchInit = RequestInit & { auth?: boolean; silent?: boolean };
 export type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string; details?: unknown } };
@@ -112,8 +112,7 @@ export async function updateAdminUser(id: string, input: { role?: string; isSusp
 export async function getSellerApplications() { return requestData<{ applications: RawRecord[] }>("/admin/seller-applications"); }
 export async function getAdminRestockRequests() { return requestData<{ requests: RawRecord[] }>("/admin/restock-requests"); }
 export async function reviewSellerApplication(id: string, status: "approved" | "rejected", reason: string) { return requestData<{ application: RawRecord }>(`/admin/seller-applications/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
-export async function getAdminItems(resource: "products" | "deals" | "reviews" | "community" | "community-reports" | "pickup-locations" | "pickup-slots" | "audit-logs" | "auctions") { return requestData<{ items: RawRecord[] }>(`/admin/${resource}`); }
-export async function deleteAdminAuction(id: string, reason: string) { return requestData<{ deleted: boolean }>(`/admin/auctions/${encodeURIComponent(id)}`, json("DELETE", { reason })); }
+export async function getAdminItems(resource: "products" | "deals" | "reviews" | "community" | "community-reports" | "pickup-locations" | "pickup-slots" | "audit-logs") { return requestData<{ items: RawRecord[] }>(`/admin/${resource}`); }
 export async function moderateProduct(id: string, status: "active" | "rejected" | "hidden", reason: string) { return requestData<{ product: RawRecord }>(`/admin/products/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
 export async function moderateDeal(id: string, status: "draft" | "active" | "ended" | "cancelled", reason: string) { return requestData<{ deal: RawRecord }>(`/admin/deals/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
 export async function moderateContent(resource: "reviews" | "community" | "reports", id: string, status: string, reason: string) { return requestData<{ item: RawRecord }>(`/admin/moderation/${resource}/${encodeURIComponent(id)}`, json("PATCH", { status, reason })); }
@@ -164,14 +163,6 @@ export async function getAuctions() { return requestData<{ auctions: AuctionItem
 export async function getAuction(id: string) { return requestData<{ auction: AuctionItem; youAreRestricted: boolean; youAreWinner: boolean }>(`/auctions/${encodeURIComponent(id)}`, { auth: false }); }
 export async function placeAuctionBid(id: string, amount: number) { return requestData<{ auction: AuctionItem }>(`/auctions/${encodeURIComponent(id)}/bids`, json("POST", { amount })); }
 export async function checkoutAuction(id: string, input: { deliveryMethod: DeliveryMethod; deliveryAddress?: string; parcelPayment?: "prepaid" | "cod" }) { return requestData<{ auction: AuctionItem }>(`/auctions/${encodeURIComponent(id)}/checkout`, json("POST", input)); }
-export async function confirmAuctionReceipt(id: string) { return requestData<{ auction: AuctionItem }>(`/auctions/${encodeURIComponent(id)}/confirm-receipt`, { method: "POST" }); }
-export async function getMyAuctionOrders() { return requestData<{ orders: RawRecord[] }>("/my-auction-orders"); }
-export async function getSellerAuctions() { return requestData<{ auctions: AuctionItem[] }>("/seller-auctions"); }
-export async function createSellerAuction(input: { title: string; description: string; origin: string; image: string; startPrice: number; minBidIncrement: number; endsAt: string; allowPickup: boolean; pickupLocation: string; allowQuick: boolean; sellerHandlesDelivery: boolean }) { return requestData<{ auction: AuctionItem }>("/seller-auctions", json("POST", input)); }
-export async function getSellerAuctionUploadUrl(file: File) { return requestData<{ bucket: string; objectPath: string; signedUrl: string; token: string }>("/seller-auctions/image-upload-url", json("POST", { fileName: file.name, contentType: file.type, size: file.size })); }
-export async function awardSellerAuction(id: string, input: { winnerUserId?: string; finalPrice?: number }) { return requestData<{ auction: AuctionItem }>(`/seller-auctions/${encodeURIComponent(id)}/award`, json("POST", input)); }
-export async function submitFloorBid(id: string, amount: number) { return requestData<{ auction: AuctionItem }>(`/seller-auctions/${encodeURIComponent(id)}/floor-bid`, json("POST", { amount })); }
-export async function getSellerSettlements() { return requestData<{ settlements: AuctionSettlement[] }>("/seller-settlements"); }
 
 export async function sendEmailOtp(email: string, redirectTo = `${window.location.origin}/auth`) { return apiFetch("/auth/email-otp/send", { ...json("POST", { email, redirectTo }), auth: false }); }
 export async function verifyEmailOtp(email: string, token: string) { return apiFetch("/auth/email-otp/verify", { ...json("POST", { email, token, type: "email" }), auth: false }); }

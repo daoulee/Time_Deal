@@ -3,18 +3,16 @@
  * 모든 패널은 로딩·빈 상태·오류·성공 피드백과 mutation 중 중복 실행 방지를 제공합니다.
  */
 import { ImageUp, LoaderCircle, PackageCheck, RefreshCw, Send, TrendingUp, X } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { toast } from "sonner";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DashboardShell } from "@/shared/layout/DashboardShell";
 import { StatusBadge } from "@/shared/components/StatusBadge";
-import { adjustInventory, awardSellerAuction, createSellerAuction, createSellerProductWithDeal, getAuction, getInventoryHistory, getNewProductUploadUrl, getProductUploadUrl, getSellerAnalytics, getSellerAuctions, getSellerAuctionUploadUrl, getSellerDashboard, getSellerFulfillments, getSellerInquiries, getSellerPickupLocations, getSellerPickupSlots, getSellerProducts, getSellerReopenRequests, getSellerRestockRequests, getSellerSettlements, hideSellerProduct, replySellerInquiry, replySellerRestockRequest, submitFloorBid, submitSellerProduct, updateFulfillmentStatus, updateSellerProduct, uploadProductImage, type Fulfillment, type Inquiry, type RawRecord, type SellerReopenRequest, type SellerSaleItem, type SellerTimedStatus } from "@/lib/api";
-import { AUCTION_STATUS_LABEL, feeRateLabel, type AuctionBid, type AuctionItem, type AuctionSettlement } from "@/shared/auction";
+import { adjustInventory, createSellerProductWithDeal, getInventoryHistory, getNewProductUploadUrl, getProductUploadUrl, getSellerAnalytics, getSellerDashboard, getSellerFulfillments, getSellerInquiries, getSellerPickupLocations, getSellerPickupSlots, getSellerProducts, getSellerReopenRequests, getSellerRestockRequests, hideSellerProduct, replySellerInquiry, replySellerRestockRequest, submitSellerProduct, updateFulfillmentStatus, updateSellerProduct, uploadProductImage, type Fulfillment, type Inquiry, type RawRecord, type SellerReopenRequest, type SellerSaleItem, type SellerTimedStatus } from "@/lib/api";
 import { formatPrice } from "@/shared/catalog";
 
 const info: Record<string, [string, string]> = {
-  "/seller": ["판매자 대시보드", "상품·fulfillment·문의와 예약 금액을 실시간 집계합니다."], "/seller/products": ["상품 관리", "상품을 수정·숨김·검수 요청하고 이미지와 재고를 관리합니다."], "/seller/products/new": ["상품 등록", "상품·사진·타임딜을 한 번에 등록하면 즉시 판매가 시작됩니다."], "/seller/orders": ["주문 현황", "판매자별 fulfillment를 정방향으로 처리합니다."], "/seller/analytics": ["통계·픽업", "판매 현황·수익과 품목별 실적을 그래프로 확인합니다."], "/seller/auction": ["직판장 경매", "경매를 등록하고 진행 상태를 관리합니다."], "/seller/settlement": ["경매 정산", "낙찰 대금 에스크로 상태와 정산 내역을 확인합니다."], "/seller/restock-requests": ["재입고 요청", "고객이 보낸 재입고 요청을 확인하고 예상 입고일을 답변합니다."], "/seller/inquiries": ["판매자 문의", "배정된 고객 문의 대화를 확인하고 답변합니다."],
+  "/seller": ["판매자 대시보드", "상품·fulfillment·문의와 예약 금액을 실시간 집계합니다."], "/seller/products": ["상품 관리", "상품을 수정·숨김·검수 요청하고 이미지와 재고를 관리합니다."], "/seller/products/new": ["상품 등록", "상품·사진·타임딜을 한 번에 등록하면 즉시 판매가 시작됩니다."], "/seller/orders": ["주문 현황", "판매자별 fulfillment를 정방향으로 처리합니다."], "/seller/analytics": ["통계·픽업", "판매 현황·수익과 품목별 실적을 그래프로 확인합니다."], "/seller/restock-requests": ["재입고 요청", "고객이 보낸 재입고 요청을 확인하고 예상 입고일을 답변합니다."], "/seller/inquiries": ["판매자 문의", "배정된 고객 문의 대화를 확인하고 답변합니다."],
 };
 const str = (item: RawRecord, key: string) => String(item[key] ?? ""); const num = (item: RawRecord, key: string) => Number(item[key] ?? 0);
 const date = (input?: string) => input ? new Date(input).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }) : "-";
@@ -186,124 +184,6 @@ function InquiriesPanel() {
   return <section className="dashboard-panel"><div className="panel-title-row"><div><p>SELLER INQUIRIES</p><h2>배정 문의 대화</h2></div><StatusBadge type="live">담당 문의만 표시</StatusBadge></div><Feedback error={error} notice={notice} />{items.length === 0 ? <Empty title="담당 문의가 없습니다." text="상품 문의가 배정되면 표시됩니다." /> : <div className="conversation-list">{items.map((item) => <article key={item.id}><header><strong>{item.subject}</strong><StatusBadge type="ready">{item.status}</StatusBadge></header><div className="message-list">{(item.inquiry_messages ?? []).map((message) => <p key={message.id}><span>{message.message}</span><small>{date(message.created_at)}</small></p>)}</div><div className="reply-row"><textarea value={replies[item.id] ?? ""} onChange={(event) => setReplies({ ...replies, [item.id]: event.target.value })} aria-label={`${item.subject} 답변`} /><button className="primary-button" disabled={busy === item.id || !(replies[item.id]?.trim())} onClick={() => void reply(item.id)}><Send size={15} /> 답변</button></div></article>)}</div>}</section>;
 }
 
-function defaultAuctionEndsAt() {
-  const target = new Date(Date.now() + 60 * 60 * 1000);
-  target.setSeconds(0, 0);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}T${pad(target.getHours())}:${pad(target.getMinutes())}`;
-}
-function AuctionForm({ onSaved }: { onSaved?: () => void }) {
-  const emptyForm = { title: "", description: "", origin: "", startPrice: 0, minBidIncrement: 1000, endsAt: defaultAuctionEndsAt(), allowPickup: true, pickupLocation: "", allowQuick: true, sellerHandlesDelivery: false };
-  const [form, setForm] = useState(emptyForm); const [imageFile, setImageFile] = useState<File | null>(null); const [imagePreview, setImagePreview] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
-  const pickImage = (file: File | null) => { setImageFile(file); setImagePreview((current) => { if (current) URL.revokeObjectURL(current); return file ? URL.createObjectURL(file) : null; }); };
-  const submit = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setError(null); setNotice(null);
-    if (!imageFile) { setBusy(false); return setError("경매 상품 사진을 선택하세요."); }
-    if (new Date(form.endsAt).getTime() <= Date.now() + 5 * 60 * 1000) { setBusy(false); return setError("경매 마감 시각은 최소 5분 이후로 설정해야 합니다."); }
-    const signed = await getSellerAuctionUploadUrl(imageFile);
-    if (!signed.ok || !signed.data) { setBusy(false); return setError(signed.error?.message ?? "이미지 업로드 URL을 만들지 못했습니다."); }
-    const uploaded = await uploadProductImage(signed.data.bucket, signed.data.objectPath, signed.data.token, imageFile);
-    if (!uploaded.ok) { setBusy(false); return setError(uploaded.error ?? "이미지 업로드에 실패했습니다."); }
-    const result = await createSellerAuction({ title: form.title, description: form.description, origin: form.origin, image: signed.data.objectPath, startPrice: form.startPrice, minBidIncrement: form.minBidIncrement, endsAt: new Date(form.endsAt).toISOString(), allowPickup: form.allowPickup, pickupLocation: form.pickupLocation, allowQuick: form.allowQuick, sellerHandlesDelivery: form.sellerHandlesDelivery });
-    setBusy(false);
-    if (!result.ok) return setError(result.error?.message ?? "경매를 등록하지 못했습니다.");
-    setNotice("경매를 등록했습니다. 지금 바로 입찰을 받을 수 있습니다.");
-    setForm(emptyForm); pickImage(null); onSaved?.();
-  };
-  return <section className="dashboard-panel"><div className="panel-title-row"><div><p>NEW AUCTION</p><h2>경매 등록</h2></div><StatusBadge type="live">오픈 프로모션 · 수수료 0원</StatusBadge></div><Feedback error={error} notice={notice} /><form className="operation-form" onSubmit={submit}><label>품목명<input required minLength={2} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label><label>산지/항구<input required value={form.origin} onChange={(event) => setForm({ ...form, origin: event.target.value })} /></label><label>시작가<input required min={0} type="number" value={form.startPrice} onChange={(event) => setForm({ ...form, startPrice: Number(event.target.value) })} /></label><label>최소 호가 단위<input required min={100} type="number" value={form.minBidIncrement} onChange={(event) => setForm({ ...form, minBidIncrement: Number(event.target.value) })} /></label><label className="wide">설명<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label className="wide">상품 사진{imagePreview && <div className="image-preview-row"><img src={imagePreview} alt="경매 상품 미리보기" className="product-image-preview" /><button type="button" className="image-remove-button" onClick={() => pickImage(null)} aria-label="경매 사진 삭제"><X size={14} /></button></div>}<label className="file-action"><ImageUp size={15} /> {imageFile ? "사진 변경" : "사진 선택"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => pickImage(event.target.files?.[0] ?? null)} /></label></label><label>경매 마감 시각<input required type="datetime-local" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} /></label><label className="check-label"><input type="checkbox" checked={form.allowPickup} onChange={(event) => setForm({ ...form, allowPickup: event.target.checked })} /> 현장 직접 수령 지원</label>{form.allowPickup && <label>직판장 주소<input value={form.pickupLocation} onChange={(event) => setForm({ ...form, pickupLocation: event.target.value })} /></label>}<label className="check-label"><input type="checkbox" checked={form.allowQuick} onChange={(event) => setForm({ ...form, allowQuick: event.target.checked })} /> 당일 특급 퀵(착불) 지원</label><label className="check-label"><input type="checkbox" checked={form.sellerHandlesDelivery} onChange={(event) => setForm({ ...form, sellerHandlesDelivery: event.target.checked })} /> 판매자 직접 패키징·배송 책임 (프로모션 종료 후 수수료 3%로 감면)</label><button className="primary-button" disabled={busy}>{busy && <LoaderCircle className="spin-icon" size={16} />}경매 등록</button></form></section>;
-}
-function FloorBidForm({ auctionId, minAmount, onDone, onCancel }: { auctionId: string; minAmount: number; onDone: () => void; onCancel: () => void }) {
-  const [amount, setAmount] = useState(minAmount); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
-  const confirm = async () => {
-    if (amount < minAmount) { setError(`최소 ${formatPrice(minAmount)} 이상 입력하세요.`); return; }
-    setBusy(true); setError(null);
-    const result = await submitFloorBid(auctionId, amount);
-    setBusy(false);
-    if (!result.ok) return setError(result.error?.message ?? "현장 호가 반영에 실패했습니다.");
-    onDone();
-  };
-  return <div className="operation-form compact">
-    {error && <div className="order-error" role="alert">{error}</div>}
-    <label>현장에서 부른 금액 (최소 {formatPrice(minAmount)})<input type="number" min={minAmount} value={amount} onChange={(event) => setAmount(Number(event.target.value))} /></label>
-    <p className="muted-copy">온라인 최고가가 이 금액으로 갱신되며, 온라인 입찰자는 이보다 높은 금액으로만 다시 입찰할 수 있습니다.</p>
-    <div className="action-row"><button className="primary-button" disabled={busy} onClick={() => void confirm()}>{busy ? "반영 중..." : "현장 호가 반영"}</button><button onClick={onCancel} disabled={busy}>취소</button></div>
-  </div>;
-}
-function AwardForm({ auctionId, sellerId, onDone, onCancel }: { auctionId: string; sellerId: string; onDone: () => void; onCancel: () => void }) {
-  const [bids, setBids] = useState<AuctionBid[]>([]); const [loading, setLoading] = useState(true); const [winnerUserId, setWinnerUserId] = useState(""); const [finalPrice, setFinalPrice] = useState(0); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    void getAuction(auctionId).then((result) => {
-      if (!active || !result.ok || !result.data) return;
-      const auction = result.data.auction;
-      setBids(auction.bids.filter((bid) => bid.userId !== sellerId));
-      setWinnerUserId(auction.highestBidderId ?? auction.bids.find((bid) => bid.userId !== sellerId)?.userId ?? "");
-      setFinalPrice(auction.currentPrice);
-    }).finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, [auctionId, sellerId]);
-  const distinctBidders = useMemo(() => {
-    const best = new Map<string, AuctionBid>();
-    for (const bid of bids) { const current = best.get(bid.userId); if (!current || bid.amount > current.amount) best.set(bid.userId, bid); }
-    return [...best.values()].sort((a, b) => b.amount - a.amount);
-  }, [bids]);
-  const confirm = async () => {
-    if (!winnerUserId) { setError("낙찰자를 선택하세요."); return; }
-    setBusy(true); setError(null);
-    const result = await awardSellerAuction(auctionId, { winnerUserId, finalPrice });
-    setBusy(false);
-    if (!result.ok) return setError(result.error?.message ?? "낙찰 처리에 실패했습니다.");
-    onDone();
-  };
-  if (loading) return <Loading text="입찰 정보를 불러오는 중입니다." />;
-  if (distinctBidders.length === 0) return <div className="order-notice">아직 온라인 입찰이 없어 낙찰자를 지정할 수 없습니다. 낙찰자가 최소 1회 입찰한 뒤 다시 시도하세요.</div>;
-  return <div className="operation-form compact">
-    {error && <div className="order-error" role="alert">{error}</div>}
-    <label>낙찰자 (현장에서 다른 사람이 더 높은 값을 불렀다면 여기서 바꿀 수 있습니다)<select value={winnerUserId} onChange={(event) => setWinnerUserId(event.target.value)}>{distinctBidders.map((bid) => <option key={bid.userId} value={bid.userId}>{bid.userName} · {formatPrice(bid.amount)}</option>)}</select></label>
-    <label>최종 낙찰가 (현장 호가가 더 높다면 직접 입력)<input type="number" min={0} value={finalPrice} onChange={(event) => setFinalPrice(Number(event.target.value))} /></label>
-    <div className="action-row"><button className="primary-button" disabled={busy} onClick={() => void confirm()}>{busy ? "처리 중..." : "낙찰 확정"}</button><button onClick={onCancel} disabled={busy}>취소</button></div>
-  </div>;
-}
-function AuctionsPanel() {
-  const [items, setItems] = useState<AuctionItem[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null); const [awardingId, setAwardingId] = useState<string | null>(null); const [floorBiddingId, setFloorBiddingId] = useState<string | null>(null);
-  const bidCounts = useRef<Map<string, number>>(new Map());
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    const result = await getSellerAuctions();
-    if (!silent) setLoading(false);
-    if (!result.ok) { if (!silent) setError(result.error?.message ?? "경매를 조회하지 못했습니다."); return; }
-    const auctions = result.data?.auctions ?? [];
-    for (const auction of auctions) {
-      const previous = bidCounts.current.get(auction.id);
-      if (previous !== undefined && auction.bids.length > previous) {
-        const latest = auction.bids[0];
-        toast.success(`[${auction.title}] 새 입찰: ${latest.userId === auction.sellerId ? "현장 호가" : latest.userName} · ${formatPrice(latest.amount)}`);
-      }
-      bidCounts.current.set(auction.id, auction.bids.length);
-    }
-    setItems(auctions);
-  }, []);
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { const timer = setInterval(() => { void load(true); }, 4000); return () => clearInterval(timer); }, [load]);
-  return <>
-    <AuctionForm onSaved={() => void load()} />
-    <section className="dashboard-panel spaced-panel"><div className="panel-title-row"><div><p>MY AUCTIONS</p><h2>등록 경매</h2></div><button className="secondary-button" onClick={() => void load()}><RefreshCw size={15} /> 새로고침</button></div><Feedback error={error} notice={notice} />
-      {loading ? <Loading text="경매 목록을 불러오는 중입니다." /> : items.length === 0 ? <Empty title="등록한 경매가 없습니다." text="위 폼에서 첫 경매를 등록하세요." /> : <div className="operation-list">{items.map((item) => <article className="operation-card" key={item.id}><header><div><strong>{item.title}</strong><small>{item.origin} · 현재가 {formatPrice(item.currentPrice)} · 입찰 {item.bids.length}건</small></div><StatusBadge type={item.status === "live" ? "live" : "ready"}>{AUCTION_STATUS_LABEL[item.status]}</StatusBadge></header><small className="muted-copy">{feeRateLabel(item)}{item.bids[0] && ` · 최근 입찰: ${item.bids[0].userId === item.sellerId ? "현장 호가" : item.bids[0].userName}`}</small>
-        {item.status === "live" && floorBiddingId === item.id && <FloorBidForm auctionId={item.id} minAmount={item.currentPrice + item.minBidIncrement} onCancel={() => setFloorBiddingId(null)} onDone={() => { setFloorBiddingId(null); setNotice("현장 호가를 온라인에 반영했습니다."); void load(); }} />}
-        {item.status === "live" && awardingId === item.id && <AwardForm auctionId={item.id} sellerId={item.sellerId} onCancel={() => setAwardingId(null)} onDone={() => { setAwardingId(null); setNotice("낙찰 처리했습니다. 낙찰자에게 5분 결제 타이머가 시작됩니다."); void load(); }} />}
-        {item.status === "live" && floorBiddingId !== item.id && awardingId !== item.id && <div className="action-row"><button onClick={() => setFloorBiddingId(item.id)}>현장 호가 반영</button><button onClick={() => setAwardingId(item.id)}>낙찰 처리</button></div>}
-      </article>)}</div>}
-    </section>
-  </>;
-}
-function SettlementPanel() {
-  const [items, setItems] = useState<AuctionSettlement[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
-  useEffect(() => { void getSellerSettlements().then((result) => result.ok ? setItems(result.data?.settlements ?? []) : setError(result.error?.message ?? "정산 내역을 조회하지 못했습니다.")).finally(() => setLoading(false)); }, []);
-  const settlementStatusLabel: Record<string, string> = { pending_confirmation: "구매확정 대기", ready_to_settle: "정산 대기", paid: "입금 완료" };
-  if (loading) return <Loading text="정산 내역을 불러오는 중입니다." />;
-  return <section className="dashboard-panel"><div className="panel-title-row"><div><p>SETTLEMENTS</p><h2>경매 정산</h2></div><StatusBadge type="live">에스크로 연동</StatusBadge></div><Feedback error={error} notice={null} /><p className="muted-copy">낙찰 대금 정산은 구매 확정일 기준 최소 1일 ~ 최대 7영업일 이내에 지급됩니다.</p>{items.length === 0 ? <Empty title="정산 내역이 없습니다." text="낙찰 후 결제가 완료되면 정산 내역이 표시됩니다." /> : <div className="operation-list">{items.map((item) => <article className="operation-card" key={item.id}><header><div><strong>{item.auction_items?.title ?? "경매 상품"}</strong><small>낙찰가 {formatPrice(item.total_amount)} · 수수료 {item.fee_rate === 0 ? "0원(프로모션)" : `${Math.round(item.fee_rate * 100)}%`}</small></div><StatusBadge type={item.status === "paid" ? "live" : "ready"}>{settlementStatusLabel[item.status] ?? item.status}</StatusBadge></header><small className="muted-copy">최종 정산 예정액 {formatPrice(item.final_settlement_amount)}</small></article>)}</div>}</section>;
-}
-
 function SellerRestockRequestsPanel() {
   const [items, setItems] = useState<RawRecord[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null); const [replies, setReplies] = useState<Record<string, { date: string; message: string }>>({}); const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(async () => { setLoading(true); const result = await getSellerRestockRequests(); setLoading(false); if (result.ok) setItems(result.data?.requests ?? []); else setError(result.error?.message ?? "재입고 요청을 조회하지 못했습니다."); }, []);
@@ -343,6 +223,6 @@ function SellerRestockRequestsPanel() {
 
 export default function SellerPage() {
   const path = useLocation().pathname; const [title, description] = info[path] ?? info["/seller"];
-  const panel = path === "/seller" ? <DashboardPanel /> : path === "/seller/products/new" ? <ProductForm /> : path === "/seller/products" ? <ProductsPanel /> : path === "/seller/orders" ? <FulfillmentsPanel /> : path === "/seller/analytics" ? <AnalyticsPanel /> : path === "/seller/auction" ? <AuctionsPanel /> : path === "/seller/settlement" ? <SettlementPanel /> : path === "/seller/restock-requests" ? <SellerRestockRequestsPanel /> : <InquiriesPanel />;
+  const panel = path === "/seller" ? <DashboardPanel /> : path === "/seller/products/new" ? <ProductForm /> : path === "/seller/products" ? <ProductsPanel /> : path === "/seller/orders" ? <FulfillmentsPanel /> : path === "/seller/analytics" ? <AnalyticsPanel /> : path === "/seller/restock-requests" ? <SellerRestockRequestsPanel /> : <InquiriesPanel />;
   return <DashboardShell type="seller"><div className="dashboard-page-heading"><div><p>판매자 기능</p><h1>{title}</h1><span>{description}</span></div><StatusBadge type="live">운영 API 연결</StatusBadge></div><div className="dashboard-content">{panel}</div></DashboardShell>;
 }
