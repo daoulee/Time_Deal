@@ -1192,28 +1192,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/auction")}
-            style={{
-              border: `1.5px solid ${TOKENS.colors.primaryOrange}`,
-              borderRadius: 24,
-              padding: "7px 16px",
-              fontSize: 13,
-              fontWeight: 700,
-              color: TOKENS.colors.primaryOrange,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              flexShrink: 0,
-              background: TOKENS.colors.primaryLight,
-              marginLeft: 16,
-              cursor: "pointer",
-              userSelect: "none",
-            }}
-          >
-            직판장 경매
-          </button>
         </div>
       </nav>
 

@@ -5,7 +5,6 @@
 import {
   ChevronDown,
   ChevronUp,
-  Gavel,
   Heart,
   KeyRound,
   LoaderCircle,
@@ -15,7 +14,6 @@ import {
   PackagePlus,
   PiggyBank,
   Send,
-  ShieldCheck,
   Star,
   Store,
   TimerReset,
@@ -30,11 +28,9 @@ import { StatusBadge } from "@/shared/components/StatusBadge";
 import {
   applySellerAccount,
   cancelMyOrder,
-  confirmAuctionReceipt,
   createMyReview,
   createRestockRequest,
   deleteMyReview,
-  getMyAuctionOrders,
   getMyInquiries,
   getMyOrder,
   getMyOrders,
@@ -64,7 +60,6 @@ const menu = [
   ["/mypage/impact", "나의 절약 리포트", PiggyBank],
   ["/mypage/deals", "참여 딜", TimerReset],
   ["/mypage/orders", "주문", PackageCheck],
-  ["/mypage/auctions", "낙찰 내역", Gavel],
   ["/mypage/wishlist", "찜한 상품", Heart],
   ["/mypage/restock-requests", "재입고 요청", PackagePlus],
   ["/mypage/reviews", "나의 리뷰", Star],
@@ -78,7 +73,6 @@ const details: Record<string, [string, string]> = {
   "/mypage/impact": ["나의 절약 리포트", "수령 완료한 주문을 기준으로 내가 아낀 금액과 함께한 횟수를 확인합니다."],
   "/mypage/deals": ["참여 딜", "주문으로 확정된 공동구매 참여 현황을 확인합니다."],
   "/mypage/orders": ["주문", "픽업 장소·슬롯과 현장 결제 또는 예약 주문 상태를 확인합니다."],
-  "/mypage/auctions": ["낙찰 내역", "직판장 경매 낙찰 건의 에스크로·수령 상태를 확인합니다."],
   "/mypage/wishlist": ["찜한 상품", "마음에 든 상품을 모아두고 다시 찾아볼 수 있습니다."],
   "/mypage/restock-requests": ["재입고 요청", "주문했던 상품의 재입고를 요청하고 판매자 답변을 확인합니다."],
   "/mypage/reviews": ["나의 리뷰", "수령 완료 주문 상품의 리뷰를 작성·수정·삭제합니다."],
@@ -87,17 +81,6 @@ const details: Record<string, [string, string]> = {
   "/mypage/security": ["보안 및 로그인 관리", "비밀번호를 변경하고 로그인된 기기를 관리합니다."],
 };
 
-const auctionOrderStatusLabel: Record<string, string> = {
-  escrow_hold: "에스크로 보관중",
-  completed: "구매 확정 완료",
-  payment_pending: "결제 대기",
-  live: "경매중",
-};
-const deliveryMethodLabel: Record<string, string> = {
-  PICKUP: "현장 직접 수령",
-  PARCEL: "산지 직송 택배",
-  QUICK: "당일 특급 퀵",
-};
 const sellerApplicationStatusLabel: Record<string, string> = {
   pending: "심사 대기 중",
   approved: "승인 완료",
@@ -830,105 +813,6 @@ function OrdersPanel() {
   );
 }
 
-function AuctionOrdersPanel() {
-  const [items, setItems] = useState<RawRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const result = await getMyAuctionOrders();
-    setLoading(false);
-    if (result.ok) setItems(result.data?.orders ?? []);
-    else setError(result.error?.message ?? "낙찰 내역을 조회하지 못했습니다.");
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const confirm = async (auctionId: string) => {
-    if (
-      !window.confirm(
-        "물품을 정상 수령하셨나요? 확정 후에는 되돌릴 수 없습니다."
-      )
-    )
-      return;
-    setBusy(auctionId);
-    const result = await confirmAuctionReceipt(auctionId);
-    setBusy(null);
-    if (!result.ok) return setError(result.error?.message ?? "구매 확정에 실패했습니다.");
-    setNotice("구매를 확정했습니다. 정산은 최소 1일~최대 7영업일 이내 진행됩니다.");
-    await load();
-  };
-
-  if (loading) return <Loading text="낙찰 내역을 불러오는 중입니다." />;
-  return (
-    <section className="dashboard-panel">
-      <div className="panel-title-row">
-        <div>
-          <p>MY AUCTION WINS</p>
-          <h2>낙찰 내역</h2>
-        </div>
-        <StatusBadge type="live">에스크로 연동</StatusBadge>
-      </div>
-      <Feedback error={error} notice={notice} />
-      {items.length === 0 ? (
-        <Empty
-          title="낙찰 내역이 없습니다."
-          text="직판장 경매에서 낙찰되면 여기에 표시됩니다."
-        />
-      ) : (
-        <div className="operation-list">
-          {items.map((item) => {
-            const auction = (item.auction_items ?? {}) as RawRecord;
-            const status = str(auction, "status");
-            const confirmed = Boolean(item.buyer_confirmed_at);
-            return (
-              <article className="operation-card" key={str(item, "id")}>
-                <header>
-                  <div>
-                    <strong>{str(auction, "title") || "경매 상품"}</strong>
-                    <small>
-                      {str(auction, "origin")} ·{" "}
-                      {deliveryMethodLabel[str(item, "delivery_method")] ??
-                        str(item, "delivery_method")}{" "}
-                      · {formatPrice(num(item, "total_amount"))}
-                    </small>
-                  </div>
-                  <StatusBadge type={confirmed ? "live" : "ready"}>
-                    {confirmed
-                      ? "구매 확정 완료"
-                      : auctionOrderStatusLabel[status] ?? status}
-                  </StatusBadge>
-                </header>
-                {!confirmed && status === "escrow_hold" && (
-                  <div className="action-row">
-                    <button
-                      className="primary-button"
-                      disabled={busy !== null}
-                      onClick={() => void confirm(str(item, "auction_id"))}
-                    >
-                      {busy === str(item, "auction_id") ? (
-                        <LoaderCircle className="spin-icon" size={15} />
-                      ) : (
-                        <ShieldCheck size={15} />
-                      )}{" "}
-                      물품 수령 완료 (구매 확정)
-                    </button>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function RestockRequestsPanel() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [requests, setRequests] = useState<RawRecord[]>([]);
@@ -1600,7 +1484,6 @@ export default function MyPage() {
     "/mypage/impact": <ImpactPanel />,
     "/mypage/deals": <ParticipationsPanel />,
     "/mypage/orders": <OrdersPanel />,
-    "/mypage/auctions": <AuctionOrdersPanel />,
     "/mypage/wishlist": <WishlistPanel />,
     "/mypage/restock-requests": <RestockRequestsPanel />,
     "/mypage/reviews": <ReviewsPanel />,
