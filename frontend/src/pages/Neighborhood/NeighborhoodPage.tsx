@@ -165,7 +165,7 @@ export default function NeighborhoodPage() {
         {!session ? (
           <div className="empty-state" style={{ maxWidth: 380, margin: "0 auto 32px", padding: 24, border: "1px solid var(--border)", borderRadius: 12 }}>
             <h2 style={{ marginTop: 0, fontSize: 16 }}>모바일 앱 계정으로 로그인</h2>
-            <p className="muted-copy" style={{ marginTop: 4 }}>예약·찜을 하려면 모바일 앱과 같은 계정으로 로그인하세요. (우리 웹 계정과는 별개입니다)</p>
+            <p className="muted-copy" style={{ marginTop: 4 }}>타임딜 웹에 로그인하면 같은 이메일로 모바일 앱 계정도 자동으로 연결돼요. 아직 연결 전이거나 모바일 앱에서 먼저 가입하셨다면 여기서 직접 로그인해 주세요.</p>
             <div style={{ display: "flex", gap: 8, margin: "12px 0" }}>
               <button type="button" className={authMode === "signin" ? "primary-button" : "secondary-button"} onClick={() => setAuthMode("signin")}>로그인</button>
               <button type="button" className={authMode === "signup" ? "primary-button" : "secondary-button"} onClick={() => setAuthMode("signup")}>회원가입</button>

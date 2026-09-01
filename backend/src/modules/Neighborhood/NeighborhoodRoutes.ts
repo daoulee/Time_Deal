@@ -1,8 +1,11 @@
 /**
  * 모바일 팀의 별도 Supabase 프로젝트(deals/reservations/wishlists)를 읽고 쓰는 연동 라우트입니다.
- * 모바일 앱은 자체 Supabase Auth 계정(user_id)을 쓰므로, 웹에서도 같은 모바일 계정으로 로그인해야
- * 예약·찜이 모바일 앱에 실시간으로 그대로 보입니다(같은 reservations/wishlists 행, 같은 user_id).
- * 우리 웹 로그인과는 독립적인 별도 세션이며, 우리 DB에는 아무 것도 저장하지 않습니다.
+ * 모바일 앱은 자체 Supabase Auth 계정(user_id)을 쓰므로, 예약·찜이 모바일 앱에 실시간으로 그대로
+ * 보이려면(같은 reservations/wishlists 행, 같은 user_id) 같은 모바일 계정으로 로그인해야 합니다.
+ * 프런트에서는 우리 웹 로그인/회원가입 직후 같은 이메일·비밀번호로 이 라우트들을 통해 모바일 계정도
+ * 자동으로 로그인(없으면 가입)해서 사용자에게는 계정이 하나로 보이게 합니다(frontend/src/lib/mobile-auth.ts
+ * linkMobileAccount). 실패해도 별도 로그인 화면(NeighborhoodPage)이 폴백으로 남아 있습니다.
+ * 세션은 우리 웹 세션과 별개(td_mobile_* localStorage)이며, 우리 DB에는 아무 것도 저장하지 않습니다.
  */
 import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";

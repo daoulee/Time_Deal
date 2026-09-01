@@ -8,6 +8,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Store, UserRound } from "lucid
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { authClient, setAuthToken } from "@/lib/auth";
+import { linkMobileAccount } from "@/lib/mobile-auth";
 import { apiFetch, applySellerAccount, sendEmailOtp as requestEmailOtp, updateMyProfile } from "@/lib/api";
 import { isSupabaseAuthConfigured, startKakaoAuth, startNaverAuth } from "@/lib/supabase-auth";
 import { normalizeApiError, readResponseBody } from "@/lib/api-error";
@@ -100,6 +101,7 @@ export default function AuthPage() {
     try {
       const result = mode === "signup" ? await authClient.signUp.email({ name, email, password }) : await authClient.signIn.email({ email, password });
       if (result.error) throw new Error(translateAuthErrorMessage(result.error.message, "인증에 실패했습니다."));
+      void linkMobileAccount(email, password);
       if (mode === "signup") {
         if (!result.data?.token) { toast.success(wantsSeller ? "인증 메일을 확인한 뒤 로그인하고, 마이페이지에서 판매자 신청을 완료해 주세요." : "인증 메일을 확인한 뒤 로그인해 주세요."); setMode("signin"); return; }
         if (agreements.marketing) void updateMyProfile({ marketingOptIn: true }).catch(() => {});

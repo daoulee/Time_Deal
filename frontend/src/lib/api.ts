@@ -187,8 +187,8 @@ export async function getNeighborhoods() { return requestData<{ neighborhoods: s
 export async function getNeighborhoodDeals(neighborhood?: string) { return requestData<{ deals: RawRecord[] }>(`/neighborhood/deals${neighborhood ? `?neighborhood=${encodeURIComponent(neighborhood)}` : ""}`, { auth: false }); }
 
 export type MobileAuthSession = { accessToken: string; refreshToken: string; user: { id: string; email: string } };
-export async function mobileSignIn(email: string, password: string) { return requestData<MobileAuthSession>("/neighborhood/auth/sign-in", { ...json("POST", { email, password }), auth: false }); }
-export async function mobileSignUp(email: string, password: string) { return requestData<{ needsConfirmation: boolean; accessToken: string | null; refreshToken: string | null; user: { id: string; email: string } }>("/neighborhood/auth/sign-up", { ...json("POST", { email, password }), auth: false }); }
+export async function mobileSignIn(email: string, password: string, silent = false) { return requestData<MobileAuthSession>("/neighborhood/auth/sign-in", { ...json("POST", { email, password }), auth: false, silent }); }
+export async function mobileSignUp(email: string, password: string, silent = false) { return requestData<{ needsConfirmation: boolean; accessToken: string | null; refreshToken: string | null; user: { id: string; email: string } }>("/neighborhood/auth/sign-up", { ...json("POST", { email, password }), auth: false, silent }); }
 export async function mobileRefresh(refreshToken: string) { return requestData<{ accessToken: string; refreshToken: string }>("/neighborhood/auth/refresh", { ...json("POST", { refreshToken }), auth: false }); }
 
 const mobileAuthInit = (mobileToken: string, init?: ApiFetchInit): ApiFetchInit => ({ ...init, auth: false, headers: { ...init?.headers, "X-Mobile-Token": mobileToken } });
