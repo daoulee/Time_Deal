@@ -13,7 +13,6 @@ import {
   X,
   Flame,
   Trophy,
-  Sunrise,
   BellRing,
   BookOpen,
   Coffee,
@@ -1125,6 +1124,56 @@ export default function HomePage() {
                 alignItems: "center",
               }}
             >
+              {canScrollNavLeft && (
+                <button
+                  type="button"
+                  onClick={() => handleNavScroll("left")}
+                  aria-label="카테고리 왼쪽으로 스크롤"
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    backgroundColor: "#ffffff",
+                    border: `1px solid ${TOKENS.colors.borderMedium}`,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    zIndex: 30,
+                  }}
+                >
+                  <ChevronLeft size={17} color={TOKENS.colors.textBody} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleNavScroll("right")}
+                aria-label="카테고리 오른쪽으로 스크롤"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  backgroundColor: "#ffffff",
+                  border: `1px solid ${TOKENS.colors.borderMedium}`,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  zIndex: 30,
+                }}
+              >
+                <ChevronRight size={17} color={TOKENS.colors.textBody} />
+              </button>
               <ul
                 ref={navScrollRef}
                 onScroll={handleNavScrollCheck}
@@ -1139,6 +1188,7 @@ export default function HomePage() {
                   overflowX: "auto",
                   scrollbarWidth: "none",
                   maxWidth: "100%",
+                  paddingRight: 36,
                   scrollBehavior: "smooth",
                 }}
               >
