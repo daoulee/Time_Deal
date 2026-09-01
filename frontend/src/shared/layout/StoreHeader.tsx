@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { authClient } from "@/lib/auth";
+import { authClient, signOutFully } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
 import { getGuestCartCount } from "@/lib/guest-cart";
 import { CATEGORY_GROUPS, THEME_ROUTE, type ThemeKey } from "@/shared/categoryData";
@@ -195,6 +195,12 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
     }
   };
 
+  const handleLogout = async () => {
+    await signOutFully();
+    toast.success("로그아웃했습니다.");
+    navigate("/");
+  };
+
   const handleManualAddressSubmit = () => {
     const label = setManualLocation(manualAddress);
     if (!label) return;
@@ -236,12 +242,29 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
         }}
       >
         {session?.user ? (
-          <span
-            style={{ cursor: "pointer", color: TOKENS.primaryOrange, fontWeight: 500 }}
-            onClick={() => navigate("/mypage")}
-          >
-            마이페이지로 이동
-          </span>
+          <>
+            <span
+              style={{ cursor: "pointer", color: TOKENS.primaryOrange, fontWeight: 500 }}
+              onClick={() => navigate("/mypage")}
+            >
+              마이페이지로 이동
+            </span>
+            <span
+              style={{
+                width: 1,
+                height: 13,
+                background: TOKENS.borderDivider,
+                margin: "0 10px",
+                display: "inline-block",
+              }}
+            />
+            <span
+              style={{ cursor: "pointer", color: "#333333" }}
+              onClick={() => void handleLogout()}
+            >
+              로그아웃
+            </span>
+          </>
         ) : (
           <>
             <span

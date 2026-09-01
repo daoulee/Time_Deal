@@ -5,6 +5,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { apiUrl } from "@/lib/api-base";
+import { supabaseAuthClient } from "@/lib/supabase-auth";
 
 const AUTH_TOKEN_KEY = "timedeal-access-token";
 type AuthUser = { id: string; email: string; name?: string; emailVerified: boolean; role?: "user" | "seller" | "admin" };
@@ -47,3 +48,7 @@ export const authClient = {
   signUp: { email: (input: { name: string; email: string; password: string }) => authRequest("/sign-up", input) },
   async signOut() { await authRequest("/sign-out", {}); clearAuthToken(); return { data: null, error: null }; }
 };
+export async function signOutFully() {
+  if (supabaseAuthClient) await supabaseAuthClient.auth.signOut({ scope: "local" });
+  await authClient.signOut();
+}

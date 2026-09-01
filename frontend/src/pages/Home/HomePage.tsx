@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { authClient } from "@/lib/auth";
+import { authClient, signOutFully } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
 import { getGuestCartCount } from "@/lib/guest-cart";
 import { getRecentCategories } from "@/lib/recent-categories";
@@ -355,6 +355,12 @@ export default function HomePage() {
     }
   };
 
+  const handleLogout = async () => {
+    await signOutFully();
+    showToast("로그아웃했습니다.");
+    navigate("/");
+  };
+
   const handleManualAddressSubmit = () => {
     const label = setManualLocation(manualAddress);
     if (!label) return;
@@ -486,16 +492,33 @@ export default function HomePage() {
         }}
       >
         {session?.user ? (
-          <span
-            style={{
-              cursor: "pointer",
-              color: TOKENS.colors.primaryOrange,
-              fontWeight: 500,
-            }}
-            onClick={() => navigate("/mypage")}
-          >
-            마이페이지로 이동
-          </span>
+          <>
+            <span
+              style={{
+                cursor: "pointer",
+                color: TOKENS.colors.primaryOrange,
+                fontWeight: 500,
+              }}
+              onClick={() => navigate("/mypage")}
+            >
+              마이페이지로 이동
+            </span>
+            <span
+              style={{
+                width: 1,
+                height: 13,
+                background: TOKENS.colors.borderDivider,
+                margin: "0 10px",
+                display: "inline-block",
+              }}
+            />
+            <span
+              style={{ cursor: "pointer", color: "#333333" }}
+              onClick={() => void handleLogout()}
+            >
+              로그아웃
+            </span>
+          </>
         ) : (
           <>
             <span
