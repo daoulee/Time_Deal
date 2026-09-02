@@ -44,8 +44,9 @@ export type OrderStatus = "pending" | "confirmed" | "ready" | "completed" | "can
 export type PickupStatus = "pending" | "ready" | "collected" | "no_show" | "cancelled";
 export type CreateOrderInput = { pickupLocationId: string; pickupSlotId: string; paymentMethod: "on_site" | "reservation_only" | "card"; idempotencyKey: string; deliveryAddress?: string; items: Array<{ productId: string; dealId?: string; quantity: number }> };
 export type ProductInput = { name: string; description: string; category: string; image: string; regularPrice: number; inventory: number };
-export type DealInput = { productId: string; dealPrice: number; target: number; startsAt: string; endsAt: string };
-export type ProductWithDealInput = ProductInput & { dealPrice: number; target: number; startsAt: string; endsAt: string };
+export type AutoDiscountInput = { autoDiscountEnabled?: boolean; autoDiscountStartHours?: number; autoDiscountMaxPercent?: number };
+export type DealInput = { productId: string; dealPrice: number; target: number; startsAt: string; endsAt: string } & AutoDiscountInput;
+export type ProductWithDealInput = ProductInput & { dealPrice: number; target: number; startsAt: string; endsAt: string } & AutoDiscountInput;
 export type InquiryMessage = { id: string; author_id: string; message: string; is_internal?: boolean; created_at: string };
 export type Inquiry = RawRecord & { id: string; subject: string; status: string; priority: string; inquiry_messages?: InquiryMessage[] };
 

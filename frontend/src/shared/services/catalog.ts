@@ -4,7 +4,7 @@
  */
 import { apiFetch } from "@/lib/api";
 import { PRODUCTS, type Product } from "@/shared/catalog";
-type ApiDeal = { id?: string; productId?: string; product_id?: string; product?: { id: string; name: string; image: string; category: string; regularPrice?: number; regular_price?: number }; dealPrice?: number; deal_price?: number; participants: number; target: number; endsAt?: string; ends_at?: string };
+type ApiDeal = { id?: string; productId?: string; product_id?: string; product?: { id: string; name: string; image: string; category: string; regularPrice?: number; regular_price?: number }; dealPrice?: number; deal_price?: number; participants: number; target: number; endsAt?: string; ends_at?: string; autoDiscountActive?: boolean };
 type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
 export type CatalogSource = "supabase" | "sample" | "unavailable";
 export type CatalogResult = { products: Product[]; source: CatalogSource; notice?: string };
@@ -20,7 +20,7 @@ export async function getCatalog(): Promise<CatalogResult> {
       const image = deal.product.image; const imageUrl = /^https?:\/\//.test(image) || image.startsWith("/") ? image : `/images/${image}`;
       const endsAtIso = deal.endsAt ?? deal.ends_at;
       const endsAt = endsAtIso ? new Date(endsAtIso).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "마감 시간 미정";
-      return [{ id: productId, dealId: deal.id, name: deal.product.name, image: imageUrl, category: deal.product.category, originalPrice: deal.product.regularPrice ?? deal.product.regular_price ?? 0, dealPrice: deal.dealPrice ?? deal.deal_price ?? 0, participants: deal.participants, target: deal.target, endsAt, endsAtIso }];
+      return [{ id: productId, dealId: deal.id, name: deal.product.name, image: imageUrl, category: deal.product.category, originalPrice: deal.product.regularPrice ?? deal.product.regular_price ?? 0, dealPrice: deal.dealPrice ?? deal.deal_price ?? 0, participants: deal.participants, target: deal.target, endsAt, endsAtIso, autoDiscountActive: deal.autoDiscountActive ?? false }];
     });
     return products.length ? { products, source: body.data.source ?? "supabase", notice: body.data.notice } : unavailable("현재 진행 중인 타임딜이 없습니다.");
   } catch { return unavailable("백엔드에 연결할 수 없습니다."); }

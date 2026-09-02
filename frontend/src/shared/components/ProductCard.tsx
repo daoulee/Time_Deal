@@ -3,7 +3,7 @@
  * HomePage와 ProductsPage의 상품 그리드에서 공통으로 사용합니다.
  * 개발 fixture·운영 데이터 상태와 접근 가능한 이미지 대체 문구를 유지합니다.
  */
-import { Heart } from "lucide-react";
+import { Flame, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { discountPercentOf, formatPrice, type Product } from "@/shared/catalog";
 import { CountdownTimer } from "@/shared/components/CountdownTimer";
@@ -40,6 +40,11 @@ export function ProductCard({ product, isWishlisted, onToggleWishlist }: Product
         <p className="product-category">{product.category}</p>
         <Link to={`/products/${product.id}`} className="product-name">{product.name}</Link>
         <div className="price-row"><strong>{formatPrice(product.dealPrice)}</strong><del>{formatPrice(product.originalPrice)}</del></div>
+        {product.autoDiscountActive && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#ff5722", marginTop: 2 }}>
+            <Flame size={11} /> 마감 임박 추가 할인 중
+          </span>
+        )}
         <StockGauge participants={product.participants} target={product.target} />
         <div className="deal-card-footer">
           <span className="deal-participants">{product.participants}명 참여</span>

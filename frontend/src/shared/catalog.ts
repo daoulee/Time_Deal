@@ -17,6 +17,8 @@ export type Product = {
   endsAt: string;
   /** ISO 8601 종료 시각입니다. 운영 마감순 정렬에 사용하며 개발 fixture에서는 생략할 수 있습니다. */
   endsAtIso?: string;
+  /** 마감 임박 자동 할인이 지금 이 순간 dealPrice에 반영되어 있는지 여부입니다. */
+  autoDiscountActive?: boolean;
 };
 
 export const PRODUCTS: Product[] = [

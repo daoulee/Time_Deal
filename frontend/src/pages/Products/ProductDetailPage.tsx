@@ -8,6 +8,7 @@ import {
   Check,
   Clock,
   Crosshair,
+  Flame,
   Heart,
   Info,
   LoaderCircle,
@@ -599,6 +600,11 @@ export default function ProductDetailPage() {
                     </del>
                   </div>
                 </div>
+                {product.autoDiscountActive && (
+                  <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: "#ff5722", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Flame size={13} /> 마감 임박으로 추가 할인이 적용된 가격이에요
+                  </p>
+                )}
 
                 <div className="detail-progress" style={{ margin: 0 }}>
                   <div style={{ marginBottom: 6 }}>
