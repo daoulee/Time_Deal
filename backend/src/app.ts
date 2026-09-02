@@ -4,8 +4,10 @@
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { z } from "zod";
 import { config, isSupabaseConfigured, isTossConfigured } from "./config.js";
 import { apiFailure, apiSuccess } from "./http.js";
+import { logError } from "./error-log.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { requestSecurity } from "./middleware/security.js";
 import { adminRouter } from "./modules/Admin/AdminRoutes.js";
@@ -51,6 +53,13 @@ app.get("/ready", async (context) => {
 });
 
 app.use("/api/*", optionalAuth);
+const clientErrorInput = z.object({ message: z.string().min(1).max(2000), stack: z.string().max(8000).optional(), path: z.string().max(500).optional() }).strict();
+app.post("/api/client-errors", async (context) => {
+  const parsed = clientErrorInput.safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "에러 정보를 확인하세요."), 400);
+  logError({ source: "frontend", message: parsed.data.message, stack: parsed.data.stack ?? null, path: parsed.data.path ?? null, userId: context.var.currentUser?.id ?? null, userAgent: context.req.header("User-Agent") ?? null });
+  return context.json(apiSuccess({ logged: true }));
+});
 app.route("/api/auth", authRouter);
 app.route("/api/auth/email-otp", emailOtpRouter);
 app.route("/api/auth/supabase-session", supabaseSessionRouter);
@@ -66,6 +75,11 @@ app.route("/api", auctionRouter);
 app.route("/api", neighborhoodRouter);
 app.route("/api", impactRouter);
 app.notFound((context) => context.json(apiFailure("NOT_FOUND", "요청한 API를 찾을 수 없습니다."), 404));
-app.onError((error, context) => { console.error(JSON.stringify({ level: "error", requestId: context.res.headers.get("x-request-id"), message: error.message })); return context.json(apiFailure("INTERNAL_ERROR", "서버 오류가 발생했습니다."), 500); });
+app.onError((error, context) => {
+  const requestId = context.res.headers.get("x-request-id");
+  console.error(JSON.stringify({ level: "error", requestId, message: error.message }));
+  logError({ source: "backend", message: error.message, stack: error.stack ?? null, path: context.req.path, method: context.req.method, statusCode: 500, requestId, userId: context.var.currentUser?.id ?? null, userAgent: context.req.header("User-Agent") ?? null });
+  return context.json(apiFailure("INTERNAL_ERROR", "서버 오류가 발생했습니다."), 500);
+});
 
 export default app;

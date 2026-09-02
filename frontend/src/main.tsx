@@ -8,7 +8,11 @@ import App from './App.tsx'
 import './index.css'
 import { syncAuthTokenFromUrl } from "@/lib/api";
 import { handleSupabaseOAuthCallback } from "@/lib/oauth-callback";
+import { installGlobalErrorReporting } from "@/lib/error-reporter";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { toast } from "sonner";
+
+installGlobalErrorReporting();
 
 // Prerender (scripts/prerender.mjs) bakes the home page into #root at build time
 // so crawlers see real content. When that markup is present we hydrate it back
@@ -22,9 +26,9 @@ async function bootstrap() {
     toast.error(oauthResult.message);
   }
   if (rootEl.hasChildNodes()) {
-    hydrateRoot(rootEl, <App />);
+    hydrateRoot(rootEl, <ErrorBoundary><App /></ErrorBoundary>);
   } else {
-    createRoot(rootEl).render(<App />);
+    createRoot(rootEl).render(<ErrorBoundary><App /></ErrorBoundary>);
   }
 }
 

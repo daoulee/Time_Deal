@@ -16,7 +16,7 @@ const startOfWeek = (input: Date) => { const d = new Date(input); const day = d.
 const bucketLabel = (iso: string, period: StatPeriod) => { const d = new Date(iso); if (period === "year") return `${d.getFullYear()}년`; if (period === "month") return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`; const monday = startOfWeek(d); return `${monday.getMonth() + 1}/${monday.getDate()}주`; };
 
 const info: Record<string, [string, string]> = {
-  "/admin": ["운영 현황", "핵심 리소스와 처리 대기량을 실시간으로 집계합니다."], "/admin/orders": ["주문 운영", "전체 주문과 판매자별 fulfillment 단계를 확인·변경합니다."], "/admin/users": ["사용자 관리", "역할과 계정 정지 상태를 변경합니다."], "/admin/sellers": ["판매자 신청", "입점 신청을 승인하거나 사유와 함께 반려합니다."], "/admin/products": ["상품·딜 관리", "상품 검수와 타임딜 활성화·종료를 운영합니다."], "/admin/inquiries": ["문의 관리", "문의 배정·우선순위·상태·답변을 관리합니다."], "/admin/reviews": ["리뷰 관리", "리뷰 노출을 숨기거나 복구합니다."], "/admin/community": ["커뮤니티 관리", "게시글과 신고를 처리합니다."], "/admin/pickups": ["픽업 운영", "장소·슬롯을 생성·수정·비활성화합니다."], "/admin/audit-logs": ["감사 로그", "운영 변경의 actor·대상·사유를 조회합니다."], "/admin/research": ["카테고리 통계", "상품 수와 평균 정상가를 현재 DB 스냅샷으로 분석합니다."], "/admin/restock-requests": ["재입고 요청", "고객이 보낸 재입고 요청과 판매자 답변 현황을 확인합니다."],
+  "/admin": ["운영 현황", "핵심 리소스와 처리 대기량을 실시간으로 집계합니다."], "/admin/orders": ["주문 운영", "전체 주문과 판매자별 fulfillment 단계를 확인·변경합니다."], "/admin/users": ["사용자 관리", "역할과 계정 정지 상태를 변경합니다."], "/admin/sellers": ["판매자 신청", "입점 신청을 승인하거나 사유와 함께 반려합니다."], "/admin/products": ["상품·딜 관리", "상품 검수와 타임딜 활성화·종료를 운영합니다."], "/admin/inquiries": ["문의 관리", "문의 배정·우선순위·상태·답변을 관리합니다."], "/admin/reviews": ["리뷰 관리", "리뷰 노출을 숨기거나 복구합니다."], "/admin/community": ["커뮤니티 관리", "게시글과 신고를 처리합니다."], "/admin/pickups": ["픽업 운영", "장소·슬롯을 생성·수정·비활성화합니다."], "/admin/audit-logs": ["감사 로그", "운영 변경의 actor·대상·사유를 조회합니다."], "/admin/error-logs": ["에러 로그", "백엔드 미처리 예외와 프론트 런타임 에러를 최근 순으로 확인합니다."], "/admin/research": ["카테고리 통계", "상품 수와 평균 정상가를 현재 DB 스냅샷으로 분석합니다."], "/admin/restock-requests": ["재입고 요청", "고객이 보낸 재입고 요청과 판매자 답변 현황을 확인합니다."],
 };
 const str = (item: RawRecord, key: string) => String(item[key] ?? ""); const num = (item: RawRecord, key: string) => Number(item[key] ?? 0); const date = (input?: string) => input ? new Date(input).toLocaleString("ko-KR") : "-";
 const statusLabel: Record<string, string> = { pending: "접수", confirmed: "확인", ready: "픽업 준비", completed: "완료", cancelled: "취소", active: "활성", draft: "초안", ended: "종료", rejected: "반려", hidden: "숨김", visible: "공개", open: "접수", resolved: "처리", dismissed: "기각" };
@@ -121,6 +121,29 @@ function AuditPanel() {
   const [items, setItems] = useState<RawRecord[]>([]); const [error, setError] = useState<string | null>(null); useEffect(() => { void getAdminItems("audit-logs").then((result) => result.ok ? setItems(result.data?.items ?? []) : setError(result.error?.message ?? "감사 로그를 조회하지 못했습니다.")); }, []);
   return <section className="dashboard-panel"><div className="panel-title-row"><div><p>AUDIT LOGS</p><h2>운영 변경 이력</h2></div></div><Feedback error={error} notice={null} /><div className="operation-list">{items.map((item) => <article className="compact-row" key={str(item, "id")}><span><b>{str(item, "action")}</b><small>{str(item, "entity_type")} · {str(item, "entity_id")}</small></span><strong>{str(item, "reason")}</strong><small>{date(str(item, "created_at"))}</small></article>)}</div></section>;
 }
+function ErrorLogsPanel() {
+  const [items, setItems] = useState<RawRecord[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => { setLoading(true); const result = await getAdminItems("error-logs"); setLoading(false); if (result.ok) setItems(result.data?.items ?? []); else setError(result.error?.message ?? "에러 로그를 조회하지 못했습니다."); }, []);
+  useEffect(() => { void load(); }, [load]);
+  if (loading) return <Loading text="에러 로그를 불러오는 중입니다." />;
+  return <section className="dashboard-panel">
+    <div className="panel-title-row"><div><p>ERROR MONITORING</p><h2>에러 로그</h2></div><button className="secondary-button" onClick={() => void load()}><RefreshCw size={15} /> 새로고침</button></div>
+    <Feedback error={error} notice={null} />
+    {items.length === 0 ? <Empty text="최근 발생한 에러가 없습니다." /> : <div className="operation-list">{items.map((item) => (
+      <article className="operation-card" key={str(item, "id")}>
+        <header>
+          <div>
+            <strong>{str(item, "message") || "(메시지 없음)"}</strong>
+            <small>{str(item, "source") === "frontend" ? "프론트엔드" : "백엔드"}{str(item, "path") ? ` · ${str(item, "method") ? `${str(item, "method")} ` : ""}${str(item, "path")}` : ""}{str(item, "status_code") ? ` · ${str(item, "status_code")}` : ""}</small>
+          </div>
+          <StatusBadge type={str(item, "level") === "warn" ? "ready" : "live"}>{str(item, "level") === "warn" ? "경고" : "에러"}</StatusBadge>
+        </header>
+        <small className="muted-copy">{date(str(item, "created_at"))}{str(item, "user_id") ? ` · 사용자 ${str(item, "user_id").slice(0, 8)}` : ""}</small>
+        {str(item, "stack") && <pre style={{ marginTop: 8, padding: 10, background: "var(--muted)", borderRadius: 6, fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: 160, overflowY: "auto" }}>{str(item, "stack")}</pre>}
+      </article>
+    ))}</div>}
+  </section>;
+}
 function ResearchPanel() {
   const [items, setItems] = useState<Array<{ category: string; productCount: number; averagePrice: number }>>([]); const [error, setError] = useState<string | null>(null);
   useEffect(() => { void getAdminResearch().then((result) => result.ok ? setItems(result.data?.research.categories ?? []) : setError(result.error?.message ?? "통계를 생성하지 못했습니다.")); }, []);
@@ -140,6 +163,6 @@ function RestockRequestsAdminPanel() {
 
 export default function AdminPage() {
   const path = useLocation().pathname; const [title, description] = info[path] ?? info["/admin"];
-  const panels: Record<string, React.ReactNode> = { "/admin": <DashboardPanel />, "/admin/orders": <OrdersPanel />, "/admin/users": <UsersPanel />, "/admin/sellers": <SellersPanel />, "/admin/products": <ProductsDealsPanel />, "/admin/inquiries": <InquiriesPanel />, "/admin/reviews": <ModerationPanel community={false} />, "/admin/community": <ModerationPanel community />, "/admin/pickups": <PickupsPanel />, "/admin/audit-logs": <AuditPanel />, "/admin/research": <ResearchPanel />, "/admin/restock-requests": <RestockRequestsAdminPanel /> };
+  const panels: Record<string, React.ReactNode> = { "/admin": <DashboardPanel />, "/admin/orders": <OrdersPanel />, "/admin/users": <UsersPanel />, "/admin/sellers": <SellersPanel />, "/admin/products": <ProductsDealsPanel />, "/admin/inquiries": <InquiriesPanel />, "/admin/reviews": <ModerationPanel community={false} />, "/admin/community": <ModerationPanel community />, "/admin/pickups": <PickupsPanel />, "/admin/audit-logs": <AuditPanel />, "/admin/error-logs": <ErrorLogsPanel />, "/admin/research": <ResearchPanel />, "/admin/restock-requests": <RestockRequestsAdminPanel /> };
   return <DashboardShell type="admin"><div className="dashboard-page-heading"><div><p>관리자 기능</p><h1>{title}</h1><span>{description}</span></div><StatusBadge type="live">관리자 API 연결</StatusBadge></div><div className="dashboard-content">{panels[path] ?? panels["/admin"]}</div></DashboardShell>;
 }

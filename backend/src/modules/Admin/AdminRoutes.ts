@@ -46,7 +46,7 @@ adminRouter.patch("/admin/seller-applications/:id", adminOnly, async (context) =
   if (parsed.data.status === "approved") await supabase.from("profiles").update({ role: "seller", updated_at: new Date().toISOString() }).eq("id", before.data.user_id); await audit(context.var.currentUser!.id, "seller_application.review", "seller_application", data.id, before.data, data, parsed.data.reason); return context.json(apiSuccess({ application: data }));
 });
 
-for (const [path, table] of [["/admin/products", "products"], ["/admin/deals", "deals"], ["/admin/reviews", "reviews"], ["/admin/community", "community_posts"], ["/admin/community-reports", "community_reports"], ["/admin/pickup-locations", "pickup_locations"], ["/admin/pickup-slots", "pickup_slots"], ["/admin/audit-logs", "audit_logs"], ["/admin/auctions", "auction_items"]] as const) {
+for (const [path, table] of [["/admin/products", "products"], ["/admin/deals", "deals"], ["/admin/reviews", "reviews"], ["/admin/community", "community_posts"], ["/admin/community-reports", "community_reports"], ["/admin/pickup-locations", "pickup_locations"], ["/admin/pickup-slots", "pickup_slots"], ["/admin/audit-logs", "audit_logs"], ["/admin/auctions", "auction_items"], ["/admin/error-logs", "error_logs"]] as const) {
   adminRouter.get(path, adminOnly, async (context) => { const { data, error } = await getAdminSupabase().from(table).select("*").order("created_at", { ascending: false }).limit(200); return error ? context.json(apiFailure("QUERY_FAILED", `${table} 목록을 조회하지 못했습니다.`), 502) : context.json(apiSuccess({ items: data ?? [] })); });
 }
 adminRouter.patch("/admin/products/:id", adminOnly, async (context) => {
