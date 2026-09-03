@@ -221,7 +221,7 @@ export default function NeighborhoodPage() {
                     </button>
                   )}
                   <div style={{ height: 140, borderRadius: 10, overflow: "hidden", background: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {deal.imageUrl ? <img src={deal.imageUrl} alt={deal.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={28} />}
+                    {deal.imageUrl ? <img src={deal.imageUrl} alt={deal.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={28} />}
                   </div>
                   <div style={{ padding: "10px 2px" }}>
                     <div className="muted-copy" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {deal.storeName} {deal.neighborhood ? `· ${deal.neighborhood}` : ""}</div>

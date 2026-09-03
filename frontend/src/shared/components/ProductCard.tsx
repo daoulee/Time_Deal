@@ -23,7 +23,7 @@ export function ProductCard({ product, isWishlisted, onToggleWishlist }: Product
   return (
     <article className={`product-card${expired ? " is-expired" : ""}`}>
       <Link to={`/products/${product.id}`} className="product-media" aria-label={`${product.name} 상세 보기`}>
-        <img src={product.image} alt={product.name} loading={product.id === "eggs-30" ? "eager" : "lazy"} />
+        <img src={product.image} alt={product.name} loading="lazy" />
         <span className={`deal-badge${expired ? " deal-badge-expired" : ""}`}>{expired ? "마감" : `${discount}% OFF`}</span>
         {onToggleWishlist && (
           <button

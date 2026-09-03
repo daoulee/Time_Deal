@@ -1136,7 +1136,7 @@ export default function ProductDetailPage() {
                     {imageUrls.length > 0 && (
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {imageUrls.map((url) => (
-                          <img key={url} src={url} alt="리뷰 사진" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 6 }} />
+                          <img key={url} src={url} alt="리뷰 사진" loading="lazy" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 6 }} />
                         ))}
                       </div>
                     )}

@@ -1563,6 +1563,7 @@ export default function HomePage() {
                     <img
                       src={morningPick?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"}
                       alt={morningPick?.name ?? "신선한 샐러드"}
+                      loading="lazy"
                       style={{
                         width: "100%",
                         height: "100%",
@@ -1796,6 +1797,7 @@ export default function HomePage() {
                     <img
                       src={item.image}
                       alt={item.name}
+                      loading="lazy"
                       style={{
                         width: "100%",
                         height: "100%",
@@ -2014,6 +2016,7 @@ export default function HomePage() {
                   <img
                     src={item.image}
                     alt={item.name}
+                    loading="lazy"
                     style={{
                       width: "100%",
                       height: "100%",
@@ -2395,6 +2398,7 @@ export default function HomePage() {
                       <img
                         src={item.image}
                         alt={item.name}
+                        loading="lazy"
                         style={{
                           width: "100%",
                           height: "100%",
@@ -2604,6 +2608,7 @@ export default function HomePage() {
                     <img
                       src={item.image}
                       alt={item.name}
+                      loading="lazy"
                       style={{
                         width: "100%",
                         height: "100%",

@@ -1204,7 +1204,7 @@ function ReviewsPanel() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                   {imagePreviews.map((url, index) => (
                     <div key={url} className="image-preview-row">
-                      <img src={url} alt="미리보기" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }} />
+                      <img src={url} alt="미리보기" loading="lazy" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }} />
                       <button type="button" className="image-remove-button" onClick={() => removeImage(index)}><X size={12} /></button>
                     </div>
                   ))}
@@ -1244,7 +1244,7 @@ function ReviewsPanel() {
                     {imageUrls.length > 0 && (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                         {imageUrls.map((url) => (
-                          <img key={url} src={url} alt="리뷰 사진" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />
+                          <img key={url} src={url} alt="리뷰 사진" loading="lazy" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />
                         ))}
                       </div>
                     )}

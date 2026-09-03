@@ -162,7 +162,7 @@ export default function CartPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {orderableItems.map((item) => (
                 <div key={item.id} style={{ display: "flex", gap: 14, padding: 14, border: "1px solid var(--border)", borderRadius: 12, alignItems: "center" }}>
-                  <img src={item.product?.image} alt={item.product?.name} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, background: "var(--muted)" }} />
+                  <img src={item.product?.image} alt={item.product?.name} loading="lazy" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, background: "var(--muted)" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <strong style={{ display: "block", fontSize: 14, marginBottom: 4 }}>{item.product?.name}</strong>
                     <span style={{ fontSize: 15, fontWeight: 700, color: "var(--primary)" }}>{formatPrice((item.deal?.dealPrice ?? 0) * item.quantity)}</span>
@@ -180,7 +180,7 @@ export default function CartPage() {
                   <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 8 }}>진행 중인 타임딜이 종료되어 지금은 주문할 수 없는 상품입니다.</p>
                   {unavailableItems.map((item) => (
                     <div key={item.id} style={{ display: "flex", gap: 14, padding: 14, border: "1px dashed var(--border)", borderRadius: 12, alignItems: "center", opacity: 0.6, marginBottom: 8 }}>
-                      <img src={item.product?.image} alt={item.product?.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, background: "var(--muted)" }} />
+                      <img src={item.product?.image} alt={item.product?.name} loading="lazy" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, background: "var(--muted)" }} />
                       <span style={{ flex: 1, fontSize: 13 }}>{item.product?.name ?? "삭제된 상품"}</span>
                       <button type="button" onClick={() => void remove(item)} aria-label="삭제" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)" }}><Trash2 size={16} /></button>
                     </div>

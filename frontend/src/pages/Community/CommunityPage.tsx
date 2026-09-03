@@ -283,7 +283,7 @@ export default function CommunityPage() {
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     {imagePreviews.map((url, index) => (
                       <div key={url} style={{ position: "relative", width: "80px", height: "80px" }}>
-                        <img src={url} alt="미리보기" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img src={url} alt="미리보기" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         <button type="button" onClick={() => removeImage(index)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <X size={12} />
                         </button>
@@ -357,7 +357,7 @@ export default function CommunityPage() {
 
                       {thumbnail && (
                         <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-                          <img src={thumbnail} alt="첨부 이미지" style={{ width: "120px", height: "120px", objectFit: "cover", border: "1px solid #e2e8f0" }} />
+                          <img src={thumbnail} alt="첨부 이미지" loading="lazy" style={{ width: "120px", height: "120px", objectFit: "cover", border: "1px solid #e2e8f0" }} />
                         </div>
                       )}
 

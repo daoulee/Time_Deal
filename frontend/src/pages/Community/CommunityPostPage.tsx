@@ -240,7 +240,7 @@ export default function CommunityPostPage() {
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {existingImages.map((url, index) => (
                     <div key={`existing-${url}`} style={{ position: "relative", width: "80px", height: "80px" }}>
-                      <img src={url} alt="첨부 이미지" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={url} alt="첨부 이미지" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <button type="button" onClick={() => removeExistingImage(index)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <X size={12} />
                       </button>
@@ -248,7 +248,7 @@ export default function CommunityPostPage() {
                   ))}
                   {imagePreviews.map((url, index) => (
                     <div key={`new-${url}`} style={{ position: "relative", width: "80px", height: "80px" }}>
-                      <img src={url} alt="미리보기" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={url} alt="미리보기" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <button type="button" onClick={() => removeNewImage(index)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <X size={12} />
                       </button>
