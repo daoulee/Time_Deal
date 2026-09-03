@@ -1,6 +1,6 @@
 /**
  * 사이트 전역에서 공유되는 "내 동네" 상태입니다. 헤더(StoreHeader)와 홈 화면(HomePage)에 각자 따로
- * 있던 GPS/동네 설정 로직을 하나로 합쳐서, 한 곳에서 설정하면 동네 딜·지도 등 다른 화면에도 그대로 반영됩니다.
+ * 있던 GPS/동네 설정 로직을 하나로 합쳐서, 한 곳에서 설정하면 지도 등 다른 화면에도 그대로 반영됩니다.
  * localStorage에 저장해 새로고침 후에도 유지되고, 직접 선택했던 동네는 "자주 찾는 동네" 이력으로 남습니다.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
