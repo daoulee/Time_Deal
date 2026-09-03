@@ -133,7 +133,8 @@ myPageRouter.post("/wishlist/:productId/toggle", async (context) => {
   const { data: existing } = await supabase.from("wishlist_items").select("id").match(key).maybeSingle();
   if (existing) { const { error } = await supabase.from("wishlist_items").delete().match(key); return error ? context.json(apiFailure("SAVE_FAILED", "찜을 해제하지 못했습니다."), 400) : context.json(apiSuccess({ liked: false })); }
   const { error } = await supabase.from("wishlist_items").insert(key);
-  return error ? context.json(apiFailure("SAVE_FAILED", "찜하지 못했습니다."), 400) : context.json(apiSuccess({ liked: true }), 201);
+  // 중복 클릭·다른 탭으로 동시에 눌러 유니크 제약 위반이 나면, 이미 원하는 상태(찜됨)이므로 성공 처리합니다.
+  return error && error.code !== "23505" ? context.json(apiFailure("SAVE_FAILED", "찜하지 못했습니다."), 400) : context.json(apiSuccess({ liked: true }), 201);
 });
 
 myPageRouter.use("/cart", requireAuth);
@@ -157,7 +158,18 @@ myPageRouter.post("/cart", async (context) => {
     return error ? context.json(apiFailure("SAVE_FAILED", "장바구니에 담지 못했습니다."), 400) : context.json(apiSuccess({ item: data }));
   }
   const { data, error } = await supabase.from("cart_items").insert({ user_id: context.var.currentUser!.id, product_id: parsed.data.productId, quantity: parsed.data.quantity }).select().single();
-  return error ? context.json(apiFailure("SAVE_FAILED", "장바구니에 담지 못했습니다."), 400) : context.json(apiSuccess({ item: data }), 201);
+  if (!error) return context.json(apiSuccess({ item: data }), 201);
+  // 동시에 같은 상품을 두 번 담으면(중복 클릭, 다른 탭) 유니크 제약 위반이 나는데, 이건 진짜 실패가
+  // 아니라 다른 요청이 먼저 넣은 것뿐이라 재조회해서 수량을 합산합니다.
+  if (error.code === "23505") {
+    const { data: retryExisting } = await supabase.from("cart_items").select("id,quantity").eq("user_id", context.var.currentUser!.id).eq("product_id", parsed.data.productId).maybeSingle();
+    if (retryExisting) {
+      const nextQuantity = Math.min(20, retryExisting.quantity + parsed.data.quantity);
+      const { data: updated, error: updateError } = await supabase.from("cart_items").update({ quantity: nextQuantity, updated_at: new Date().toISOString() }).eq("id", retryExisting.id).select().single();
+      return updateError ? context.json(apiFailure("SAVE_FAILED", "장바구니에 담지 못했습니다."), 400) : context.json(apiSuccess({ item: updated }));
+    }
+  }
+  return context.json(apiFailure("SAVE_FAILED", "장바구니에 담지 못했습니다."), 400);
 });
 myPageRouter.patch("/cart/:id", async (context) => {
   const parsed = z.object({ quantity: z.number().int().min(1).max(20) }).strict().safeParse(await context.req.json().catch(() => null));

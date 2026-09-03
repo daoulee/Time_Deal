@@ -50,7 +50,8 @@ catalogRouter.post("/products/:id/reopen-request", requireAuth, async (context) 
     return context.json(apiSuccess({ requested: false, count: count ?? 0 }));
   }
   const { error } = await supabase.from("reopen_requests").insert({ product_id: productId, user_id: userId });
-  if (error) return context.json(apiFailure("SAVE_FAILED", "요청을 저장하지 못했습니다."), 500);
+  // 중복 클릭·다른 탭으로 동시에 눌러 유니크 제약 위반이 나면, 이미 원하는 상태(요청됨)이므로 성공 처리합니다.
+  if (error && error.code !== "23505") return context.json(apiFailure("SAVE_FAILED", "요청을 저장하지 못했습니다."), 500);
   const { count } = await supabase.from("reopen_requests").select("*", { count: "exact", head: true }).eq("product_id", productId);
   return context.json(apiSuccess({ requested: true, count: count ?? 0 }), 201);
 });
