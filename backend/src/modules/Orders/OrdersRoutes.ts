@@ -9,6 +9,8 @@ import { config, isSupabaseConfigured } from "../../config.js";
 import { requireRole } from "../../middleware/auth.js";
 import { getAdminSupabase } from "../../supabase.js";
 import { cancelTossPayment } from "../../toss.js";
+import { safeUserMessage } from "../../safe-message.js";
+import { logError } from "../../error-log.js";
 
 export const ordersRouter = new Hono();
 const sampleLocations = [{ id: "11111111-1111-4111-8111-111111111111", name: "정왕동 주민센터 앞", address: "경기도 시흥시 정왕대로 233", description: "개발 샘플 장소", isActive: true }];
@@ -53,7 +55,7 @@ ordersRouter.post("/orders", async (context) => {
   const parsed = createSchema.safeParse(raw);
   if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "주문 정보와 Idempotency-Key를 확인하세요.", parsed.error.flatten()), 400);
   const { data, error } = await getAdminSupabase().rpc("create_order_atomic", { p_actor_id: context.var.currentUser.id, p_pickup_location_id: parsed.data.pickupLocationId, p_pickup_slot_id: parsed.data.pickupSlotId, p_payment_method: parsed.data.paymentMethod, p_idempotency_key: parsed.data.idempotencyKey, p_delivery_address: parsed.data.deliveryAddress ?? null, p_items: parsed.data.items.map((item) => ({ product_id: item.productId, deal_id: item.dealId ?? null, quantity: item.quantity })) });
-  if (error) return context.json(apiFailure("ORDER_CREATE_FAILED", error.message), 409);
+  if (error) { logError({ source: "backend", message: `create_order_atomic: ${error.message}`, path: context.req.path, method: context.req.method, statusCode: 409, userId: context.var.currentUser.id }); return context.json(apiFailure("ORDER_CREATE_FAILED", safeUserMessage(error.message, "주문을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.")), 409); }
   const result = (data ?? {}) as { order_id?: string; order?: Record<string, unknown>; replayed?: boolean };
   const current = result.order ?? (result.order_id ? (await getOrder(result.order_id)).data : null);
   return context.json(apiSuccess({ order: current ? serializeOrder(current) : null, replayed: Boolean(result.replayed), payment: { method: parsed.data.paymentMethod, status: paymentStatusOf(parsed.data.paymentMethod), provider: parsed.data.paymentMethod === "card" ? "toss" : null }, source: "supabase" }), result.replayed ? 200 : 201);
@@ -69,7 +71,7 @@ ordersRouter.post("/orders/:id/cancel", async (context) => {
     const { data: payment } = await supabase.from("payments").select("payment_key").eq("order_id", row.id).eq("status", "paid").order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (!payment?.payment_key) return context.json(apiFailure("REFUND_FAILED", "결제 정보를 찾을 수 없어 환불할 수 없습니다."), 409);
     const cancelResult = await cancelTossPayment(payment.payment_key, "고객 주문 취소");
-    if (!cancelResult.ok) return context.json(apiFailure("REFUND_FAILED", (cancelResult.body as { message?: string }).message ?? "토스 결제 취소에 실패했습니다.", cancelResult.body), 502);
+    if (!cancelResult.ok) { logError({ source: "backend", message: `cancelTossPayment: ${JSON.stringify(cancelResult.body)}`, path: context.req.path, method: context.req.method, statusCode: 502, userId: context.var.currentUser.id }); return context.json(apiFailure("REFUND_FAILED", safeUserMessage((cancelResult.body as { message?: string }).message, "토스 결제 취소에 실패했습니다.")), 502); }
     await supabase.from("payments").update({ status: "cancelled", raw_response: cancelResult.body, updated_at: new Date().toISOString() }).eq("payment_key", payment.payment_key);
     await supabase.from("orders").update({ payment_status: "refunded", updated_at: new Date().toISOString() }).eq("id", row.id);
     refund = "refunded";
@@ -77,7 +79,8 @@ ordersRouter.post("/orders/:id/cancel", async (context) => {
     await supabase.from("orders").update({ payment_status: "not_applicable", updated_at: new Date().toISOString() }).eq("id", row.id);
   }
   const { data, error } = await supabase.rpc("cancel_order_atomic", { p_order_id: context.req.param("id"), p_actor_id: context.var.currentUser.id });
-  return error ? context.json(apiFailure("ORDER_CANCEL_FAILED", error.message), 409) : context.json(apiSuccess({ ...(data as object), payment: { status: refund === "refunded" ? "refunded" : row.payment_status, refund }, source: "supabase" }));
+  if (error) { logError({ source: "backend", message: `cancel_order_atomic: ${error.message}`, path: context.req.path, method: context.req.method, statusCode: 409, userId: context.var.currentUser.id }); return context.json(apiFailure("ORDER_CANCEL_FAILED", safeUserMessage(error.message, "주문을 취소하지 못했습니다. 잠시 후 다시 시도해 주세요.")), 409); }
+  return context.json(apiSuccess({ ...(data as object), payment: { status: refund === "refunded" ? "refunded" : row.payment_status, refund }, source: "supabase" }));
 });
 
 ordersRouter.get("/seller/orders", requireRole("seller"), async (context) => {

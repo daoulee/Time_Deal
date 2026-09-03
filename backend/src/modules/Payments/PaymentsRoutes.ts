@@ -9,6 +9,8 @@ import { apiFailure, apiSuccess } from "../../http.js";
 import { isTossConfigured } from "../../config.js";
 import { getAdminSupabase } from "../../supabase.js";
 import { confirmTossPayment } from "../../toss.js";
+import { safeUserMessage } from "../../safe-message.js";
+import { logError } from "../../error-log.js";
 
 export const paymentsRouter = new Hono();
 
@@ -42,8 +44,9 @@ paymentsRouter.post("/payments/toss/confirm", async (context) => {
   });
   if (!result.ok) {
     await supabase.from("orders").update({ payment_status: "payment_failed", updated_at: new Date().toISOString() }).eq("id", parsed.data.orderId);
-    const message = (result.body as { message?: string }).message ?? "토스 결제 승인에 실패했습니다.";
-    return context.json(apiFailure("TOSS_CONFIRM_FAILED", message, result.body), 502);
+    logError({ source: "backend", message: `confirmTossPayment: ${JSON.stringify(result.body)}`, path: context.req.path, method: context.req.method, statusCode: 502, userId: context.var.currentUser.id });
+    const message = safeUserMessage((result.body as { message?: string }).message, "토스 결제 승인에 실패했습니다.");
+    return context.json(apiFailure("TOSS_CONFIRM_FAILED", message), 502);
   }
   const { data: updated, error: updateError } = await supabase.from("orders").update({ payment_status: "paid", order_status: "confirmed", updated_at: new Date().toISOString() }).eq("id", parsed.data.orderId).select().single();
   if (updateError) return context.json(apiFailure("ORDER_UPDATE_FAILED", "결제는 승인됐지만 주문 상태 갱신에 실패했습니다. 관리자에게 문의하세요."), 500);
