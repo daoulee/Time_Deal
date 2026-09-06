@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/korean_dongs.dart';
 import '../data/mock_data.dart';
 import '../utils/app_logger.dart';
 import '../utils/geo_utils.dart';
@@ -10,7 +11,7 @@ class LocationProvider extends ChangeNotifier {
   static const _key = 'neighborhood';
   static const _radiusKey = 'search_radius_km';
 
-  String _neighborhood = '성수동 2가';
+  String _neighborhood = '은행동';
   int _radiusKm = 3;
   Position? _position;
   String? locationError;
@@ -100,6 +101,55 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
+  // [Antigravity | 2026-08-23] 수정범위: checkNeighborhoodMismatch() & confirmNeighborhoodReverification() — 앱 종료/재시작 시 동네 변경 감지 및 강제 재인증 연동 로직
+  Future<({bool hasMismatch, String previousNeighborhood, String currentNeighborhood, Position position})?>
+      checkNeighborhoodMismatch() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
+      }
+      if (permission == LocationPermission.deniedForever) return null;
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      _position = pos;
+
+      final currentDong = await reverseGeocode(pos.latitude, pos.longitude);
+      if (currentDong != null && currentDong.isNotEmpty) {
+        if (_neighborhood.isNotEmpty && currentDong != _neighborhood) {
+          return (
+            hasMismatch: true,
+            previousNeighborhood: _neighborhood,
+            currentNeighborhood: currentDong,
+            position: pos,
+          );
+        }
+      }
+    } catch (e, st) {
+      AppLogger.error('Failed checking neighborhood mismatch', e, st);
+    }
+    return null;
+  }
+
+  Future<void> confirmNeighborhoodReverification(String newDong, Position pos) async {
+    _neighborhood = newDong;
+    _position = pos;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, newDong);
+    await prefs.setDouble('last_lat', pos.latitude);
+    await prefs.setDouble('last_lng', pos.longitude);
+  }
+
   // GPS 좌표 → 동 이름 반환 (subLocality → thoroughfare → locality 순 fallback)
   static Future<String?> reverseGeocode(double lat, double lng) async {
     try {
@@ -118,21 +168,57 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
-  // 기준 좌표 반경 내 N/E/S/W 끝점 + 중심을 역지오코딩해서 실제 근처 동 이름 목록 반환
-  static Future<List<String>> fetchNearbyDongs(
+  // [Antigravity | 2026-08-23] 수정범위: fetchNearbyDongs() & fetchNearbyDongsDetailed() — 선택한 반경(1km, 3km, 5km, 10km) 내의 모든 동네를 가장 가까운 거리(0km)부터 최대 반경까지 완벽하게 정렬하여 반환
+  static Future<List<NearbyDong>> fetchNearbyDongsDetailed(
       double lat, double lng, int radiusKm) async {
-    final seen = <String>{};
+    final Map<String, NearbyDong> results = {};
 
-    final center = await reverseGeocode(lat, lng);
-    if (center != null && center.isNotEmpty) seen.add(center);
-
-    for (final bearing in [0.0, 90.0, 180.0, 270.0]) {
-      final pt = GeoUtils.offsetPoint(lat, lng, radiusKm.toDouble(), bearing);
-      final dong = await reverseGeocode(pt.lat, pt.lng);
-      if (dong != null && dong.isNotEmpty) seen.add(dong);
+    // 1. 역지오코딩으로 현재 중심 동네 추가 (0.0km)
+    final centerDong = await reverseGeocode(lat, lng);
+    if (centerDong != null && centerDong.isNotEmpty) {
+      results[centerDong] = NearbyDong(
+        name: centerDong,
+        distanceKm: 0.0,
+        district: '현재 내 위치',
+      );
     }
 
-    return seen.toList()..sort();
+    // 2. 표준 데이터셋 기반 0.0km ~ radiusKm 이내의 모든 동네 수집
+    final databaseDongs = getDongsWithinRadius(lat, lng, radiusKm.toDouble());
+    for (final d in databaseDongs) {
+      if (!results.containsKey(d.name)) {
+        results[d.name] = d;
+      }
+    }
+
+    // 3. 동심원 다각도 지오코딩 (0.5km ~ radiusKm 사이의 추가 지역 역지오코딩 보강)
+    final stepR = radiusKm <= 3 ? 1.0 : 2.0;
+    for (double r = stepR; r <= radiusKm; r += stepR) {
+      for (final bearing in [0.0, 90.0, 180.0, 270.0]) {
+        final pt = GeoUtils.offsetPoint(lat, lng, r, bearing);
+        final dong = await reverseGeocode(pt.lat, pt.lng);
+        if (dong != null && dong.isNotEmpty && !results.containsKey(dong)) {
+          final dist = GeoUtils.haversine(lat, lng, pt.lat, pt.lng);
+          if (dist <= radiusKm) {
+            results[dong] = NearbyDong(
+              name: dong,
+              distanceKm: dist,
+              district: '인근 동네',
+            );
+          }
+        }
+      }
+    }
+
+    final list = results.values.toList();
+    // 가장 가까운 동네부터 최대 반경까지 거리순 오름차순 정렬
+    list.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    return list;
+  }
+
+  static Future<List<String>> fetchNearbyDongs(
+      double lat, double lng, int radiusKm) async {
+    final detailed = await fetchNearbyDongsDetailed(lat, lng, radiusKm);
+    return detailed.map((d) => d.name).toList();
   }
 }
-// [Claude | 2026-08-21] 수정범위: LocationProvider.fetchNearbyDongs() 신규 — post_login_setup_screen 전용 로직을 공용화, location_settings_screen의 하드코딩된 서울 동네 리스트 버그 수정에 재사용

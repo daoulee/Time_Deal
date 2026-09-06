@@ -6,6 +6,7 @@ import '../../core/providers/reservation_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/utils/status_colors.dart';
+import '../../widgets/sliding_segmented_control.dart';
 import '../reservation/pickup_ticket_screen.dart';
 
 class ReservationScreen extends StatefulWidget {
@@ -36,17 +37,10 @@ class _ReservationScreenState extends State<ReservationScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('예약 내역', style: TextStyle(fontWeight: FontWeight.w800)),
-        bottom: TabBar(
+        // [Antigravity | 2026-08-23] 수정범위: ReservationScreen — TabBar를 SlidingPillTabBar 시그니처 슬라이딩 알약 탭바로 교체
+        bottom: SlidingPillTabBar(
           controller: _tab,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: AppColors.primary,
-          dividerColor: Colors.transparent,
-          tabs: const [
-            Tab(text: '진행중'),
-            Tab(text: '픽업완료'),
-            Tab(text: '취소내역'),
-          ],
+          tabs: const ['진행중', '픽업완료', '취소내역'],
         ),
       ),
       body: TabBarView(

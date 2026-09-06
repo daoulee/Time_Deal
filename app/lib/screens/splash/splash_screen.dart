@@ -92,11 +92,10 @@ class _SplashScreenState extends State<SplashScreen>
     _handshakeFadeController.forward();
     _handshakeController.repeat(reverse: true);
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     _glowController.stop();
     _handshakeController.stop();
-    await _fadeController.reverse();
 
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
@@ -114,11 +113,24 @@ class _SplashScreenState extends State<SplashScreen>
       next = const LoginScreen();
     }
 
+    // [Antigravity | 2026-08-23] 수정범위: _runSequence() — 스플래시 종료 후 로그인/다음 화면 전환 시 부드러운 550ms 크로스 페이드 + 스케일 전환 적용
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, _, _) => next,
-        transitionDuration: const Duration(milliseconds: 150),
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 550),
+        transitionsBuilder: (_, animation, secondaryAnimation, child) {
+          final fade = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOutCubic,
+          );
+          final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
+          return FadeTransition(
+            opacity: fade,
+            child: ScaleTransition(scale: scale, child: child),
+          );
+        },
       ),
     );
   }

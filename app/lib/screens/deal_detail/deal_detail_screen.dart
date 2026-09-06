@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/models/deal.dart';
 import '../../core/models/reservation.dart';
-import '../../core/providers/auth_provider.dart';
 import '../../core/providers/reservation_provider.dart';
 import '../../core/providers/wishlist_provider.dart';
 import '../../core/theme/app_colors.dart';
@@ -14,7 +13,6 @@ import '../../core/utils/app_haptics.dart';
 import '../../core/utils/formatters.dart';
 import '../../widgets/countdown_timer.dart';
 import '../../widgets/stock_gauge.dart';
-import '../auth/login_screen.dart';
 import '../reservation/pickup_ticket_screen.dart';
 import '../store/store_screen.dart';
 
@@ -354,39 +352,57 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
           child: Consumer<ReservationProvider>(
             builder: (context, rp, _) {
               final alreadyReserved = rp.isReserved(deal.id);
-              final soldOut = deal.remainingStock == 0;
+              final isSoldOut = deal.remainingStock <= 0;
+              final isClosed = deal.isClosed;
               final blocked = _tooFar && !alreadyReserved;
+
+              if (alreadyReserved) {
+                return ElevatedButton.icon(
+                  onPressed: () {
+                    final myRes = rp.all.firstWhere(
+                      (r) => r.deal.id == deal.id && r.status == '진행중',
+                      orElse: () => rp.all.firstWhere((r) => r.deal.id == deal.id),
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PickupTicketScreen(reservation: myRes),
+                      ),
+                    );
+                  },
+                  icon: Icon(LucideIcons.ticket, size: 18),
+                  label: const Text('내 스마트 픽업 티켓 보기',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                );
+              }
+
+              // [Antigravity | 2026-08-23] 수정범위: DealDetailScreen — 게스트 모드에서도 원활한 테스트가 가능하도록 예약 차단 해제 및 가결제 안심 예약 연동
               return ElevatedButton(
-                onPressed: (soldOut || alreadyReserved || blocked)
+                onPressed: (isSoldOut || isClosed || blocked)
                     ? null
                     : () {
                         HapticFeedback.mediumImpact();
-                        final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-                        if (!isLoggedIn) {
-                          _showLoginRequired(context);
-                          return;
-                        }
                         _showReservationDialog(context);
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: alreadyReserved
-                      ? Colors.grey[300]
-                      : blocked
-                          ? Colors.grey[200]
-                          : null,
+                  backgroundColor: blocked ? Colors.grey[200] : null,
                 ),
                 child: Text(
-                  soldOut
-                      ? '품절'
-                      : alreadyReserved
-                          ? '예약 완료 ✓'
+                  isSoldOut
+                      ? '품절된 타임딜이에요 (마감)'
+                      : isClosed
+                          ? '마감된 타임딜이에요'
                           : blocked
                               ? '거리가 너무 멀어요 (${deal.distanceKm.toStringAsFixed(1)}km)'
                               : '지금 예약하기',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: (alreadyReserved || blocked) ? Colors.grey[600] : null,
+                    color: (isSoldOut || isClosed || blocked) ? Colors.grey[600] : null,
                   ),
                 ),
               );
@@ -394,52 +410,9 @@ class _DealDetailScreenState extends State<DealDetailScreen> {
           ),
         ),
       ),
-      ),
-    );
-  }
-
-  void _showLoginRequired(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 24),
-            Icon(LucideIcons.logIn, size: 40, color: AppColors.primary),
-            const SizedBox(height: 16),
-            const Text('로그인이 필요해요', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text('예약하려면 먼저 로그인해 주세요', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity, height: 52,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacement(
-                    PageRouteBuilder(
-                      pageBuilder: (_, _, _) => const LoginScreen(),
-                      transitionDuration: const Duration(milliseconds: 150),
-                      transitionsBuilder: (_, anim, _, child) => FadeTransition(opacity: anim, child: child),
-                    ),
-                  );
-                },
-                child: const Text('로그인하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   // [Antigravity | 2026-08-21] 수정범위: _showReservationDialog — 스윙 킥보드 방식 노쇼 방지 가결제(Hold) 및 결제수단 선택 바텀시트
   void _showReservationDialog(BuildContext context) {

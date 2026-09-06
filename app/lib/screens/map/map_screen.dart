@@ -11,6 +11,7 @@ import '../../core/providers/location_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/utils/formatters.dart';
+import '../../widgets/sliding_segmented_control.dart';
 import '../deal_detail/deal_detail_screen.dart';
 
 const _darkMapStyle = '''[
@@ -133,6 +134,9 @@ class _MapScreenState extends State<MapScreen> {
 
   // ── Map coordinate helpers ───────────────────────────────────────────────
   LatLng _coordForDeal(Deal deal) {
+    if (deal.storeLat != null && deal.storeLng != null) {
+      return LatLng(deal.storeLat!, deal.storeLng!);
+    }
     final mc = context.read<LocationProvider>().mapCenter;
     final baseLat = mc.lat;
     final baseLng = mc.lng;
@@ -439,152 +443,341 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // 하단 딜 가로 스크롤
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: Container(
-              padding: const EdgeInsets.only(bottom: 74),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.94),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 20)
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        const Text('근처 딜',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 15)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(10)),
-                          child: Text('${deals.length}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ],
+          // [Antigravity | 2026-08-23] 수정범위: MapScreen — 하단 플로팅 메뉴바 가림 현상 해결 및 스와이프 가능한 DraggableScrollableSheet 연동
+          NotificationListener<DraggableScrollableNotification>(
+            onNotification: (_) => true,
+            child: DraggableScrollableSheet(
+              initialChildSize: deals.isEmpty ? 0.32 : 0.32,
+              minChildSize: deals.isEmpty ? 0.28 : 0.28,
+              maxChildSize: deals.isEmpty ? 0.42 : 0.78,
+              snap: true,
+              snapSizes: deals.isEmpty ? const [0.32, 0.42] : const [0.32, 0.78],
+              builder: (context, scrollController) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final bottomPadding = MediaQuery.of(context).padding.bottom;
+                final sheetBg = isDark
+                    ? const Color(0xFF1B1C22)
+                    : Theme.of(context).scaffoldBackgroundColor;
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: sheetBg,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(24)),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                      width: 1,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
+                        blurRadius: 24,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  deals.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                            child: Text(
-                              '현재 반경 내 진행 중인 타임딜이 없어요',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[500]),
-                            ),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      bottom: bottomPadding > 0 ? bottomPadding + 90 : 96,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 10),
+                        // 상단 드래그 핸들 바
+                        Container(
+                          width: 44,
+                          height: 4.5,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[700] : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(3),
                           ),
-                        )
-                      : SizedBox(
-                          height: 92,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: deals.length,
-                            itemBuilder: (_, i) {
-                        final deal = deals[i];
-                        final isSelected = _selectedDeal?.id == deal.id;
-                        return GestureDetector(
-                          onTap: () {
-                            final coord = _coordForDeal(deal);
-                            setState(() =>
-                                _selectedDeal = isSelected ? null : deal);
-                            _mapController?.animateCamera(
-                              CameraUpdate.newLatLngZoom(coord, 15.5),
-                            );
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 155,
-                            margin: const EdgeInsets.only(
-                                right: 10, bottom: 12),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : Colors.grey.withValues(alpha: 0.2),
-                                width: isSelected ? 2 : 1,
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Row(
+                            children: [
+                              Text(
+                                '근처 딜',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
                               ),
-                              color: isSelected
-                                  ? AppColors.primary
-                                      .withValues(alpha: 0.05)
-                                  : Theme.of(context).cardTheme.color,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(deal.icon,
-                                    size: 22,
-                                    color: isSelected
-                                        ? AppColors.primary
-                                        : AppColors.textSecondary),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      Text(deal.title,
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: isSelected
-                                                  ? AppColors.primary
-                                                  : null),
-                                          maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                          '${Formatters.price(deal.discountedPrice)}원',
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.primary)),
-                                    ],
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${deals.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${loc.neighborhood} (${loc.radiusKm}km)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.grey[400] : Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (deals.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.10),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.mapPinOff,
+                                    size: 24,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  '현재 반경 내 진행 중인 타임딜이 없어요',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '반경을 넓히거나 다른 동네를 선택해보세요',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.grey[400] : Colors.grey[500],
+                                  ),
+                                ),
+                                if (loc.radiusKm < 3.0) ...[
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 36,
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.primary,
+                                        side: BorderSide(
+                                          color: AppColors.primary.withValues(alpha: 0.4),
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(18),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      ),
+                                      icon: Icon(LucideIcons.maximize2, size: 14),
+                                      label: const Text(
+                                        '탐색 반경 3km로 넓히기',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        AppHaptics.selection();
+                                        loc.setRadiusKm(3);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                        else ...[
+                          // 가로 스크롤 프리뷰
+                          SizedBox(
+                            height: 94,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: deals.length,
+                              itemBuilder: (_, i) {
+                                final deal = deals[i];
+                                final isSelected = _selectedDeal?.id == deal.id;
+                                return GestureDetector(
+                                  onTap: () {
+                                    final coord = _coordForDeal(deal);
+                                    setState(() =>
+                                        _selectedDeal = isSelected ? null : deal);
+                                    _mapController?.animateCamera(
+                                      CameraUpdate.newLatLngZoom(coord, 15.5),
+                                    );
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 160,
+                                    margin: const EdgeInsets.only(
+                                      right: 10,
+                                      bottom: 6,
+                                    ),
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : (isDark
+                                                ? Colors.white.withValues(alpha: 0.10)
+                                                : Colors.grey.withValues(alpha: 0.20)),
+                                        width: isSelected ? 2 : 1,
+                                      ),
+                                      color: isSelected
+                                          ? AppColors.primary.withValues(alpha: 0.08)
+                                          : (isDark
+                                              ? const Color(0xFF24252C)
+                                              : Colors.white),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          deal.icon,
+                                          size: 22,
+                                          color: isSelected
+                                              ? AppColors.primary
+                                              : (isDark
+                                                  ? Colors.white70
+                                                  : AppColors.textSecondary),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                deal.title,
+                                                style: TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isSelected
+                                                      ? AppColors.primary
+                                                      : (isDark
+                                                          ? Colors.white
+                                                          : null),
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '${Formatters.price(deal.discountedPrice)}원',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // 확장 시 보여주는 세로 리스트
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Divider(height: 24),
+                                Text(
+                                  '전체 딜 목록',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                ...deals.map((deal) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF24252C)
+                                          : const Color(0xFFF7F8FA),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: Icon(deal.icon, color: AppColors.primary),
+                                      title: Text(
+                                        deal.title,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13.5,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        '${deal.storeName} · ${deal.distanceKm.toStringAsFixed(1)}km',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        ),
+                                      ),
+                                      trailing: Text(
+                                        '${Formatters.price(deal.discountedPrice)}원',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 14,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DealDetailScreen(deal: deal),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }),
                               ],
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -593,7 +786,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-/// [Antigravity | 2026-08-21] 수정범위: _showRadiusPicker — 사용자가 원하는 탐색 반경(1km, 3km, 5km, 10km)을 즉시 변경하고 구글맵 카메라를 오렌지 반경 원 크기에 맞게 자동 줌
+// [Antigravity | 2026-08-23] 수정범위: _showRadiusPicker — StatefulBuilder 연동 및 220ms 시그니처 슬라이딩 알약 애니메이션과 햅틱 적용
 void _showRadiusPicker(
   BuildContext context,
   LocationProvider loc,
@@ -601,84 +794,101 @@ void _showRadiusPicker(
   LatLng center,
   double Function(int) zoomForRadius,
 ) {
+  int currentSelectedIdx = [1, 3, 5, 10].indexOf(loc.radiusKm).clamp(0, 3);
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
   showModalBottomSheet(
     context: context,
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    backgroundColor: isDark ? const Color(0xFF1B1C22) : Colors.white,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              '동네 탐색 반경 설정',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '내 위치 기준으로 선택한 반경 내의 딜만 지도와 홈에 표시됩니다',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [1, 3, 5, 10].map((r) {
-                final isSel = loc.radiusKm == r;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isSel ? AppColors.primary : Colors.grey.withValues(alpha: 0.1),
-                          foregroundColor: isSel ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: isSel ? AppColors.primary : Colors.grey.withValues(alpha: 0.2),
-                            ),
-                          ),
-                        ),
-                        onPressed: () {
-                          AppHaptics.selection();
-                          loc.setRadiusKm(r);
-                          mapController?.animateCamera(
-                            CameraUpdate.newLatLngZoom(center, zoomForRadius(r)),
-                          );
-                          Navigator.pop(ctx);
-                        },
-                        child: Text(
-                          '${r}km',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                          ),
-                        ),
-                      ),
+    builder: (ctx) => StatefulBuilder(
+      builder: (context, setModalState) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[700] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(LucideIcons.radar, size: 18, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '동네 탐색 반경 설정',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '선택한 반경 내의 딜만 지도와 홈에 표시됩니다',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                SlidingSegmentedControl(
+                  segments: const ['1km', '3km', '5km', '10km'],
+                  selectedIndex: currentSelectedIdx,
+                  height: 48,
+                  margin: EdgeInsets.zero,
+                  backgroundColor: isDark
+                      ? const Color(0xFF24252C)
+                      : AppColors.primary.withValues(alpha: 0.05),
+                  borderColor: isDark
+                      ? AppColors.primary.withValues(alpha: 0.20)
+                      : AppColors.primary.withValues(alpha: 0.14),
+                  onValueChanged: (idx) {
+                    AppHaptics.selection();
+                    setModalState(() {
+                      currentSelectedIdx = idx;
+                    });
+                    final r = [1, 3, 5, 10][idx];
+                    loc.setRadiusKm(r);
+                    mapController?.animateCamera(
+                      CameraUpdate.newLatLngZoom(center, zoomForRadius(r)),
+                    );
+                    Future.delayed(const Duration(milliseconds: 320), () {
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    });
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     ),
   );
 }

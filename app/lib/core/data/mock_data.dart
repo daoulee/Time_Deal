@@ -3,7 +3,7 @@ import '../models/deal.dart';
 
 const dealCategories = ['전체', '베이커리', '음식', '카페', '마트', '꽃집'];
 
-const dealCenter = (lat: 37.4025, lng: 126.9463); // 기본 좌표 (안양시 비산동)
+const dealCenter = (lat: 37.4475, lng: 126.7904); // 기본 좌표 (시흥시 은행동)
 
 const neighborhoodCoords = <String, ({double lat, double lng})>{
   '비산동':    (lat: 37.4025, lng: 126.9463),
@@ -15,6 +15,9 @@ const neighborhoodCoords = <String, ({double lat, double lng})>{
   '관양동':    (lat: 37.4010, lng: 126.9630),
   '성수동 1가': (lat: 37.5453, lng: 127.0554),
   '성수동 2가': (lat: 37.5444, lng: 127.0557),
+  '은행동':    (lat: 37.4475, lng: 126.7904),
+  '대야동':    (lat: 37.4460, lng: 126.7930),
+  '신천동':    (lat: 37.4420, lng: 126.7860),
 };
 
 const mockDealOffsets = <String, ({double latOffset, double lngOffset})>{

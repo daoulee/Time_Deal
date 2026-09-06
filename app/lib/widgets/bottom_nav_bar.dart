@@ -15,8 +15,13 @@ class MainScaffold extends StatefulWidget {
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  late AnimationController _entranceCtrl;
+  late Animation<Offset> _navSlide;
+  late Animation<double> _navFade;
+  late Animation<double> _bodyFade;
 
   final _screens = const [
     HomeScreen(),
@@ -26,11 +31,48 @@ class _MainScaffoldState extends State<MainScaffold> {
   ];
 
   static final _navItems = [
-    (icon: LucideIcons.home, activeIcon: Icons.home_rounded, label: '홈'),
-    (icon: LucideIcons.mapPin, activeIcon: Icons.location_on_rounded, label: '지도'),
-    (icon: LucideIcons.bell, activeIcon: Icons.notifications_rounded, label: '알림'),
-    (icon: LucideIcons.user, activeIcon: Icons.person_rounded, label: '내정보'),
+    (icon: LucideIcons.home, label: '홈'),
+    (icon: LucideIcons.mapPin, label: '지도'),
+    (icon: LucideIcons.bell, label: '알림'),
+    (icon: LucideIcons.user, label: '내정보'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _navSlide = Tween<Offset>(
+      begin: const Offset(0, 1.2),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.20, 1.0, curve: Curves.easeOutBack),
+      ),
+    );
+    _navFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.20, 0.85, curve: Curves.easeOut),
+      ),
+    );
+    _bodyFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.0, 0.70, curve: Curves.easeOut),
+      ),
+    );
+    _entranceCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _entranceCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,48 +93,55 @@ class _MainScaffoldState extends State<MainScaffold> {
     final activeItemBg = AppColors.primary;
     const activeItemIconColor = Colors.white;
 
-    final inactiveItemBg = isDark
-        ? Colors.white.withValues(alpha: 0.06)
-        : Colors.black.withValues(alpha: 0.04);
     final inactiveItemIconColor = isDark
         ? Colors.white.withValues(alpha: 0.70)
         : Colors.black.withValues(alpha: 0.55);
 
-    // [Antigravity | 2026-08-21] 수정범위: MainScaffold — Apple Liquid Glass + Toss 인터랙션 플로팅 캡슐 내비게이션 바 라이트/다크 테마 완벽 동기화
+    // [Antigravity | 2026-08-23] 수정범위: MainScaffold — RepaintBoundary 분리 및 블러 연산 최적화로 시뮬레이터 및 저사양 기기 잔렉(Jank) 완벽 제거
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        left: false,
-        right: false,
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            28,
-            0,
-            28,
-            bottomPadding > 0 ? bottomPadding + 4 : 20,
-          ),
-          child: Container(
-            height: 64,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(36),
-              boxShadow: [
-                BoxShadow(
-                  color: capsuleShadowColor,
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                  spreadRadius: -2,
+      body: RepaintBoundary(
+        child: FadeTransition(
+          opacity: _bodyFade,
+          child: IndexedStack(index: _currentIndex, children: _screens),
+        ),
+      ),
+      bottomNavigationBar: RepaintBoundary(
+        child: SlideTransition(
+          position: _navSlide,
+          child: FadeTransition(
+            opacity: _navFade,
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  28,
+                  0,
+                  28,
+                  bottomPadding > 0 ? bottomPadding + 4 : 20,
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(36),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  height: 64,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(36),
+                    boxShadow: [
+                      BoxShadow(
+                        color: capsuleShadowColor,
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                        spreadRadius: -2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(36),
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                   decoration: BoxDecoration(
                     color: capsuleBg,
                     borderRadius: BorderRadius.circular(36),
@@ -101,57 +150,80 @@ class _MainScaffoldState extends State<MainScaffold> {
                       width: 1,
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: List.generate(_navItems.length, (i) {
-                      final item = _navItems[i];
-                      final isActive = i == _currentIndex;
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final slotWidth = constraints.maxWidth / _navItems.length;
+                      final capsuleWidth = (slotWidth - 6).clamp(44.0, 62.0);
 
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            AppHaptics.selection();
-                            setState(() => _currentIndex = i);
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Center(
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeOutCubic,
-                              width: isActive ? 58 : 46,
-                              height: 48,
+                      return Stack(
+                        alignment: Alignment.centerLeft,
+                        children: [
+                          // 1. 단일 슬라이딩 액티브 캡슐 (잔상 없이 목표 탭으로 부드럽게 미끄러짐)
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            left: (_currentIndex * slotWidth) + (slotWidth - capsuleWidth) / 2,
+                            top: 0,
+                            bottom: 0,
+                            width: capsuleWidth,
+                            child: Container(
                               decoration: BoxDecoration(
-                                color: isActive ? activeItemBg : inactiveItemBg,
-                                borderRadius: BorderRadius.circular(isActive ? 24 : 23),
-                                boxShadow: isActive
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.35),
-                                          blurRadius: 10,
-                                          spreadRadius: 0,
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Center(
-                                child: AnimatedScale(
-                                  scale: isActive ? 1.08 : 1.0,
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeInOut,
-                                  child: Icon(
-                                    isActive ? item.activeIcon : item.icon,
-                                    size: isActive ? 22 : 20,
-                                    color: isActive
-                                        ? activeItemIconColor
-                                        : inactiveItemIconColor,
+                                color: activeItemBg,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ),
-                        ),
+                          // 2. 탭 아이콘 레이어
+                          Row(
+                            children: List.generate(_navItems.length, (i) {
+                              final item = _navItems[i];
+                              final isActive = i == _currentIndex;
+
+                              return Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (_currentIndex != i) {
+                                      AppHaptics.selection();
+                                      setState(() => _currentIndex = i);
+                                    }
+                                  },
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Center(
+                                    child: AnimatedScale(
+                                      scale: isActive ? 1.08 : 1.0,
+                                      duration: const Duration(milliseconds: 180),
+                                      curve: Curves.easeOutCubic,
+                                      child: TweenAnimationBuilder<Color?>(
+                                        tween: ColorTween(
+                                          end: isActive
+                                              ? activeItemIconColor
+                                              : inactiveItemIconColor,
+                                        ),
+                                        duration: const Duration(milliseconds: 180),
+                                        builder: (_, color, _) {
+                                          return Icon(
+                                            item.icon,
+                                            size: 21,
+                                            color: color,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
                       );
-                    }),
+                    },
                   ),
                 ),
               ),
@@ -159,6 +231,9 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ),
       ),
+    ),
+    ),
+    ),
     );
   }
 }

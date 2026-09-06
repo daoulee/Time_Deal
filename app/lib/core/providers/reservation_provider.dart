@@ -23,6 +23,9 @@ class ReservationProvider extends ChangeNotifier {
 
   ReservationProvider() {
     _load();
+    _supabase.auth.onAuthStateChange.listen((_) {
+      if (!_disposed) _load();
+    });
   }
 
   Future<void> refresh() => _load();
@@ -80,6 +83,12 @@ class ReservationProvider extends ChangeNotifier {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'reservations',
+          callback: (_) => _load(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'deals',
           callback: (_) => _load(),
         )
         .subscribe();

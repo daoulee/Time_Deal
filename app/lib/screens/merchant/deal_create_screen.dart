@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/mock_data.dart';
 import '../../core/providers/deal_provider.dart';
 import '../../core/providers/location_provider.dart';
+import '../../core/providers/reservation_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/utils/app_logger.dart';
@@ -241,6 +242,7 @@ class _DealCreateScreenState extends State<DealCreateScreen> {
     // [Claude | 2026-08-21] 수정범위: _submit() — 딜 등록 시 사장님 실제 GPS(storeLat/storeLng/neighborhood)를 캡처해서 딜에 저장
 
     context.read<DealProvider>().addDeal(deal);
+    context.read<ReservationProvider>().refresh();
     AppHaptics.success();
 
     // ScaffoldMessenger를 pop 전에 캡처해야 대시보드에 SnackBar가 표시됨

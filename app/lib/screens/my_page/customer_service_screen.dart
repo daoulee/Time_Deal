@@ -1,12 +1,96 @@
-// [Antigravity | 2026-08-21] 수정범위: CustomerServiceScreen — 고객센터 전용 풀스크린 (카카오 1:1 상담 / 전화 / 이메일 채널 및 FAQ 아코디언, 약관 보기)
+// [Antigravity | 2026-08-23] 수정범위: CustomerServiceScreen — 실기기 네이티브 전화 걸기(tel: URL Launcher) 연동 및 서비스 이용약관/개인정보 처리방침/위치기반 서비스 이용약관 전문 리더기 연결
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
+import 'terms_detail_screen.dart';
 
 class CustomerServiceScreen extends StatelessWidget {
   const CustomerServiceScreen({super.key});
+
+  Future<void> _makePhoneCall(BuildContext context) async {
+    AppHaptics.selection();
+    final Uri phoneUri = Uri(scheme: 'tel', path: '15880000');
+    try {
+      final launched = await launchUrl(phoneUri, mode: LaunchMode.platformDefault);
+      if (!launched && context.mounted) {
+        _showPhoneFallbackDialog(context);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        _showPhoneFallbackDialog(context);
+      }
+    }
+  }
+
+  void _showPhoneFallbackDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('고객센터 유선 상담', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: const Text(
+          '고객센터 대표번호: 1588-0000\n운영시간: 평일 09:00 ~ 18:00\n\n(통화 기능 미지원 환경인 경우 휴대폰 전화 앱에서 1588-0000으로 연결해 주세요)',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: '1588-0000'));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('대표번호(1588-0000)가 복사되었습니다'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('번호 복사'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('확인', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openEmail(BuildContext context) async {
+    AppHaptics.selection();
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@townflashdeal.kr',
+      query: 'subject=[우리동네타임딜 고객센터 문의]',
+    );
+    try {
+      final launched = await launchUrl(emailUri, mode: LaunchMode.platformDefault);
+      if (!launched) {
+        await Clipboard.setData(const ClipboardData(text: 'support@townflashdeal.kr'));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('이메일 주소(support@townflashdeal.kr)가 복사되었습니다'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      await Clipboard.setData(const ClipboardData(text: 'support@townflashdeal.kr'));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('이메일 주소(support@townflashdeal.kr)가 복사되었습니다'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +180,10 @@ class CustomerServiceScreen extends StatelessWidget {
             tagColor: const Color(0xFFFEE500),
             tagTextColor: const Color(0xFF191919),
             onTap: () {
+              AppHaptics.selection();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('카카오톡 @우리동네타임딜 채널로 연결됩니다'),
+                  content: Text('카카오톡 @우리동네타임딜 채널 1:1 상담으로 연결됩니다'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -106,35 +191,13 @@ class CustomerServiceScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // 2. 전화 문의
+          // 2. 전화 문의 (iOS/Android 네이티브 전화 걸기 연동)
           _SupportChannelCard(
             badgeBg: AppColors.primary.withValues(alpha: 0.12),
             icon: Icon(LucideIcons.phoneCall, size: 22, color: AppColors.primary),
             title: '전화 상담 (1588-0000)',
             subtitle: '전문 상담원과 유선 통화로 연결됩니다',
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: const Text('전화 상담 연결', style: TextStyle(fontWeight: FontWeight.w700)),
-                  content: const Text('1588-0000 번호로 전화를 연결하시겠습니까?'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('통화 기능이 실행되었습니다'), behavior: SnackBarBehavior.floating),
-                        );
-                      },
-                      child: const Text('통화하기', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
-              );
-            },
+            onTap: () => _makePhoneCall(context),
           ),
           const SizedBox(height: 10),
 
@@ -144,15 +207,7 @@ class CustomerServiceScreen extends StatelessWidget {
             icon: Icon(LucideIcons.mail, size: 22, color: const Color(0xFF3B82F6)),
             title: '이메일 문의 접수',
             subtitle: 'support@townflashdeal.kr (24시간 접수)',
-            onTap: () {
-              Clipboard.setData(const ClipboardData(text: 'support@townflashdeal.kr'));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('이메일 주소가 클립보드에 복사되었어요!'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onTap: () => _openEmail(context),
           ),
           const SizedBox(height: 28),
 
@@ -161,11 +216,11 @@ class CustomerServiceScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _FaqAccordion(
             question: '예약한 타임딜을 취소하고 싶어요',
-            answer: '내 정보 > 예약 내역에서 픽업 시간 전까지 직접 [예약 취소]를 진행하실 수 있습니다. 취소 시 잔여 재고는 즉시 복구됩니다.',
+            answer: '내 정보 > 예약 내역에서 픽업 시간 전까지 직접 [예약 취소]를 진행하실 수 있습니다. 취소 시 잔여 재고는 즉시 복구되며 보증금 가결제는 0원 처리됩니다.',
           ),
           _FaqAccordion(
             question: '픽업 시간이 지나면 어떻게 되나요?',
-            answer: '마감 시간 이후에는 노쇼(No-show) 방지를 위해 자동으로 예약이 만료 처리될 수 있으니, 매장에 미리 연락 부탁드립니다.',
+            answer: '마감 시간 이후에는 노쇼(No-show) 방지를 위해 사전 승인된 보증금이 소상공인 손실 보전 위약금으로 청구될 수 있으니, 매장에 미리 연락 부탁드립니다.',
           ),
           _FaqAccordion(
             question: '동네 인증은 어떻게 하나요?',
@@ -173,24 +228,68 @@ class CustomerServiceScreen extends StatelessWidget {
           ),
           _FaqAccordion(
             question: '사장님으로 딜을 등록하려면 어떻게 하나요?',
-            answer: '내 정보 > 기타 > [사장님으로 전환하기]를 통해 언제든지 사장님 모드로 전환하여 마감 임박 타임딜을 3초 만에 등록하실 수 있습니다.',
+            answer: '내 정보 > [사장님 모드로 전환하기]를 통해 언제든지 사장님 모드로 전환하여 마감 임박 타임딜을 등록하고 재고를 소진하실 수 있습니다.',
           ),
           const SizedBox(height: 24),
 
-          // 약관 및 정책
+          // 약관 및 정책 (전문 리더기 연결)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E22) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+              ),
             ),
             child: Column(
               children: [
-                _TermsRow(title: '서비스 이용약관', onTap: () {}),
-                const Divider(height: 1),
-                _TermsRow(title: '개인정보 처리방침', onTap: () {}),
-                const Divider(height: 1),
-                _TermsRow(title: '위치기반서비스 이용약관', onTap: () {}),
+                _TermsRow(
+                  title: '서비스 이용약관',
+                  onTap: () {
+                    AppHaptics.selection();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TermsDetailScreen(type: TermsType.service),
+                      ),
+                    );
+                  },
+                ),
+                Divider(
+                  height: 1,
+                  color: isDark ? Colors.white12 : Colors.grey.withValues(alpha: 0.12),
+                ),
+                _TermsRow(
+                  title: '개인정보 처리방침',
+                  onTap: () {
+                    AppHaptics.selection();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TermsDetailScreen(type: TermsType.privacy),
+                      ),
+                    );
+                  },
+                ),
+                Divider(
+                  height: 1,
+                  color: isDark ? Colors.white12 : Colors.grey.withValues(alpha: 0.12),
+                ),
+                _TermsRow(
+                  title: '위치기반 서비스 이용약관',
+                  onTap: () {
+                    AppHaptics.selection();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TermsDetailScreen(type: TermsType.location),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -339,7 +438,7 @@ class _FaqAccordionState extends State<_FaqAccordion> {
                 ),
                 child: Text(
                   widget.answer,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4),
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.45),
                 ),
               ),
             ),
@@ -361,12 +460,12 @@ class _TermsRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
-            Text(title, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+            Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
             const Spacer(),
-            Icon(LucideIcons.chevronRight, size: 14, color: Colors.grey[400]),
+            Icon(LucideIcons.chevronRight, size: 15, color: Colors.grey[400]),
           ],
         ),
       ),

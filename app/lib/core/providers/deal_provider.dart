@@ -72,10 +72,27 @@ class DealProvider extends ChangeNotifier {
   }
 
   List<Deal> byCategory(String category) {
-    final active = _deals.where((d) => !d.isExpired).toList();
+    final active = _deals.where((d) => !d.isClosed).toList();
     return category == '전체'
         ? active
         : active.where((d) => d.storeCategory == category).toList();
+  }
+
+  Future<void> cancelDeal(String dealId) async {
+    _deals.removeWhere((d) => d.id == dealId);
+    notifyListeners();
+    try {
+      await _supabase
+          .from('deals')
+          .update({
+            'expires_at':
+                DateTime.now().toUtc().subtract(const Duration(minutes: 1)).toIso8601String()
+          })
+          .eq('id', dealId);
+    } catch (e, st) {
+      AppLogger.error('Failed to cancel deal', e, st);
+    }
+    await _load();
   }
 
   Future<void> addDeal(Deal deal) async {

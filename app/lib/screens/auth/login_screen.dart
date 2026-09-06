@@ -17,7 +17,70 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _entranceCtrl;
+  late Animation<double> _headerFade;
+  late Animation<Offset> _headerSlide;
+  late Animation<double> _bodyFade;
+  late Animation<Offset> _bodySlide;
+  late Animation<double> _bodyScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    );
+
+    _headerFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.0, 0.60, curve: Curves.easeOut),
+      ),
+    );
+    _headerSlide = Tween<Offset>(
+      begin: const Offset(0, -0.15),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.0, 0.60, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _bodyFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.20, 0.85, curve: Curves.easeOut),
+      ),
+    );
+    _bodySlide = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.20, 0.85, curve: Curves.easeOutCubic),
+      ),
+    );
+    _bodyScale = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.20, 0.85, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _entranceCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _entranceCtrl.dispose();
+    super.dispose();
+  }
+
   void _showAuthLog(BuildContext context) {
     final logs = context.read<AuthProvider>().authLog;
     showModalBottomSheet(
@@ -349,6 +412,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.watch<AuthProvider>();
     final busy = auth.loading;
 
+    // [Antigravity | 2026-08-23] 수정범위: LoginScreen — 스플래시 직후 진입 시 부드러운 스태거드 페이드&슬라이드업 등장 모션 및 자연스러운 화면 전환 적용
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -357,116 +421,149 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(flex: 2),
-              GestureDetector(
-                onLongPress: () => _showAuthLog(context),
-                child: ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Color(0xFFFF6B35), AppColors.primary],
-                  ).createShader(bounds),
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 16),
-                    child: Text('Deal',
-                        style: TextStyle(fontFamily: 'Pacifico', fontSize: 52, color: Colors.white)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text('우리 동네 타임딜',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Text('마감 임박 특가를 동네에서 바로 잡아요',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-              const Spacer(flex: 3),
-              // 에러 표시
-              if (auth.error != null) ...[
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+              FadeTransition(
+                opacity: _headerFade,
+                child: SlideTransition(
+                  position: _headerSlide,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.error_outline, size: 15, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(auth.error!,
-                          style: const TextStyle(fontSize: 13, color: Colors.red))),
                       GestureDetector(
-                        onTap: auth.clearError,
-                        child: const Icon(Icons.close, size: 15, color: Colors.red),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              // 섹션 1: 이미 계정이 있으신가요?
-              _buildSectionDivider('이미 계정이 있으신가요?'),
-              const SizedBox(height: 4),
-              // 버튼 1: 소셜 로그인
-              _RotatingSocialButton(
-                busy: busy,
-                onTap: () => _showSocialLoginModal(context),
-              ),
-              const SizedBox(height: 10),
-              // 섹션 2: 처음이신가요?
-              _buildSectionDivider('처음이신가요?'),
-              const SizedBox(height: 4),
-              // 버튼 2: 회원가입
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: busy
-                      ? null
-                      : () => _showSignUpSheet(
-                            context,
-                            onSocialSignUp: (provider) => _handleSignUp(context, provider),
-                            onSuccess: () => _goNext(context),
+                        onLongPress: () => _showAuthLog(context),
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Color(0xFFFF6B35), AppColors.primary],
+                          ).createShader(bounds),
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 16),
+                            child: Text('Deal',
+                                style: TextStyle(fontFamily: 'Pacifico', fontSize: 52, color: Colors.white)),
                           ),
-                  child: const Text(
-                    '회원가입',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('우리 동네 타임딜',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      Text('마감 임박 특가를 동네에서 바로 잡아요',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              // 버튼 3: 게스트로 둘러보기
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[600],
-                    side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: busy ? null : () => Navigator.of(context).pushReplacement(PageRouteBuilder(
-                    pageBuilder: (_, _, _) => const RoleSelectScreen(),
-                    transitionDuration: const Duration(milliseconds: 150),
-                    transitionsBuilder: (_, anim, _, child) => FadeTransition(opacity: anim, child: child),
-                  )),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(LucideIcons.userX, size: 18, color: Colors.grey[500]),
-                      const SizedBox(width: 8),
-                      Text('게스트로 둘러보기',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
-                              color: Colors.grey[600])),
-                    ],
+              const Spacer(flex: 3),
+              FadeTransition(
+                opacity: _bodyFade,
+                child: SlideTransition(
+                  position: _bodySlide,
+                  child: ScaleTransition(
+                    scale: _bodyScale,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 에러 표시
+                        if (auth.error != null) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, size: 15, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(auth.error!,
+                                    style: const TextStyle(fontSize: 13, color: Colors.red))),
+                                GestureDetector(
+                                  onTap: auth.clearError,
+                                  child: const Icon(Icons.close, size: 15, color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // 섹션 1: 이미 계정이 있으신가요?
+                        _buildSectionDivider('이미 계정이 있으신가요?'),
+                        const SizedBox(height: 4),
+                        // 버튼 1: 소셜 로그인
+                        _RotatingSocialButton(
+                          busy: busy,
+                          onTap: () => _showSocialLoginModal(context),
+                        ),
+                        const SizedBox(height: 10),
+                        // 섹션 2: 처음이신가요?
+                        _buildSectionDivider('처음이신가요?'),
+                        const SizedBox(height: 4),
+                        // 버튼 2: 회원가입
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: busy
+                                ? null
+                                : () => _showSignUpSheet(
+                                      context,
+                                      onSocialSignUp: (provider) => _handleSignUp(context, provider),
+                                      onSuccess: () => _goNext(context),
+                                    ),
+                            child: const Text(
+                              '회원가입',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // 버튼 3: 게스트로 둘러보기
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey[600],
+                              side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: busy ? null : () => Navigator.of(context).pushReplacement(PageRouteBuilder(
+                              pageBuilder: (_, _, _) => const RoleSelectScreen(),
+                              transitionDuration: const Duration(milliseconds: 240),
+                              transitionsBuilder: (_, anim, _, child) => FadeTransition(
+                                opacity: anim,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(begin: 0.98, end: 1.0).animate(
+                                    CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+                                  ),
+                                  child: child,
+                                ),
+                              ),
+                            )),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(LucideIcons.userX, size: 18, color: Colors.grey[500]),
+                                const SizedBox(width: 8),
+                                Text('게스트로 둘러보기',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
+                                        color: Colors.grey[600])),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

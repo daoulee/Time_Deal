@@ -113,8 +113,10 @@ class _PickupTicketScreenState extends State<PickupTicketScreen> {
     
     // Live reservation lookup
     Reservation liveReservation = widget.reservation;
-    for (final r in rp.all) {
-      if (r.id == widget.reservation.id) {
+    for (final r in [...rp.all, ...rp.merchantAll]) {
+      if (r.id == widget.reservation.id ||
+          (widget.reservation.id.startsWith('_tmp_') && r.deal.id == widget.reservation.deal.id) ||
+          r.deal.id == widget.reservation.deal.id) {
         liveReservation = r;
         break;
       }
@@ -439,7 +441,7 @@ class _PickupTicketScreenState extends State<PickupTicketScreen> {
                 const SizedBox(height: 6),
                 Text(
                   deal.neighborhood != null
-                      ? '부산시 해운대구 ${deal.neighborhood}'
+                      ? '경기도 시흥시 ${deal.neighborhood}'
                       : '매장 주소는 픽업 안내를 참고해 주세요',
                   style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
@@ -449,8 +451,8 @@ class _PickupTicketScreenState extends State<PickupTicketScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          final lat = deal.storeLat ?? 35.1631;
-                          final lng = deal.storeLng ?? 129.1636;
+                          final lat = deal.storeLat ?? 37.4475;
+                          final lng = deal.storeLng ?? 126.7904;
                           _launchMap(lat, lng, deal.storeName);
                         },
                         icon: Icon(LucideIcons.navigation, size: 15),

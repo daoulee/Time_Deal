@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/location_provider.dart';
+import '../services/device_id.dart';
 import '../utils/app_logger.dart';
 
 class ProfileProvider extends ChangeNotifier {
@@ -54,10 +55,11 @@ class ProfileProvider extends ChangeNotifier {
     await prefs.setInt('profile_avatar', _avatarIndex);
   }
 
+  // [Antigravity | 2026-08-23] 수정범위: uploadPhoto() — 게스트 모드에서도 프로필 사진 업로드가 가능하도록 DeviceId.value fallback 연동
   Future<void> uploadPhoto(File file) async {
     final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return; // 비로그인 시 업로드 스킵
+    final userId = supabase.auth.currentUser?.id ?? DeviceId.value;
+    if (userId.isEmpty) return;
     try {
       final ext = file.path.split('.').last.toLowerCase();
       final path = 'profiles/$userId.$ext';

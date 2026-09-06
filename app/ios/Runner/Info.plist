@@ -39,6 +39,8 @@
 	<string>딜 등록 시 상품 사진을 촬영하기 위해 카메라에 접근합니다.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<string>tel</string>
+		<string>mailto</string>
 		<string>kakaokompassauth</string>
 		<string>kakaolink</string>
 		<string>kakaoplus</string>

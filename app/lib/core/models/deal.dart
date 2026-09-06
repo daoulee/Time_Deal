@@ -57,10 +57,14 @@ class Deal {
 
   double get stockRatio => totalStock == 0 ? 0.0 : remainingStock / totalStock;
 
+  bool get isSoldOut => remainingStock <= 0;
+
   bool get isExpired => expiresAt.isBefore(DateTime.now());
 
+  bool get isClosed => isExpired || isSoldOut;
+
   bool get isUrgent =>
-      !isExpired && expiresAt.difference(DateTime.now()).inMinutes < 30;
+      !isClosed && expiresAt.difference(DateTime.now()).inMinutes < 30;
 
   Duration get remaining => expiresAt.difference(DateTime.now());
 
