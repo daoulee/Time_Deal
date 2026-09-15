@@ -148,10 +148,62 @@ supabase
 
 ---
 
-## 7. 문의
+## 7. 계정(Auth) 관리 — service_role 없이
+
+회원 목록 조회, 정지, 삭제 같은 **관리자 전용 계정 관리**가 필요하다면 `service_role` 키를 직접 받지 말고, 서버(Edge Function)를 통해서만 호출하세요. `service_role`은 RLS를 전부 우회하는 마스터 키라 브라우저 코드에 들어가면 누구나 개발자도구로 꺼내서 전체 계정을 조작할 수 있습니다.
+
+레포에 `supabase/functions/admin-users/index.ts` 관리자 함수를 만들어 뒀습니다. 구조:
+
+```
+웹(브라우저)                         Edge Function (서버)
+─────────────                       ──────────────────────
+자기 로그인 세션(access_token)만 보유   SUPABASE_SERVICE_ROLE_KEY 보관 (자동 주입, 노출 안 됨)
+        │  Authorization: Bearer <access_token>
+        ▼
+  POST /functions/v1/admin-users  ──▶  1) 토큰으로 호출자 신원 확인
+        { action, ...params }          2) ADMIN_EMAILS 목록에 있는지 확인
+                                        3) 맞으면 Auth Admin API 실행 후 결과만 반환
+```
+
+### 배포 (팀장/서버 관리자만 1회 실행)
+
+```bash
+npx supabase login
+npx supabase link --project-ref gnrnsbuqmofcjoamjsqk
+npx supabase secrets set ADMIN_EMAILS="admin1@example.com,admin2@example.com"
+npx supabase functions deploy admin-users
+```
+
+### 웹에서 호출하는 방법
+
+관리자로 로그인된 세션에서 `supabase.auth.getSession()`으로 얻은 `access_token`을 그대로 실어 호출합니다. service_role은 여기 어디에도 등장하지 않습니다.
+
+```ts
+const { data: { session } } = await supabase.auth.getSession()
+
+const res = await fetch(
+  'https://gnrnsbuqmofcjoamjsqk.supabase.co/functions/v1/admin-users',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session?.access_token}`,
+      apikey: 'sb_publishable_s6iikkgXxBka9Uo9R0fN7A_qgQqG_YI',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action: 'list', page: 1, perPage: 50 }),
+  }
+)
+const { users, error } = await res.json()
+```
+
+지원 액션: `list`(회원 목록), `get`(단건 조회, `userId` 필요), `ban`/`unban`(정지/해제, `userId` 필요), `delete`(계정 삭제, `userId` 필요). `ADMIN_EMAILS`에 없는 계정으로 호출하면 403이 돌아옵니다.
+
+---
+
+## 8. 문의
 
 연동하다 막히는 거 있으면 레포 루트의 [`Communicate.md`](./Communicate.md)에 남겨주세요 — Claude/Kiro/Antigravity가 확인하고 답 남깁니다. 급하면 팀장(최다울)한테 바로 연락 주세요.
 
 ---
 
-> Last edited by: Claude (2026-08-21)
+> Last edited by: Claude (2026-09-15)
