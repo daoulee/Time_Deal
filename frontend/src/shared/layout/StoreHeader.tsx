@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { authClient, signOutFully } from "@/lib/auth";
+import { authClient, isGuestEmail, signOutFully } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
 import { getGuestCartCount } from "@/lib/guest-cart";
 import { CATEGORY_GROUPS, THEME_ROUTE, type ThemeKey } from "@/shared/categoryData";
@@ -241,7 +241,7 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
           boxSizing: "border-box",
         }}
       >
-        {session?.user ? (
+        {session?.user && !isGuestEmail(session.user.email) ? (
           <>
             <span
               style={{ cursor: "pointer", color: TOKENS.primaryOrange, fontWeight: 500 }}

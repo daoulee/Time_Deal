@@ -18,6 +18,7 @@ export const config = {
   mobileSupabaseUrl: read("MOBILE_SUPABASE_URL"),
   mobileSupabaseAnonKey: read("MOBILE_SUPABASE_ANON_KEY"),
   publicBackendUrl: read("PUBLIC_BACKEND_URL"),
+  guestMode: read("GUEST_MODE") === "true",
   enableSampleData: read("ENABLE_SAMPLE_DATA") === "true" && nodeEnv !== "production",
   productImageBucket: read("PRODUCT_IMAGE_BUCKET") || "product-images",
   maxImageBytes: Number(read("MAX_IMAGE_BYTES") || 5_242_880),

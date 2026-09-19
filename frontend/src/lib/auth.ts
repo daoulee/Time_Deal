@@ -42,11 +42,41 @@ async function refreshSession() {
 const isTestRuntime = import.meta.env.MODE === "test";
 if (!isTestRuntime && typeof window !== "undefined" && typeof localStorage !== "undefined" && getAuthToken()) void refreshSession();
 else pending = false;
+// ── 체험 모드(VITE_GUEST_MODE=true): 로그인 없이도 임시 계정으로 자동 로그인해서 기존 기능을 그대로 쓰게 합니다. ──
+const GUEST_KEY = "td_guest_cred";
+export const guestModeEnabled = import.meta.env.VITE_GUEST_MODE === "true";
+export const isGuestEmail = (email?: string | null) => Boolean(email && email.endsWith("@guest.example.com"));
+type GuestCred = { email: string; password: string };
+const readGuestCred = (): GuestCred | null => { try { const raw = localStorage.getItem(GUEST_KEY); return raw ? JSON.parse(raw) as GuestCred : null; } catch { return null; } };
+let guestRefreshTimer: ReturnType<typeof setInterval> | null = null;
+async function createGuestSession(): Promise<boolean> {
+  try {
+    const response = await fetch(apiUrl("/auth/guest"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const payload = await response.json().catch(() => null) as { data?: { accessToken?: string; user?: AuthUser; guest?: GuestCred } } | null;
+    if (!response.ok || !payload?.data?.accessToken || !payload.data.user) return false;
+    try { if (payload.data.guest) localStorage.setItem(GUEST_KEY, JSON.stringify(payload.data.guest)); } catch { /* 저장소 차단 시 이번 세션만 유지 */ }
+    setAuthToken(payload.data.accessToken);
+    cachedSession = { user: payload.data.user }; pending = false; emit();
+    return true;
+  } catch { return false; }
+}
+export async function ensureGuestSession(): Promise<void> {
+  if (!guestModeEnabled) return;
+  for (let waited = 0; pending && waited < 5000; waited += 50) await new Promise((resolve) => setTimeout(resolve, 50));
+  if (!guestRefreshTimer) {
+    // 액세스 토큰(약 1시간)이 끊기지 않도록, 아직 체험 계정으로 쓰는 중일 때만 주기적으로 다시 로그인합니다.
+    guestRefreshTimer = setInterval(() => { const saved = readGuestCred(); if (saved && isGuestEmail(cachedSession?.user.email)) void authRequest("/sign-in", saved); }, 45 * 60 * 1000);
+  }
+  if (cachedSession) return;
+  const cred = readGuestCred();
+  if (cred) { const result = await authRequest("/sign-in", cred); if (!result.error) return; }
+  await createGuestSession();
+}
 export const authClient = {
   useSession() { useSyncExternalStore((listener) => { listeners.add(listener); return () => listeners.delete(listener); }, () => `${pending}:${cachedSession?.user.id ?? ""}:${cachedSession?.user.emailVerified ?? ""}`, () => "false:"); return { data: cachedSession, isPending: pending }; },
   signIn: { email: (input: { email: string; password: string }) => authRequest("/sign-in", input) },
   signUp: { email: (input: { name: string; email: string; password: string }) => authRequest("/sign-up", input) },
-  async signOut() { await authRequest("/sign-out", {}); clearAuthToken(); return { data: null, error: null }; }
+  async signOut() { await authRequest("/sign-out", {}); clearAuthToken(); if (guestModeEnabled) await ensureGuestSession(); return { data: null, error: null }; }
 };
 export async function signOutFully() {
   if (supabaseAuthClient) await supabaseAuthClient.auth.signOut({ scope: "local" });

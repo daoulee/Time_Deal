@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { authClient, signOutFully } from "@/lib/auth";
+import { authClient, isGuestEmail, signOutFully } from "@/lib/auth";
 import { useLocationStore } from "@/shared/location/LocationContext";
 import { getGuestCartCount } from "@/lib/guest-cart";
 import { getRecentCategories } from "@/lib/recent-categories";
@@ -491,7 +491,7 @@ export default function HomePage() {
           boxSizing: "border-box",
         }}
       >
-        {session?.user ? (
+        {session?.user && !isGuestEmail(session.user.email) ? (
           <>
             <span
               style={{

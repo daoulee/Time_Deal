@@ -7,7 +7,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, KeyRound, Mail, Store, UserRound } from "lucide-react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { authClient, setAuthToken } from "@/lib/auth";
+import { authClient, isGuestEmail, setAuthToken } from "@/lib/auth";
 import { apiFetch, applySellerAccount, sendEmailOtp as requestEmailOtp, updateMyProfile } from "@/lib/api";
 import { isSupabaseAuthConfigured, startKakaoAuth, startNaverAuth } from "@/lib/supabase-auth";
 import { normalizeApiError, readResponseBody } from "@/lib/api-error";
@@ -50,7 +50,7 @@ export default function AuthPage() {
   }, [now, resendAvailableAt]);
 
   if (isPending) return <div className="auth-loading"><span aria-label="세션 확인 중" /></div>;
-  if (session?.user?.emailVerified && !verificationEmail) return <Navigate to="/" replace />;
+  if (session?.user?.emailVerified && !isGuestEmail(session.user.email) && !verificationEmail) return <Navigate to="/" replace />;
 
   async function sendVerificationCode() {
     const response = await apiFetch("/email-verification/send-code", { method: "POST", auth: true });

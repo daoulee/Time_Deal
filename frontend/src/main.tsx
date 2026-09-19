@@ -8,6 +8,7 @@ import App from './App.tsx'
 import './index.css'
 import { syncAuthTokenFromUrl } from "@/lib/api";
 import { handleSupabaseOAuthCallback } from "@/lib/oauth-callback";
+import { ensureGuestSession } from "@/lib/auth";
 import { installGlobalErrorReporting } from "@/lib/error-reporter";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ const rootEl = document.getElementById("root")!;
 
 async function bootstrap() {
   await syncAuthTokenFromUrl();
+  await ensureGuestSession();
   const oauthResult = await handleSupabaseOAuthCallback();
   if (oauthResult.status === "error" || oauthResult.status === "exchange-failed") {
     toast.error(oauthResult.message);
