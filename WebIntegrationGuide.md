@@ -6,10 +6,7 @@
 
 ## 1. 접속 정보
 
-```
-Project URL : https://gnrnsbuqmofcjoamjsqk.supabase.co
-Anon Key    : sb_publishable_s6iikkgXxBka9Uo9R0fN7A_qgQqG_YI
-```
+
 
 이 키는 브라우저에 노출돼도 되는 **공개용(anon/publishable) 키**입니다. DB 접근 범위는 서버의 RLS(Row Level Security) 정책이 결정합니다 — 아래 [6. 보안](#6-보안--rls) 참고.
 
