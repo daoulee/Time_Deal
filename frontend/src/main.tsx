@@ -19,13 +19,21 @@ installGlobalErrorReporting();
 // so crawlers see real content. When that markup is present we hydrate it back
 // into the normal CSR app; otherwise we do a clean client render.
 const rootEl = document.getElementById("root")!;
+// 소셜 로그인 결과(#access_token, ?code)는 supabase-js가 곧 URL에서 지우므로 시작하자마자 저장합니다.
+const initialHref = window.location.href;
 
 async function bootstrap() {
-  await syncAuthTokenFromUrl();
-  await ensureGuestSession();
-  const oauthResult = await handleSupabaseOAuthCallback();
-  if (oauthResult.status === "error" || oauthResult.status === "exchange-failed") {
-    toast.error(oauthResult.message);
+  try {
+    await syncAuthTokenFromUrl();
+    // 소셜 로그인 처리를 체험 계정보다 먼저 해야, 로그인 성공 시 체험 계정이 끼어들지 않습니다.
+    const oauthResult = await handleSupabaseOAuthCallback(initialHref);
+    if (oauthResult.status === "error" || oauthResult.status === "exchange-failed") {
+      toast.error(oauthResult.message);
+    }
+    await ensureGuestSession();
+  } catch (error) {
+    // 인증 준비가 실패해도 화면은 항상 그립니다(빈 화면 방지).
+    console.error("인증 초기화 실패", error);
   }
   if (rootEl.hasChildNodes()) {
     hydrateRoot(rootEl, <ErrorBoundary><App /></ErrorBoundary>);

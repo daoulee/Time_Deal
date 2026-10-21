@@ -5,7 +5,7 @@
  * URL에서 OAuth 민감 파라미터를 제거한 뒤에만 Render 세션 교환을 요청합니다.
  */
 import { apiFetch } from "@/lib/api";
-import { setAuthToken } from "@/lib/auth";
+import { reloadSession, setAuthToken } from "@/lib/auth";
 import { supabaseAuthClient } from "@/lib/supabase-auth";
 
 function hasOAuthError(url: URL) {
@@ -34,9 +34,10 @@ export type OAuthCallbackResult =
   | { status: "success" }
   | { status: "exchange-failed"; message: string };
 
-export async function handleSupabaseOAuthCallback(): Promise<OAuthCallbackResult> {
+// supabase-js(detectSessionInUrl)가 초기화 중에 URL의 토큰을 지우므로, 앱 시작 직후 저장해 둔 주소(initialHref)로 판단합니다.
+export async function handleSupabaseOAuthCallback(initialHref = typeof window === "undefined" ? "" : window.location.href): Promise<OAuthCallbackResult> {
   if (!supabaseAuthClient || typeof window === "undefined") return { status: "not-oauth" };
-  const currentUrl = new URL(window.location.href);
+  const currentUrl = new URL(initialHref);
   const isCallback = hasOAuthError(currentUrl) || hasPkceCode(currentUrl) || hasImplicitAccessToken(currentUrl);
   if (!isCallback) return { status: "not-oauth" };
 
@@ -75,6 +76,7 @@ export async function handleSupabaseOAuthCallback(): Promise<OAuthCallbackResult
 
   // 서버 검증 성공 후에만 기존 Render 인증 토큰을 저장합니다.
   setAuthToken(accessToken);
+  await reloadSession();
   window.history.replaceState(window.history.state, "", cleanOAuthUrl(currentUrl));
   return { status: "success" };
 }

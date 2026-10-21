@@ -35,10 +35,13 @@ async function refreshSession() {
   const token = getAuthToken();
   if (!token) { cachedSession = null; pending = false; emit(); return; }
   const result = await authRequest("/session");
+  // 확인하는 사이 다른 로그인(예: 카카오)으로 토큰이 바뀌었으면 옛 결과로 덮어쓰지 않습니다.
+  if (getAuthToken() !== token) return;
   cachedSession = result.error || !result.data?.user ? null : { user: result.data.user };
   if (!cachedSession) clearAuthToken();
   pending = false; emit();
 }
+export const reloadSession = refreshSession;
 const isTestRuntime = import.meta.env.MODE === "test";
 if (!isTestRuntime && typeof window !== "undefined" && typeof localStorage !== "undefined" && getAuthToken()) void refreshSession();
 else pending = false;
