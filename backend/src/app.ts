@@ -17,6 +17,7 @@ import { communityRouter } from "./modules/Community/CommunityRoutes.js";
 import { inquiryRouter } from "./modules/Inquiry/InquiryRoutes.js";
 import { emailOtpRouter } from "./modules/Auth/EmailOtpRoutes.js";
 import { impactRouter } from "./modules/Impact/ImpactRoutes.js";
+import { mobileRouter } from "./modules/Mobile/MobileRoutes.js";
 import { supabaseSessionRouter } from "./modules/Auth/SupabaseSessionRoutes.js";
 import { myPageRouter } from "./modules/MyPage/MyPageRoutes.js";
 import { neighborhoodRouter } from "./modules/Neighborhood/NeighborhoodRoutes.js";
@@ -74,6 +75,7 @@ app.route("/api", paymentsRouter);
 app.route("/api", auctionRouter);
 app.route("/api", neighborhoodRouter);
 app.route("/api", impactRouter);
+app.route("/api", mobileRouter);
 app.notFound((context) => context.json(apiFailure("NOT_FOUND", "요청한 API를 찾을 수 없습니다."), 404));
 app.onError((error, context) => {
   const requestId = context.res.headers.get("x-request-id");

@@ -11,6 +11,7 @@ import { getAdminSupabase } from "../../supabase.js";
 import { cancelTossPayment } from "../../toss.js";
 import { safeUserMessage } from "../../safe-message.js";
 import { logError } from "../../error-log.js";
+import { ensureUpcomingSlots } from "../../pickup-slots.js";
 
 export const ordersRouter = new Hono();
 const sampleLocations = [{ id: "11111111-1111-4111-8111-111111111111", name: "정왕동 주민센터 앞", address: "경기도 시흥시 정왕대로 233", description: "개발 샘플 장소", isActive: true }];
@@ -31,8 +32,12 @@ ordersRouter.get("/pickup-locations", async (context) => {
 });
 ordersRouter.get("/pickup-locations/:locationId/slots", async (context) => {
   if (!isSupabaseConfigured()) return readOnly(context);
-  const { data, error } = await getAdminSupabase().from("pickup_slots").select("*").eq("location_id", context.req.param("locationId")).eq("is_active", true).gt("pickup_at", new Date().toISOString()).order("pickup_at");
-  return error ? context.json(apiFailure("QUERY_FAILED", "픽업 슬롯을 조회하지 못했습니다."), 502) : context.json(apiSuccess({ slots: data ?? [], source: "supabase" }));
+  try {
+    const slots = await ensureUpcomingSlots(context.req.param("locationId"));
+    return context.json(apiSuccess({ slots, source: "supabase" }));
+  } catch {
+    return context.json(apiFailure("QUERY_FAILED", "픽업 슬롯을 조회하지 못했습니다."), 502);
+  }
 });
 ordersRouter.get("/orders", async (context) => {
   if (!context.var.currentUser) return context.json(apiFailure("UNAUTHORIZED", "로그인이 필요합니다."), 401);

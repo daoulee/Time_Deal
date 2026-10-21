@@ -8,6 +8,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ff5722" />
+    <script>
+      // 휴대폰으로 들어오면 타임딜 모바일 앱(PWA, timedeal-mobile.netlify.app)으로 보냅니다. 판매자·관리자·결제·인증 화면은 웹에 남깁니다.
+      // ?view=pc / ?view=app 으로 선택을 바꿀 수 있고 그 선택은 기기에 기억됩니다.
+      (function () {
+        try {
+          if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+          var q = new URLSearchParams(location.search).get("view");
+          if (q === "app" || q === "pc") localStorage.setItem("td_view", q);
+          var pref = localStorage.getItem("td_view");
+          var mobile = /Android|iPhone|iPod|iPad|Mobile/i.test(navigator.userAgent) || matchMedia("(pointer: coarse)").matches;
+          var webOnly = /^\/(seller|admin|payments|auth)(\/|-|$)/.test(location.pathname);
+          if (!webOnly && pref !== "pc" && (pref === "app" || mobile)) location.replace("https://timedeal-mobile.netlify.app/" + (pref === "app" ? "?view=app" : ""));
+        } catch (e) {}
+      })();
+    </script>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/favicon.png" />
