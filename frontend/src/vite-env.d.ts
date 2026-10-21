@@ -5,6 +5,7 @@ declare const __ROUTE_MESSAGING_ENABLED__: boolean;
 
 interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  readonly VITE_NAVER_AUTH?: string;
   readonly VITE_API_BASE_URL?: string;
 }
 

@@ -182,6 +182,9 @@ html.large-text { zoom: 1.18; }
 .kakao-button { background: #FEE500; border-color: #FEE500; color: #191919; }
 .kakao-button:hover:not(:disabled) { border-color: #FEE500; filter: brightness(.96); }
 .kakao-button:disabled { opacity: .6; cursor: not-allowed; }
+.google-button { background: #ffffff; border-color: #dadce0; color: #1f1f1f; }
+.google-button:hover:not(:disabled) { background: #f8f9fa; }
+.google-button:disabled { opacity: .6; cursor: not-allowed; }
 .naver-button { background: #03C75A; border-color: #03C75A; color: #ffffff; }
 .naver-button:hover:not(:disabled) { border-color: #03C75A; filter: brightness(.96); }
 

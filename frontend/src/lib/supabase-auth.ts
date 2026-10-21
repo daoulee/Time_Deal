@@ -42,6 +42,17 @@ export async function startKakaoAuth(redirectTo = `${window.location.origin}/aut
   });
 }
 
+export async function startGoogleAuth(redirectTo = `${window.location.origin}/auth`) {
+  if (!supabaseAuthClient) throw new Error("프론트 Supabase Auth 환경변수를 설정하세요.");
+  return supabaseAuthClient.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo },
+  });
+}
+
+// 네이버는 Supabase에 Custom OAuth provider를 등록한 뒤 VITE_NAVER_AUTH=true로 켭니다(미등록 상태에서 버튼이 실패하지 않게).
+export const naverAuthEnabled = import.meta.env.VITE_NAVER_AUTH === "true";
+
 /**
  * 네이버는 Supabase Auth 기본 제공 provider가 아니라, Supabase 프로젝트에
  * "Custom OAuth provider"로 네이버 개발자센터 앱(Client ID/Secret)을 등록해야 동작합니다.
