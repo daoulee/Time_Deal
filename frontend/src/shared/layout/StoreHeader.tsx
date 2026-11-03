@@ -304,7 +304,7 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
           onMouseLeave={() => setIsCustomerMenuOpen(false)}
           style={{ position: "relative" }}
         >
-          <span style={{ cursor: "pointer", color: "#333333" }}>고객센터 ▾</span>
+          <span style={{ cursor: "pointer", color: "#333333" }} onClick={() => setIsCustomerMenuOpen(true)}>고객센터 ▾</span>
           {isCustomerMenuOpen && (
             <div
               style={{
@@ -812,6 +812,7 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
               style={{ position: "relative", flexShrink: 0, zIndex: 110 }}
             >
               <div
+                onClick={() => setIsCategoryMenuOpen(true)}
                 style={{
                   display: "flex",
                   alignItems: "center",

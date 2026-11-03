@@ -4,6 +4,7 @@
  * 미인증과 권한 부족 상태를 구분해 안전한 화면으로 이동시킵니다.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import { RequireAuth } from "./route-guards";
 
@@ -27,8 +28,12 @@ function AdminAccessForbidden() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
       <div className="max-w-md rounded-lg border bg-card p-6 text-center shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">403 Forbidden</h1>
-        <p className="mt-2 text-sm text-muted-foreground">This account does not have admin access.</p>
+        <h1 className="text-2xl font-semibold text-foreground">관리자 전용 화면이에요</h1>
+        <p className="mt-2 text-sm text-muted-foreground">관리자 계정으로 로그인해야 볼 수 있어요. 로그인 없이 관리자 콘솔 구성을 둘러보려면 데모를 이용해 주세요.</p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18 }}>
+          <Link to="/admin-demo" className="primary-button">관리자 콘솔 데모 보기</Link>
+          <Link to="/" className="secondary-button">홈으로</Link>
+        </div>
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ describe("AdminGuard", () => {
 
     renderAdminGuard();
 
-    expect(await screen.findByText("403 Forbidden")).not.toBeNull();
+    expect(await screen.findByText("관리자 전용 화면이에요")).not.toBeNull();
     expect(screen.queryByText("Admin Dashboard")).toBeNull();
     expect(apiFetch).toHaveBeenCalledWith("/me/profile");
   });
@@ -90,7 +90,7 @@ describe("AdminGuard", () => {
     renderAdminGuard();
 
     expect(await screen.findByText("Admin Dashboard")).not.toBeNull();
-    await waitFor(() => expect(screen.queryByText("403 Forbidden")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("관리자 전용 화면이에요")).toBeNull());
     expect(apiFetch).toHaveBeenCalledWith("/me/profile");
   });
 });

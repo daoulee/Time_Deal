@@ -130,19 +130,17 @@ const TOKENS = {
 };
 
 const SNS_LINKS = [
-  { label: "블로그", icon: BookOpen, url: "https://blog.naver.com/timedeal" },
-  { label: "카페", icon: Coffee, url: "https://cafe.naver.com/timedeal" },
+  { label: "블로그", icon: BookOpen },
+  { label: "카페", icon: Coffee },
   {
     label: "인스타그램",
     icon: FaInstagram,
-    url: "https://instagram.com/timedeal_official",
   },
   {
     label: "페이스북",
     icon: FaFacebook,
-    url: "https://facebook.com/timedeal.official",
   },
-  { label: "엑스", icon: FaXTwitter, url: "https://x.com/timedeal_official" },
+  { label: "엑스", icon: FaXTwitter },
 ];
 
 export default function HomePage() {
@@ -562,7 +560,7 @@ export default function HomePage() {
           onMouseLeave={() => setIsCustomerMenuOpen(false)}
           style={{ position: "relative" }}
         >
-          <span style={{ cursor: "pointer", color: "#333333" }}>
+          <span style={{ cursor: "pointer", color: "#333333" }} onClick={() => setIsCustomerMenuOpen(true)}>
             고객센터 ▾
           </span>
           {isCustomerMenuOpen && (
@@ -1006,6 +1004,7 @@ export default function HomePage() {
               style={{ position: "relative", flexShrink: 0, zIndex: 110 }}
             >
               <div
+                onClick={() => setIsCategoryMenuOpen(true)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -1404,7 +1403,7 @@ export default function HomePage() {
             <b>0{currentHeroIndex + 1}</b> / 0{HERO_SLIDES.length}
           </span>
           <span style={{ opacity: 0.5 }}>|</span>
-          <span style={{ cursor: "pointer" }}>전체보기 &gt;</span>
+          <span style={{ cursor: "pointer" }} onClick={(event) => { event.stopPropagation(); navigate("/products"); }}>전체보기 &gt;</span>
         </div>
 
         <button
@@ -2287,7 +2286,7 @@ export default function HomePage() {
                 color: TOKENS.colors.navy,
                 cursor: "pointer",
               }}
-              onClick={() => showToast("재오픈 요청 전체 목록으로 이동합니다.")}
+              onClick={() => navigate("/products?theme=best")}
             >
               <Flame size={24} color={TOKENS.colors.primaryOrange} /> 이 딜 다시
               열어주세요! &gt;
@@ -2832,12 +2831,11 @@ export default function HomePage() {
               marginBottom: 24,
             }}
           >
-            {SNS_LINKS.map(({ label, icon: Icon, url }) => (
-              <a
+            {SNS_LINKS.map(({ label, icon: Icon }) => (
+              <button
+                type="button"
                 key={label}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={() => showToast(`타임딜 공식 ${label}은(는) 준비 중이에요. 조금만 기다려 주세요!`)}
                 aria-label={label}
                 title={label}
                 style={{
@@ -2851,6 +2849,8 @@ export default function HomePage() {
                   color: TOKENS.colors.textMuted,
                   background: "#ffffff",
                   textDecoration: "none",
+                  cursor: "pointer",
+                  padding: 0,
                   transition: "color 0.15s, border-color 0.15s",
                 }}
                 onMouseEnter={(e) => {
@@ -2865,7 +2865,7 @@ export default function HomePage() {
                 }}
               >
                 <Icon size={16} />
-              </a>
+              </button>
             ))}
           </div>
 

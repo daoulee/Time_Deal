@@ -19,6 +19,14 @@ export function SiteFooter() {
         <Link to="/seller-demo">판매자 센터 데모</Link>
         <Link to="/admin-demo">관리자 콘솔 데모</Link>
       </div>
+      <div className="footer-links" style={{ marginTop: -6, fontSize: 12 }}>
+        <Link to="/about">회사소개</Link>
+        <Link to="/terms">이용약관</Link>
+        <Link to="/privacy"><b>개인정보처리방침</b></Link>
+        <Link to="/email-policy">이메일무단수집거부</Link>
+        <Link to="/notices">공지사항</Link>
+        <Link to="/faq">자주하는 질문</Link>
+      </div>
       <p className="footer-note">카드 결제(토스페이먼츠 테스트 모드), 현장 결제, 결제 없는 예약 중 선택해 주문할 수 있습니다.</p>
     </footer>
   );

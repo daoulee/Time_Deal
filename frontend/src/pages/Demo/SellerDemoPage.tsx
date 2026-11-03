@@ -1,6 +1,6 @@
 /**
  * 로그인 없이 판매자 센터의 화면 구성을 둘러볼 수 있는 데모입니다.
- * 모든 데이터는 샘플이며, 버튼은 실제로 아무것도 변경하지 않습니다.
+ * 모든 데이터는 샘플이며, 버튼은 이 화면 안에서만 바뀌고 서버에는 아무것도 저장하지 않습니다.
  */
 import { useState } from "react";
 import { ArrowLeft, BarChart3, Boxes, ClipboardList, TrendingUp } from "lucide-react";
@@ -32,20 +32,29 @@ const SAMPLE_ORDERS = [
   { id: "TD-20F3B2F", product: "명품 버터 소금빵 4개 세트", customer: "정**", amount: 7900, status: "완료", pickup: "어제 07:40 · 세븐일레븐 뚝섬점" },
   { id: "TD-20F3B2C", product: "수제 쿠키·스콘 박스 × 3", customer: "강**", amount: 22500, status: "완료", pickup: "어제 19:10 · 이마트 성수점" },
 ];
-const demoAction = () => toast("데모 화면에서는 실제로 동작하지 않아요. 진짜 판매자 센터에서 이용해 보세요!");
+const demoAction = () => toast("데모 화면에서는 상품 등록·수정 화면을 열 수 없어요.", { description: "판매자 신청 후 실제 판매자 센터에서 사진과 가격을 입력해 상품을 올릴 수 있어요." });
 
-function DashboardTab() {
-  const metrics: Array<[string, string | number]> = [
-    ["판매 중 상품", 5],
-    ["오늘 픽업 대기", 4],
-    ["이번 달 예약 금액", formatPrice(1284000)],
-    ["답변 대기 문의", 2],
+const showInquiry = () => toast("고객 문의 · 정** 님 \"내일 저녁 6시 픽업 과일 타르트에 '생일 축하해 지민아' 문구 넣어주실 수 있나요?\"", { description: "실제 판매자 센터에서는 여기서 바로 답변을 보낼 수 있어요.", duration: 6000 });
+
+function DashboardTab({ onGo }: { onGo: (tab: Tab) => void }) {
+  const metrics: Array<[string, string | number, () => void]> = [
+    ["판매 중 상품", 5, () => onGo("products")],
+    ["오늘 픽업 대기", 4, () => onGo("orders")],
+    ["이번 달 예약 금액", formatPrice(1284000), () => onGo("orders")],
+    ["답변 대기 문의", 2, showInquiry],
+  ];
+  const activities: Array<[string, string, () => void]> = [
+    ["새 예약이 들어왔어요 · 명품 버터 소금빵 4개 세트 × 2", "3분 전", () => onGo("orders")],
+    ["픽업이 완료됐어요 · 오늘의 베이글 3종", "26분 전", () => onGo("orders")],
+    ["재입고 요청 7건이 모였어요 · 수제 쿠키·스콘 박스", "1시간 전", () => onGo("products")],
+    ["고객 문의가 도착했어요 · 타르트에 생일 문구 넣을 수 있나요?", "2시간 전", showInquiry],
+    ["마감 임박 자동 할인이 적용됐어요 · 우유 생크림 롤케이크 −10%", "3시간 전", () => onGo("products")],
   ];
   return (
     <>
       <div className="metric-grid">
-        {metrics.map(([label, value]) => (
-          <article key={label}>
+        {metrics.map(([label, value, onClick]) => (
+          <article key={label} onClick={onClick} style={{ cursor: "pointer" }}>
             <span><TrendingUp /></span>
             <p>{label}</p>
             <strong>{value}</strong>
@@ -57,11 +66,9 @@ function DashboardTab() {
           <div><p>RECENT ACTIVITY</p><h2>최근 활동</h2></div>
         </div>
         <div className="operation-list">
-          <div className="compact-row"><span>새 예약이 들어왔어요 · 명품 버터 소금빵 4개 세트 × 2</span><small>3분 전</small></div>
-          <div className="compact-row"><span>픽업이 완료됐어요 · 오늘의 베이글 3종</span><small>26분 전</small></div>
-          <div className="compact-row"><span>재입고 요청 7건이 모였어요 · 수제 쿠키·스콘 박스</span><small>1시간 전</small></div>
-          <div className="compact-row"><span>고객 문의가 도착했어요 · 타르트에 생일 문구 넣을 수 있나요?</span><small>2시간 전</small></div>
-          <div className="compact-row"><span>마감 임박 자동 할인이 적용됐어요 · 우유 생크림 롤케이크 −10%</span><small>3시간 전</small></div>
+          {activities.map(([text, time, onClick]) => (
+            <div className="compact-row" key={text} onClick={onClick} style={{ cursor: "pointer" }}><span>{text}</span><small>{time}</small></div>
+          ))}
         </div>
       </section>
     </>
@@ -90,20 +97,30 @@ function ProductsTab() {
   );
 }
 
+const NEXT_STATUS: Record<string, string> = { "접수": "픽업 준비", "픽업 준비": "완료" };
+
 function OrdersTab() {
+  const [orders, setOrders] = useState(SAMPLE_ORDERS);
+  const advance = (id: string) => {
+    const order = orders.find((item) => item.id === id);
+    const next = order && NEXT_STATUS[order.status];
+    if (!order || !next) return;
+    setOrders((prev) => prev.map((item) => (item.id === id ? { ...item, status: next } : item)));
+    toast.success(`주문 ${id}을(를) '${next}' 상태로 바꿨어요. (데모라 저장되지는 않아요)`);
+  };
   return (
     <section className="dashboard-panel">
       <div className="panel-title-row">
         <div><p>FULFILLMENT</p><h2>주문 현황</h2></div>
       </div>
       <div className="operation-list">
-        {SAMPLE_ORDERS.map((item) => (
+        {orders.map((item) => (
           <article className="operation-card" key={item.id}>
             <header>
               <div><strong>{item.product}</strong><small>주문 {item.id} · {item.customer}님 · {formatPrice(item.amount)} · 픽업 {item.pickup}</small></div>
               <StatusBadge type={item.status === "완료" ? "live" : item.status === "픽업 준비" ? "ready" : "mock"}>{item.status}</StatusBadge>
             </header>
-            {item.status !== "완료" && <div className="action-row"><button onClick={demoAction}>다음 단계로</button></div>}
+            {item.status !== "완료" && <div className="action-row"><button onClick={() => advance(item.id)}>다음 단계로</button></div>}
           </article>
         ))}
       </div>
@@ -143,7 +160,7 @@ export default function SellerDemoPage() {
             <div><p>판매자 기능 데모</p><h1>{TABS.find(([key]) => key === tab)?.[1]}</h1><span>실제 판매자 센터와 같은 화면 구성을 로그인 없이 확인해 보세요.</span></div>
           </div>
           <div className="dashboard-content">
-            {tab === "dashboard" && <DashboardTab />}
+            {tab === "dashboard" && <DashboardTab onGo={setTab} />}
             {tab === "products" && <ProductsTab />}
             {tab === "orders" && <OrdersTab />}
           </div>

@@ -4,7 +4,7 @@
  * 개발 fixture·운영 데이터 상태와 접근 가능한 이미지 대체 문구를 유지합니다.
  */
 import { Flame, Heart } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { discountPercentOf, formatPrice, type Product } from "@/shared/catalog";
 import { CountdownTimer } from "@/shared/components/CountdownTimer";
 import { StockGauge } from "@/shared/components/StockGauge";
@@ -20,8 +20,14 @@ export function ProductCard({ product, isWishlisted, onToggleWishlist }: Product
   const { mode } = useCountdown(product.endsAtIso, product.endsAt);
   const expired = mode === "expired";
   const discount = discountPercentOf(product);
+  const navigate = useNavigate();
   return (
-    <article className={`product-card${expired ? " is-expired" : ""}`}>
+    // 사진·상품명 링크 밖(가격·참여 게이지·마감 시간)을 눌러도 상세로 이동합니다.
+    <article
+      className={`product-card${expired ? " is-expired" : ""}`}
+      style={{ cursor: "pointer" }}
+      onClick={(event) => { if (!(event.target as HTMLElement).closest("a, button")) navigate(`/products/${product.id}`); }}
+    >
       <Link to={`/products/${product.id}`} className="product-media" aria-label={`${product.name} 상세 보기`}>
         <img src={product.image} alt={product.name} loading="lazy" />
         <span className={`deal-badge${expired ? " deal-badge-expired" : ""}`}>{expired ? "마감" : `${discount}% OFF`}</span>

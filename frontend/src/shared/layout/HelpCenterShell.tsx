@@ -22,7 +22,7 @@ export function HelpCenterShell({ children }: { children: ReactNode }) {
   const isActive = (to: string) => {
     if (to === "/inquiry?category=bulk") return isBulkInquiry;
     if (to === "/inquiry") return location.pathname === "/inquiry" && !isBulkInquiry;
-    return location.pathname === to;
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
   };
 
   return (

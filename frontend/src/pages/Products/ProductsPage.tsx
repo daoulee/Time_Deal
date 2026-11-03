@@ -36,6 +36,15 @@ function endingSoonKey(product: Product) {
   return product.endsAtIso ?? product.endsAt;
 }
 
+const byEnding = (a: Product, b: Product) => endingSoonKey(a).localeCompare(endingSoonKey(b), "ko");
+const THEME_PICK = {
+  best: { limit: 40, order: (a: Product, b: Product) => b.participants - a.participants },
+  goldentime: { limit: 24, order: (a: Product, b: Product) => discountPercentOf(b) - discountPercentOf(a) || byEnding(a, b) },
+  "closing-today": { limit: 20, order: byEnding },
+  new: { limit: 32, order: (a: Product, b: Product) => a.participants - b.participants },
+  discount: { limit: 36, order: (a: Product, b: Product) => discountPercentOf(b) - discountPercentOf(a) },
+} satisfies Partial<Record<ThemeKey, { limit: number; order: (a: Product, b: Product) => number }>>;
+
 function isThemeKey(value: string | null): value is ThemeKey {
   return !!value && value in THEME_LABEL;
 }
@@ -109,6 +118,11 @@ export default function ProductsPage() {
       }
     }
     if (theme === "morning") list = list.filter(isMorningPick);
+    // 테마마다 기준에 맞는 상위 상품만 골라, 메뉴를 바꾸면 목록 자체가 달라지게 합니다.
+    if (theme && theme in THEME_PICK) {
+      const { limit, order } = THEME_PICK[theme as keyof typeof THEME_PICK];
+      list = [...list].sort(order).slice(0, limit);
+    }
 
     if (priceBucket === "under10") list = list.filter((item) => item.dealPrice < 10000);
     else if (priceBucket === "10to20") list = list.filter((item) => item.dealPrice >= 10000 && item.dealPrice < 20000);
