@@ -157,6 +157,25 @@ mobileRouter.post("/mobile/deals/:id/reserve", requireAuth, async (context) => {
   return context.json(apiSuccess({ orderId, reservation: { id: orderId, user_id: context.var.currentUser!.id, deals: toMobileDeal(deal as unknown as DealRow, locations), reserved_at: new Date().toISOString(), deposit_amount: toMobileDeal(deal as unknown as DealRow, locations).discounted_price, payment_method: parsed.data.paymentMethod ?? "현장결제 예약", status: "진행중", payment_status: "holding" } }), 201);
 });
 
+// ── 리뷰 (웹 마이페이지와 같은 reviews 테이블을 씁니다) ─────────────
+mobileRouter.get("/mobile/reviews", requireAuth, async (context) => {
+  const { data, error } = await getAdminSupabase().from("reviews").select("id,rating,content,created_at,order_items(order_id),products(name)").eq("user_id", context.var.currentUser!.id).neq("status", "deleted").order("created_at", { ascending: false });
+  if (error) return context.json(apiFailure("QUERY_FAILED", "리뷰를 조회하지 못했습니다."), 502);
+  const reviews = ((data ?? []) as unknown as Array<{ id: string; rating: number; content: string; created_at: string; order_items: { order_id: string } | null; products: { name: string } | null }>).map((review) => ({ id: review.id, rating: review.rating, content: review.content, created_at: review.created_at, reservation_id: review.order_items?.order_id ?? null, product_name: review.products?.name ?? "" }));
+  return context.json(apiSuccess({ reviews }));
+});
+
+const reviewInput = z.object({ rating: z.number().int().min(1).max(5), content: z.string().trim().min(2).max(1000) }).strict();
+mobileRouter.post("/mobile/reservations/:id/review", requireAuth, async (context) => {
+  const parsed = reviewInput.safeParse(await context.req.json().catch(() => null));
+  if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "별점과 2자 이상의 후기를 입력해 주세요."), 400);
+  const supabase = getAdminSupabase();
+  const { data: item } = await supabase.from("order_items").select("id,product_id,orders!inner(user_id,order_status,pickup_status)").eq("order_id", context.req.param("id")).eq("orders.user_id", context.var.currentUser!.id).eq("orders.order_status", "completed").eq("orders.pickup_status", "collected").limit(1).maybeSingle();
+  if (!item) return context.json(apiFailure("REVIEW_NOT_ELIGIBLE", "픽업을 완료한 본인 예약에만 리뷰를 남길 수 있어요."), 403);
+  const { data, error } = await supabase.from("reviews").insert({ user_id: context.var.currentUser!.id, product_id: item.product_id, order_item_id: item.id, rating: parsed.data.rating, content: parsed.data.content, image_urls: [] }).select("id").single();
+  return error ? context.json(apiFailure("SAVE_FAILED", "이미 리뷰를 작성했거나 저장에 실패했어요."), 409) : context.json(apiSuccess({ review: data }), 201);
+});
+
 // ── 사장님(판매자) 화면 ───────────────────────────────────────────
 const sellerOnly = requireRole("seller", "admin");
 mobileRouter.get("/mobile/merchant/reservations", sellerOnly, async (context) => {

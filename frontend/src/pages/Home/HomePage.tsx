@@ -223,6 +223,16 @@ export default function HomePage() {
   const [rankingCategoryTab, setRankingCategoryTab] = useState("전체");
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [isCustomerMenuOpen, setIsCustomerMenuOpen] = useState(false);
+  // 고객센터 메뉴는 누르면 열린 채로 고정되고, 다시 누르거나 바깥을 누르면 닫힙니다.
+  const customerMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isCustomerMenuOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!customerMenuRef.current?.contains(event.target as Node)) setIsCustomerMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [isCustomerMenuOpen]);
   const [hoveredCategory, setHoveredCategory] = useState<string>("채소·과일");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [manualAddress, setManualAddress] = useState("");
@@ -556,11 +566,10 @@ export default function HomePage() {
           }}
         />
         <div
-          onMouseEnter={() => setIsCustomerMenuOpen(true)}
-          onMouseLeave={() => setIsCustomerMenuOpen(false)}
+          ref={customerMenuRef}
           style={{ position: "relative" }}
         >
-          <span style={{ cursor: "pointer", color: "#333333" }} onClick={() => setIsCustomerMenuOpen(true)}>
+          <span style={{ cursor: "pointer", color: "#333333" }} onClick={() => setIsCustomerMenuOpen((open) => !open)}>
             고객센터 ▾
           </span>
           {isCustomerMenuOpen && (
