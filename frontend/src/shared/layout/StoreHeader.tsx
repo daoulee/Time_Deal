@@ -446,6 +446,7 @@ export function StoreHeader({ activeTheme }: { activeTheme?: ThemeKey }) {
           >
             <input
               type="text"
+              name="q"
               placeholder="마감 임박 신선식품, 계란, 샐러드 검색"
               value={searchTerm}
               onChange={(event) => {
