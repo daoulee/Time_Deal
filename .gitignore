@@ -46,3 +46,5 @@ app.*.map.json
 /android/app/release
 presentation/node_modules/
 presentation/dist/
+# APM dependencies
+apm_modules/

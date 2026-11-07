@@ -1,0 +1,48 @@
+lockfile_version: '1'
+apm_version: 0.35.0
+dependencies:
+- repo_url: anthropics/skills
+  name: frontend-design
+  host: github.com
+  resolved_commit: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/frontend-design
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/frontend-design
+  - .agents/skills/frontend-design/LICENSE.txt
+  - .agents/skills/frontend-design/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/frontend-design/LICENSE.txt: sha256:0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594
+    .agents/skills/frontend-design/SKILL.md: sha256:d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3
+  content_hash: sha256:89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576
+deployments:
+- kind: project-relative
+  target: codex
+  value: .agents/skills/frontend-design
+  runtime: null
+  scope: project
+  owners:
+  - anthropics/skills/skills/frontend-design
+  active_owner: anthropics/skills/skills/frontend-design
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/frontend-design/LICENSE.txt
+  runtime: null
+  scope: project
+  owners:
+  - anthropics/skills/skills/frontend-design
+  active_owner: anthropics/skills/skills/frontend-design
+  content_hash: sha256:0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594
+- kind: project-relative
+  target: codex
+  value: .agents/skills/frontend-design/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - anthropics/skills/skills/frontend-design
+  active_owner: anthropics/skills/skills/frontend-design
+  content_hash: sha256:d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3
