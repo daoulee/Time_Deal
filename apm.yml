@@ -5,3 +5,10 @@ targets:
 dependencies:
   apm:
     - anthropics/skills/skills/frontend-design#main
+    - flutter/agent-plugins/skills/flutter-build-responsive-layout#main
+    - flutter/agent-plugins/skills/flutter-fix-layout-issues#main
+    - flutter/agent-plugins/skills/flutter-add-widget-test#main
+    - flutter/agent-plugins/skills/flutter-apply-architecture-best-practices#main
+    - dart-lang/skills/skills/dart-run-static-analysis#main
+    - dart-lang/skills/skills/dart-add-unit-test#main
+    - dart-lang/skills/skills/dart-resolve-package-conflicts#main
