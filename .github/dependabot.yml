@@ -1,0 +1,6 @@
+version: 2
+updates:
+  - package-ecosystem: apm
+    directory: /
+    schedule:
+      interval: weekly
