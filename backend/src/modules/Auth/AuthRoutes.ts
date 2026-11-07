@@ -22,10 +22,14 @@ authRouter.post("/sign-up", async (context) => {
   try {
     const { data, error } = await getAnonSupabase().auth.signUp({ email: parsed.data.email, password: parsed.data.password, options: { data: { name: parsed.data.name } } });
     if (error || !data.user) return context.json(apiFailure("SIGNUP_FAILED", translateAuthErrorMessage(error?.message, "회원가입에 실패했습니다.")), 400);
-    if (data.session) await getAdminSupabase().from("profiles").upsert({ id: data.user.id, name: parsed.data.name, role: "user" });
+    if (data.session) {
+      const { error: profileError } = await getAdminSupabase().from("profiles").upsert({ id: data.user.id, name: parsed.data.name, role: "user" }, { onConflict: "id", ignoreDuplicates: true });
+      if (profileError) return context.json(apiFailure("AUTH_UNAVAILABLE", "계정 정보를 확인할 수 없습니다."), 503);
+    }
     return context.json(apiSuccess({ accessToken: data.session?.access_token ?? null, user: userView(data.user, { name: parsed.data.name }) }), 201);
   } catch { return context.json(apiFailure("SUPABASE_UNCONFIGURED", "Supabase 환경변수를 설정하세요."), 503); }
 });
+// [Codex | 2026-11-07] 수정범위: sign-up — 기존 역할을 덮어쓰지 않고 저장 오류 시 차단
 
 authRouter.post("/sign-in", async (context) => {
   const parsed = credentials.safeParse(await context.req.json().catch(() => null));
@@ -33,11 +37,13 @@ authRouter.post("/sign-in", async (context) => {
   try {
     const { data, error } = await getAnonSupabase().auth.signInWithPassword(parsed.data);
     if (error || !data.user || !data.session) return context.json(apiFailure("SIGNIN_FAILED", translateAuthErrorMessage(error?.message, "이메일 또는 비밀번호가 올바르지 않습니다.")), 401);
-    const { data: profile } = await getAdminSupabase().from("profiles").select("name,role,is_suspended").eq("id", data.user.id).maybeSingle();
-    if (profile?.is_suspended) return context.json(apiFailure("ACCOUNT_SUSPENDED", "정지된 계정입니다. 고객센터에 문의해 주세요."), 403);
+    const { data: profile, error: profileError } = await getAdminSupabase().from("profiles").select("name,role,is_suspended").eq("id", data.user.id).maybeSingle();
+    if (profileError || !profile) return context.json(apiFailure("AUTH_UNAVAILABLE", "계정 정보를 확인할 수 없습니다."), 503);
+    if (profile.is_suspended !== false) return context.json(apiFailure("ACCOUNT_SUSPENDED", "정지된 계정입니다. 고객센터에 문의해 주세요."), 403);
     return context.json(apiSuccess({ accessToken: data.session.access_token, user: userView(data.user, profile ?? undefined) }));
   } catch { return context.json(apiFailure("SUPABASE_UNCONFIGURED", "Supabase 환경변수를 설정하세요."), 503); }
 });
+// [Codex | 2026-11-07] 수정범위: sign-in — 프로필 조회 오류 시 인증 결과 반환 차단
 
 // 대회 심사·투표 기간처럼 로그인 없이 체험시킬 때만(GUEST_MODE=true) 열리는 임시 계정 발급 API입니다.
 // 개인정보가 없는 일회용 계정을 만들고 판매자 권한까지만 부여합니다(admin 권한은 절대 부여하지 않음).
