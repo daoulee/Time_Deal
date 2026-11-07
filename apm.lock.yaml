@@ -18,7 +18,238 @@ dependencies:
     .agents/skills/frontend-design/LICENSE.txt: sha256:0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594
     .agents/skills/frontend-design/SKILL.md: sha256:d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3
   content_hash: sha256:89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576
+- repo_url: dart-lang/skills
+  name: dart-add-unit-test
+  host: github.com
+  resolved_commit: fa691671fda391ea1d1f8c7ae61bddc03348ec85
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/dart-add-unit-test
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/dart-add-unit-test
+  - .agents/skills/dart-add-unit-test/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/dart-add-unit-test/SKILL.md: sha256:02428fa20c2cb90afcaf17a52c559641b85eb04f2765a54da2bc72ca858c1fce
+  content_hash: sha256:55dabb37175bc8091a02b7d78d405f7e33173698c48a649ea29748f1186ac9c0
+- repo_url: dart-lang/skills
+  name: dart-resolve-package-conflicts
+  host: github.com
+  resolved_commit: fa691671fda391ea1d1f8c7ae61bddc03348ec85
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/dart-resolve-package-conflicts
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/dart-resolve-package-conflicts
+  - .agents/skills/dart-resolve-package-conflicts/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/dart-resolve-package-conflicts/SKILL.md: sha256:967093ae2bca2784ba6a104dba3821ad809b399ca22071e9afc512915f60fa0a
+  content_hash: sha256:e25c789387152d9d0c437610caa5746e337a789bcb8e9c9887b0425b94b734ef
+- repo_url: dart-lang/skills
+  name: dart-run-static-analysis
+  host: github.com
+  resolved_commit: fa691671fda391ea1d1f8c7ae61bddc03348ec85
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/dart-run-static-analysis
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/dart-run-static-analysis
+  - .agents/skills/dart-run-static-analysis/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/dart-run-static-analysis/SKILL.md: sha256:5e41a03011647bcaee182ddc5d4471122f45f93fec6570480c237077e7f9438c
+  content_hash: sha256:e64ea092e216ecdc9b4a8b49b06d0b9a0b49f680c1116ada1d247b2de3fa6fe1
+- repo_url: flutter/agent-plugins
+  name: flutter-add-widget-test
+  host: github.com
+  resolved_commit: b7d5a0be4195b82fe073620fb52f594b0809eacf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/flutter-add-widget-test
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/flutter-add-widget-test
+  - .agents/skills/flutter-add-widget-test/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/flutter-add-widget-test/SKILL.md: sha256:6c449ebd844e331e661b12630b6ad2a218e84d1bd8ea8377ba9dbd62ffe2798a
+  content_hash: sha256:c4f263c59cfe331ef42dba2aa81e25142aa4f7284518907c6b847e04502676b0
+- repo_url: flutter/agent-plugins
+  name: flutter-apply-architecture-best-practices
+  host: github.com
+  resolved_commit: b7d5a0be4195b82fe073620fb52f594b0809eacf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/flutter-apply-architecture-best-practices
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/flutter-apply-architecture-best-practices
+  - .agents/skills/flutter-apply-architecture-best-practices/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/flutter-apply-architecture-best-practices/SKILL.md: sha256:00497869976a903c83f509a59d4b6a501d409fa711eb8e1f89945921e1983b65
+  content_hash: sha256:2b1b63214d6b153c50aacd4bbcb76ce91dece449de9e06f477f8aad3163d667f
+- repo_url: flutter/agent-plugins
+  name: flutter-build-responsive-layout
+  host: github.com
+  resolved_commit: b7d5a0be4195b82fe073620fb52f594b0809eacf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/flutter-build-responsive-layout
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/flutter-build-responsive-layout
+  - .agents/skills/flutter-build-responsive-layout/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/flutter-build-responsive-layout/SKILL.md: sha256:c7a5d18071c625137cad2def9b13f3579d9bdf0aae29621a1825f12b560394c0
+  content_hash: sha256:f762ea2ee83d4f1f35d9093b41d2520dd024ab80c9539d4860b9ae7f2a4dc6a0
+- repo_url: flutter/agent-plugins
+  name: flutter-fix-layout-issues
+  host: github.com
+  resolved_commit: b7d5a0be4195b82fe073620fb52f594b0809eacf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/flutter-fix-layout-issues
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/flutter-fix-layout-issues
+  - .agents/skills/flutter-fix-layout-issues/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/flutter-fix-layout-issues/SKILL.md: sha256:e82c82b4245ef502bd93bc543d4f5968f4ee8043fa7556ffebcb34f30651fc9b
+  content_hash: sha256:1aaba922c951159118f9b141788f7bb7b8167bdc0bd5c6f0738ebb90c29b9532
 deployments:
+- kind: project-relative
+  target: codex
+  value: .agents/skills/dart-add-unit-test
+  runtime: null
+  scope: project
+  owners:
+  - dart-lang/skills/skills/dart-add-unit-test
+  active_owner: dart-lang/skills/skills/dart-add-unit-test
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/dart-add-unit-test/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - dart-lang/skills/skills/dart-add-unit-test
+  active_owner: dart-lang/skills/skills/dart-add-unit-test
+  content_hash: sha256:02428fa20c2cb90afcaf17a52c559641b85eb04f2765a54da2bc72ca858c1fce
+- kind: project-relative
+  target: codex
+  value: .agents/skills/dart-resolve-package-conflicts
+  runtime: null
+  scope: project
+  owners:
+  - dart-lang/skills/skills/dart-resolve-package-conflicts
+  active_owner: dart-lang/skills/skills/dart-resolve-package-conflicts
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/dart-resolve-package-conflicts/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - dart-lang/skills/skills/dart-resolve-package-conflicts
+  active_owner: dart-lang/skills/skills/dart-resolve-package-conflicts
+  content_hash: sha256:967093ae2bca2784ba6a104dba3821ad809b399ca22071e9afc512915f60fa0a
+- kind: project-relative
+  target: codex
+  value: .agents/skills/dart-run-static-analysis
+  runtime: null
+  scope: project
+  owners:
+  - dart-lang/skills/skills/dart-run-static-analysis
+  active_owner: dart-lang/skills/skills/dart-run-static-analysis
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/dart-run-static-analysis/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - dart-lang/skills/skills/dart-run-static-analysis
+  active_owner: dart-lang/skills/skills/dart-run-static-analysis
+  content_hash: sha256:5e41a03011647bcaee182ddc5d4471122f45f93fec6570480c237077e7f9438c
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-add-widget-test
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-add-widget-test
+  active_owner: flutter/agent-plugins/skills/flutter-add-widget-test
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-add-widget-test/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-add-widget-test
+  active_owner: flutter/agent-plugins/skills/flutter-add-widget-test
+  content_hash: sha256:6c449ebd844e331e661b12630b6ad2a218e84d1bd8ea8377ba9dbd62ffe2798a
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-apply-architecture-best-practices
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-apply-architecture-best-practices
+  active_owner: flutter/agent-plugins/skills/flutter-apply-architecture-best-practices
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-apply-architecture-best-practices/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-apply-architecture-best-practices
+  active_owner: flutter/agent-plugins/skills/flutter-apply-architecture-best-practices
+  content_hash: sha256:00497869976a903c83f509a59d4b6a501d409fa711eb8e1f89945921e1983b65
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-build-responsive-layout
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-build-responsive-layout
+  active_owner: flutter/agent-plugins/skills/flutter-build-responsive-layout
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-build-responsive-layout/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-build-responsive-layout
+  active_owner: flutter/agent-plugins/skills/flutter-build-responsive-layout
+  content_hash: sha256:c7a5d18071c625137cad2def9b13f3579d9bdf0aae29621a1825f12b560394c0
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-fix-layout-issues
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-fix-layout-issues
+  active_owner: flutter/agent-plugins/skills/flutter-fix-layout-issues
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/flutter-fix-layout-issues/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - flutter/agent-plugins/skills/flutter-fix-layout-issues
+  active_owner: flutter/agent-plugins/skills/flutter-fix-layout-issues
+  content_hash: sha256:e82c82b4245ef502bd93bc543d4f5968f4ee8043fa7556ffebcb34f30651fc9b
 - kind: project-relative
   target: codex
   value: .agents/skills/frontend-design
