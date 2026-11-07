@@ -47,14 +47,28 @@ authRouter.post("/guest", async (context) => {
     const email = `guest-${crypto.randomUUID()}@guest.example.com`;
     const password = `${crypto.randomUUID()}${crypto.randomUUID()}`;
     const admin = getAdminSupabase();
+    const { data: allowed, error: quotaError } = await admin.rpc("timedeal_poc_consume_guest_quota");
+    if (quotaError || typeof allowed !== "boolean") return context.json(apiFailure("GUEST_UNAVAILABLE", "체험 모드를 잠시 사용할 수 없습니다."), 503);
+    if (!allowed) return context.json(apiFailure("GUEST_LIMIT", "오늘의 체험 계정 한도에 도달했습니다."), 429);
+    // [Codex | 2026-11-06] 게스트 — 서버 재시작에도 유지되는 일일 생성 상한
     const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: "체험 사용자" } });
     if (created.error || !created.data.user) return context.json(apiFailure("GUEST_FAILED", "체험 계정을 만들지 못했습니다. 잠시 후 다시 시도해 주세요."), 502);
-    await admin.from("profiles").upsert({ id: created.data.user.id, name: "체험 사용자", role: "seller" });
-    const { data, error } = await getAnonSupabase().auth.signInWithPassword({ email, password });
-    if (error || !data.session) return context.json(apiFailure("GUEST_FAILED", "체험 계정으로 로그인하지 못했습니다."), 502);
-    return context.json(apiSuccess({ accessToken: data.session.access_token, user: userView(data.user, { name: "체험 사용자", role: "seller" }), guest: { email, password } }), 201);
+    try {
+      const { error: profileError } = await admin.from("profiles").upsert({ id: created.data.user.id, name: "체험 사용자", role: "seller" });
+      if (profileError) throw new Error("guest profile unavailable");
+      const { data, error } = await getAnonSupabase().auth.signInWithPassword({ email, password });
+      if (error || !data.session || !data.user) throw new Error("guest session unavailable");
+      return context.json(apiSuccess({ accessToken: data.session.access_token, user: userView(data.user, { name: "체험 사용자", role: "seller" }), guest: { email, password } }), 201);
+    } catch {
+      try {
+        const { error: cleanupError } = await admin.auth.admin.deleteUser(created.data.user.id);
+        if (cleanupError) console.warn("guest cleanup failed");
+      } catch { console.warn("guest cleanup failed"); }
+      return context.json(apiFailure("GUEST_FAILED", "체험 계정으로 로그인하지 못했습니다."), 502);
+    }
   } catch { return context.json(apiFailure("SUPABASE_UNCONFIGURED", "Supabase 환경변수를 설정하세요."), 503); }
 });
+// [Codex | 2026-11-06] 게스트 발급 — 판매자 프로필·세션 실패 시 생성 직후 계정 정리
 
 authRouter.get("/session", requireAuth, (context) => context.json(apiSuccess({ accessToken: null, user: context.var.currentUser })));
 authRouter.post("/sign-out", requireAuth, (context) => context.json(apiSuccess({ signedOut: true })));

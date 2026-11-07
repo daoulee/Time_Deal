@@ -5,6 +5,8 @@
 import { randomUUID } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 import { apiFailure } from "../http.js";
+import { bodyLimit } from "hono/body-limit";
+import { config } from "../config.js";
 
 interface RateEntry { count: number; resetAt: number }
 const buckets = new Map<string, RateEntry>();
@@ -21,8 +23,10 @@ export const requestSecurity: MiddlewareHandler = async (context, next) => {
   context.header("content-security-policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
   if (context.req.url.startsWith("https://")) context.header("strict-transport-security", "max-age=31536000; includeSubDomains");
 
-  const contentLength = Number(context.req.header("content-length") ?? "0");
-  if (contentLength > 1_048_576) return context.json(apiFailure("PAYLOAD_TOO_LARGE", "요청 본문은 1MB를 초과할 수 없습니다."), 413);
+  const isAiPhoto = context.req.path === "/api/mobile/merchant/ai/product-draft" && context.req.method === "POST";
+  const maxBody = isAiPhoto ? Math.ceil(config.maxImageBytes / 3) * 4 + 4096 : 1_048_576;
+  const limited = bodyLimit({ maxSize: maxBody, onError: (c) => c.json(apiFailure("PAYLOAD_TOO_LARGE", "요청 본문이 너무 큽니다."), 413) });
+  return limited(context, async () => {
 
   const now = Date.now();
   const isSensitive = /\/api\/(auth|inquiries|community|orders)/.test(context.req.path) && context.req.method !== "GET";
@@ -37,9 +41,12 @@ export const requestSecurity: MiddlewareHandler = async (context, next) => {
   context.header("x-ratelimit-remaining", String(Math.max(0, limit - entry.count)));
   if (entry.count > limit) {
     context.header("retry-after", String(Math.ceil((entry.resetAt - now) / 1000)));
-    return context.json(apiFailure("RATE_LIMITED", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."), 429);
+    context.res = context.json(apiFailure("RATE_LIMITED", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."), 429);
+    return;
   }
 
   if (buckets.size > 10_000) for (const [bucketKey, value] of buckets) if (value.resetAt <= now) buckets.delete(bucketKey);
   await next();
+  });
 };
+// [Codex | 2026-11-06] requestSecurity — 사진 API의 base64 크기와 스트리밍 본문 제한 적용

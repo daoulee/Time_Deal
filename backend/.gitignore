@@ -7,3 +7,6 @@ dist/
 .env.*
 !.env.example
 *.log
+__pycache__/
+*.pyc
+# [Codex | 2026-11-06] 로컬 이관 검증에서 생기는 Python 캐시 제외

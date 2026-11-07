@@ -12,8 +12,12 @@ import { getAdminSupabase } from "../../supabase.js";
 import { computeEffectiveDealPrice } from "../../deal-pricing.js";
 import { ensureUpcomingSlots } from "../../pickup-slots.js";
 import { safeUserMessage } from "../../safe-message.js";
+import { productDraftRouter } from "../AI/ProductDraftRoutes.js";
+import { createDinnerSuggestRouter } from "../AI/DinnerSuggestRoutes.js";
 
 export const mobileRouter = new Hono();
+mobileRouter.route("/mobile/merchant/ai", productDraftRouter);
+// [Codex | 2026-11-06] mobileRouter — 사진 초안 API 연결
 
 // 픽업 거점 좌표(OpenStreetMap 지오코딩 결과). 주소가 없는 거점은 성수동 중심 근처로 표시합니다.
 const LOCATION_COORDS: Record<string, [number, number]> = {
@@ -88,33 +92,44 @@ function toMobileDeal(deal: DealRow, locations: Location[]) {
 
 const DEAL_SELECT = "id,product_id,deal_price,participants,target,ends_at,created_at,auto_discount_enabled,auto_discount_start_hours,auto_discount_max_percent,product:products(id,name,description,category,image,regular_price,inventory,seller_id,status)";
 
-mobileRouter.get("/mobile/deals", async (context) => {
-  if (!isSupabaseConfigured()) return context.json(apiFailure("SUPABASE_UNCONFIGURED", "데이터베이스가 연결되지 않았습니다."), 503);
+export async function loadActiveMobileDeals() {
   const nowIso = new Date().toISOString();
   const [{ data, error }, locations] = await Promise.all([
     getAdminSupabase().from("deals").select(DEAL_SELECT).eq("status", "active").lte("starts_at", nowIso).gt("ends_at", nowIso).order("created_at", { ascending: false }),
     activeLocations(),
   ]);
-  if (error) return context.json(apiFailure("QUERY_FAILED", "타임딜을 조회하지 못했습니다."), 502);
-  const deals = ((data ?? []) as unknown as (DealRow & { product: { status?: string } | null })[])
+  if (error) throw error;
+  return ((data ?? []) as unknown as (DealRow & { product: { status?: string } | null })[])
     .filter((deal) => deal.product && deal.product.status === "active")
     .map((deal) => toMobileDeal(deal, locations));
-  return context.json(apiSuccess({ deals }));
+}
+// [Codex | 2026-11-06] loadActiveMobileDeals — 피드와 AI 추천의 동일한 실제 딜 조회
+
+mobileRouter.get("/mobile/deals", async (context) => {
+  if (!isSupabaseConfigured()) return context.json(apiFailure("SUPABASE_UNCONFIGURED", "데이터베이스가 연결되지 않았습니다."), 503);
+  try { return context.json(apiSuccess({ deals: await loadActiveMobileDeals() })); }
+  catch { return context.json(apiFailure("QUERY_FAILED", "타임딜을 조회하지 못했습니다."), 502); }
 });
+mobileRouter.route("/mobile/ai", createDinnerSuggestRouter(loadActiveMobileDeals));
+// [Codex | 2026-11-06] mobileRouter — 실제 딜 목록 기반 AI 추천 연결
 
 // ── 예약 ─────────────────────────────────────────────────────────
 type OrderRow = {
-  id: string; user_id: string; created_at: string; order_status: string; payment_method: string; total_amount: number; pickup_status?: string;
+  id: string; user_id: string; created_at: string; order_status: string; payment_method: string; payment_status: string; total_amount: number; pickup_status?: string;
   order_items?: { product_id: string; deal_id: string | null; quantity: number; line_total: number; fulfillment_group_id?: string | null }[];
   fulfillment_groups?: { id: string; seller_id: string; status: string; pickup_status: string }[];
 };
 
-function reservationStatus(orderStatus: string, group?: { status: string; pickup_status: string } | null) {
-  if (orderStatus === "cancelled" || group?.status === "cancelled") return { status: "취소", payment_status: "cancelled" };
-  if (group?.pickup_status === "no_show") return { status: "노쇼", payment_status: "captured" };
-  if (group?.status === "completed" || group?.pickup_status === "collected" || orderStatus === "completed") return { status: "픽업완료", payment_status: "released" };
-  return { status: "진행중", payment_status: "holding" };
+export function reservationStatus(orderStatus: string, group?: { status: string; pickup_status: string } | null, paymentMethod = "reservation_only", paymentStatus?: string) {
+  const status = orderStatus === "cancelled" || group?.status === "cancelled" ? "취소"
+    : group?.pickup_status === "no_show" ? "노쇼"
+      : group?.status === "completed" || group?.pickup_status === "collected" || orderStatus === "completed" ? "픽업완료" : "진행중";
+  const payment_status = paymentMethod === "reservation_only" ? "not_applicable"
+    : paymentMethod === "on_site" ? "pay_on_pickup"
+      : paymentMethod === "card" && ["paid", "pending_payment", "payment_failed", "refunded"].includes(paymentStatus ?? "") ? paymentStatus! : "unknown";
+  return { status, payment_status };
 }
+// [Codex | 2026-11-06] reservationStatus — 주문 상태와 결제 상태를 분리해 미승인 가결제·청구 표시 방지
 
 const paymentLabel = (method: string) => (method === "card" ? "신용/체크카드" : method === "on_site" ? "현장결제" : "현장결제 예약");
 
@@ -125,14 +140,14 @@ async function dealsById(ids: string[]) {
 }
 
 mobileRouter.get("/mobile/reservations", requireAuth, async (context) => {
-  const { data, error } = await getAdminSupabase().from("orders").select("id,user_id,created_at,order_status,payment_method,total_amount,order_items(product_id,deal_id,quantity,line_total),fulfillment_groups(id,seller_id,status,pickup_status)").eq("user_id", context.var.currentUser!.id).order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await getAdminSupabase().from("orders").select("id,user_id,created_at,order_status,payment_method,payment_status,total_amount,order_items(product_id,deal_id,quantity,line_total),fulfillment_groups(id,seller_id,status,pickup_status)").eq("user_id", context.var.currentUser!.id).order("created_at", { ascending: false }).limit(100);
   if (error) return context.json(apiFailure("QUERY_FAILED", "예약을 조회하지 못했습니다."), 502);
   const orders = (data ?? []) as OrderRow[];
   const dealMap = await dealsById([...new Set(orders.flatMap((order) => (order.order_items ?? []).map((item) => item.deal_id).filter(Boolean) as string[]))]);
   const reservations = orders.flatMap((order) => {
     const item = order.order_items?.[0]; const deal = item?.deal_id ? dealMap.get(item.deal_id) : undefined;
     if (!deal) return [];
-    return [{ id: order.id, user_id: order.user_id, deals: deal, reserved_at: order.created_at, deposit_amount: order.total_amount, payment_method: paymentLabel(order.payment_method), ...reservationStatus(order.order_status, order.fulfillment_groups?.[0]) }];
+    return [{ id: order.id, user_id: order.user_id, deals: deal, reserved_at: order.created_at, deposit_amount: 0, payment_method: paymentLabel(order.payment_method), ...reservationStatus(order.order_status, order.fulfillment_groups?.[0], order.payment_method, order.payment_status) }];
   });
   return context.json(apiSuccess({ reservations }));
 });
@@ -154,7 +169,9 @@ mobileRouter.post("/mobile/deals/:id/reserve", requireAuth, async (context) => {
   if (error) return context.json(apiFailure("ORDER_CREATE_FAILED", safeUserMessage(error.message, "예약하지 못했습니다. 잠시 후 다시 시도해 주세요.")), 409);
   const result = (data ?? {}) as { order_id?: string; order?: { id?: string } };
   const orderId = result.order_id ?? result.order?.id ?? null;
-  return context.json(apiSuccess({ orderId, reservation: { id: orderId, user_id: context.var.currentUser!.id, deals: toMobileDeal(deal as unknown as DealRow, locations), reserved_at: new Date().toISOString(), deposit_amount: toMobileDeal(deal as unknown as DealRow, locations).discounted_price, payment_method: parsed.data.paymentMethod ?? "현장결제 예약", status: "진행중", payment_status: "holding" } }), 201);
+  if (!orderId) return context.json(apiFailure("ORDER_RESULT_UNKNOWN", "예약 결과를 확인할 수 없습니다. 예약 내역을 확인해 주세요."), 502);
+  // [Codex | 2026-11-06] 예약 결과 — 주문 ID가 없으면 성공으로 표시하지 않음
+  return context.json(apiSuccess({ orderId, reservation: { id: orderId, user_id: context.var.currentUser!.id, deals: toMobileDeal(deal as unknown as DealRow, locations), reserved_at: new Date().toISOString(), deposit_amount: 0, payment_method: "현장결제 예약", status: "진행중", payment_status: "not_applicable" } }), 201);
 });
 
 // ── 리뷰 (웹 마이페이지와 같은 reviews 테이블을 씁니다) ─────────────
@@ -186,14 +203,14 @@ mobileRouter.get("/mobile/merchant/reservations", sellerOnly, async (context) =>
   if (groupIds.length === 0) return context.json(apiSuccess({ reservations: [] }));
   const [{ data: items }, { data: orders }] = await Promise.all([
     supabase.from("order_items").select("fulfillment_group_id,deal_id,line_total").in("fulfillment_group_id", groupIds),
-    supabase.from("orders").select("id,user_id,order_status,payment_method").in("id", orderIds),
+    supabase.from("orders").select("id,user_id,order_status,payment_method,payment_status").in("id", orderIds),
   ]);
   const dealMap = await dealsById([...new Set((items ?? []).map((item) => item.deal_id).filter(Boolean) as string[])]);
   const reservations = (groups ?? []).flatMap((group) => {
     const item = (items ?? []).find((row) => row.fulfillment_group_id === group.id); const order = (orders ?? []).find((row) => row.id === group.order_id);
     const deal = item?.deal_id ? dealMap.get(item.deal_id) : undefined;
     if (!deal || !order) return [];
-    return [{ id: group.id, user_id: order.user_id, deals: deal, reserved_at: group.created_at, deposit_amount: item?.line_total ?? deal.discounted_price, payment_method: paymentLabel(order.payment_method), ...reservationStatus(order.order_status, group) }];
+    return [{ id: group.id, user_id: order.user_id, deals: deal, reserved_at: group.created_at, deposit_amount: 0, payment_method: paymentLabel(order.payment_method), ...reservationStatus(order.order_status, group, order.payment_method, order.payment_status) }];
   });
   return context.json(apiSuccess({ reservations }));
 });
@@ -233,10 +250,14 @@ const merchantDealInput = z.object({
   imagePath: z.string().min(3).max(500).regex(/^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|webp)$/i).optional(),
   imageUrl: z.string().url().startsWith("https://").max(1000).optional(),
 }).strict().refine((input) => input.discountedPrice <= input.originalPrice, "할인가는 정상가를 넘을 수 없습니다.");
+export const isOwnedImagePath = (path: string, userId: string) => path.startsWith(`${userId}/`) && !path.split("/").some((segment) => segment === ".." || segment === "." || segment === "");
+// [Codex | 2026-11-06] isOwnedImagePath — 판매자의 업로드 경로만 등록 허용
 mobileRouter.post("/mobile/merchant/deals", sellerOnly, async (context) => {
   const parsed = merchantDealInput.safeParse(await context.req.json().catch(() => null));
   if (!parsed.success) return context.json(apiFailure("INVALID_INPUT", "딜 정보를 확인하세요.", parsed.error.flatten()), 400);
-  const input = parsed.data; const supabase = getAdminSupabase();
+  const input = parsed.data;
+  if (input.imagePath && !isOwnedImagePath(input.imagePath, context.var.currentUser!.id)) return context.json(apiFailure("INVALID_IMAGE", "본인이 업로드한 사진을 선택해 주세요."), 403);
+  const supabase = getAdminSupabase();
   const image = input.imagePath ? supabase.storage.from(config.productImageBucket).getPublicUrl(input.imagePath).data.publicUrl : input.imageUrl;
   if (!image) return context.json(apiFailure("INVALID_IMAGE", "상품 사진이 필요합니다."), 400);
   const { data: product, error: productError } = await supabase.from("products").insert({ seller_id: context.var.currentUser!.id, name: input.title, description: input.description, category: APP_TO_WEB_CATEGORY[input.category] ?? input.category, image, image_path: input.imagePath ?? null, regular_price: input.originalPrice, inventory: input.stock, status: "active" }).select().single();

@@ -37,7 +37,7 @@ app.use("/api/*", cors({
       "http://localhost:5173",
       "http://localhost:3000"
     ];
-    return !origin || allowedOrigins.includes(origin) ? origin : origin;
+    return !origin || allowedOrigins.includes(origin) ? origin : null;
   },
   allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id"],
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -45,6 +45,7 @@ app.use("/api/*", cors({
   maxAge: 86400,
   credentials: true,
 }));
+// [Codex | 2026-11-06] CORS — 허용하지 않은 Origin을 반사하지 않도록 수정
 
 app.get("/health", (context) => context.json(apiSuccess({ status: "ok", supabaseConfigured: isSupabaseConfigured(), dataMode: isSupabaseConfigured() ? "supabase" : config.enableSampleData ? "sample-public-readonly" : "unconfigured" })));
 app.get("/ready", async (context) => {

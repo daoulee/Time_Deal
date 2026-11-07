@@ -22,6 +22,9 @@ export const config = {
   enableSampleData: read("ENABLE_SAMPLE_DATA") === "true" && nodeEnv !== "production",
   productImageBucket: read("PRODUCT_IMAGE_BUCKET") || "product-images",
   maxImageBytes: Number(read("MAX_IMAGE_BYTES") || 5_242_880),
+  anthropicApiKey: read("ANTHROPIC_API_KEY"),
+  aiModel: read("AI_MODEL") || "claude-opus-5-5",
+  // [Codex | 2026-11-06] AI 설정 — 서버 환경변수에서만 키와 모델 로드
   naverClientId: read("NAVER_CLIENT_ID"),
   naverClientSecret: read("NAVER_CLIENT_SECRET"),
   naverRedirectUri: read("NAVER_REDIRECT_URI"),

@@ -10,4 +10,9 @@ describe("public API without secrets", () => {
   it("does not hide production configuration errors with sample catalog", async () => { const response = await app.request("/api/catalog"); expect(response.status).toBe(503); expect((await response.json()).error.code).toBe("SUPABASE_UNCONFIGURED"); });
   it("protects mutations before reading request bodies", async () => { expect((await app.request("/api/reviews", { method: "POST", body: "{}" })).status).toBe(401); });
   it("does not expose the unfinished Naver callback", async () => { expect((await app.request("/api/auth/naver/callback")).status).toBe(404); });
+  it("does not allow arbitrary browser origins", async () => {
+    const response = await app.request("/api/mobile/deals", { headers: { origin: "https://untrusted.example" } });
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+  });
 });
+// [Codex | 2026-11-06] CORS 허용 목록 검사 회귀 테스트
