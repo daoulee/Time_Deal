@@ -1,0 +1,7 @@
+name: time-deal-agent-skills
+version: 0.1.0
+targets:
+  - codex
+dependencies:
+  apm:
+    - anthropics/skills/skills/frontend-design#main
