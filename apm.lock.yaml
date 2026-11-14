@@ -1,5 +1,5 @@
 lockfile_version: '1'
-apm_version: 0.35.0
+apm_version: 0.34.0
 dependencies:
 - repo_url: anthropics/skills
   name: frontend-design
@@ -111,7 +111,7 @@ dependencies:
 - repo_url: flutter/agent-plugins
   name: flutter-fix-layout-issues
   host: github.com
-  resolved_commit: b7d5a0be4195b82fe073620fb52f594b0809eacf
+  resolved_commit: e5a88d2be19cbf7ba1ef974375e5846492aca2ac
   resolved_ref: main
   version: unknown
   virtual_path: skills/flutter-fix-layout-issues
