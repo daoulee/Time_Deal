@@ -1,10 +1,10 @@
 lockfile_version: '1'
-apm_version: 0.35.0
+apm_version: 0.34.0
 dependencies:
 - repo_url: anthropics/skills
   name: frontend-design
   host: github.com
-  resolved_commit: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+  resolved_commit: 1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064
   resolved_ref: main
   version: unknown
   virtual_path: skills/frontend-design
