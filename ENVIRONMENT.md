@@ -80,7 +80,6 @@ npm run lint && npm run typecheck && npm run test && npm run build
 |---|---|
 | `VITE_API_BASE_URL` | 백엔드(Render) 주소 |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Supabase Auth(카카오 로그인 등)용 공개 키 — 브라우저에 노출돼도 되는 키만 사용 |
-| `VITE_GOOGLE_MAPS_API_KEY` | 지도 페이지용 |
 | `VITE_TOSS_CLIENT_KEY` | 결제위젯용 (`test_ck_...`) |
 | `VITE_ENABLE_SAMPLE_DATA` | 운영에서는 항상 `false` |
 

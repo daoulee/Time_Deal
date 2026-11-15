@@ -4,7 +4,6 @@
  * localStorage에 저장해 새로고침 후에도 유지되고, 직접 선택했던 동네는 "자주 찾는 동네" 이력으로 남습니다.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isGoogleMapsConfigured, loadGoogleMaps } from "@/lib/google-maps-loader";
 import { authClient } from "@/lib/auth";
 import { getMyProfile, updateMyProfile } from "@/lib/api";
 
@@ -111,11 +110,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           const coords: LatLng = { lat: latitude, lng: longitude };
           const coordLabel = `위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`;
           const finish = (label: string) => { applyLocation(label, coords); pushLocationToServer(label); setLocating(false); resolve(label); };
-          if (!isGoogleMapsConfigured) { finish(coordLabel); return; }
-          void loadGoogleMaps()
-            .then((maps) => new maps.Geocoder().geocode({ location: coords }))
-            .then((response) => finish(response.results[0]?.formatted_address ?? coordLabel))
-            .catch(() => finish(coordLabel));
+          // Google 역지오코딩(과금)을 쓰지 않고 좌표 표시로 끝냅니다.
+          finish(coordLabel);
         },
         (geoError) => {
           setLocating(false);
