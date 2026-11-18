@@ -77,3 +77,13 @@ describe("dinner suggest API (Gemini)", () => {
   });
 });
 // [Claude | 2026-11-18] Gemini 기반 AI API 권한·검증·한도 테스트
+
+describe("Gemini model fallback", () => {
+  it("moves to the next model when one is retired (404)", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 404 }))
+      .mockResolvedValueOnce(gemini({ picks: [{ dealId: "a", reason: "availability" }] }));
+    const res = await post(makeApp("user", "f1"), "/c/dinner-suggest", { query: "저녁" });
+    expect(res.status).toBe(200);
+    expect(String(fetchMock.mock.calls[1][0])).not.toBe(String(fetchMock.mock.calls[0][0]));
+  });
+});

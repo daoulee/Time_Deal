@@ -24,7 +24,7 @@ export const config = {
   maxImageBytes: Number(read("MAX_IMAGE_BYTES") || 5_242_880),
   // AI 기능(Gemini 무료 등급). 키가 없으면 AI API는 503으로 꺼집니다. 실키는 Render 환경변수에만 둡니다.
   geminiApiKey: read("GEMINI_API_KEY"),
-  aiModel: read("AI_MODEL") || "gemini-2.5-flash",
+  aiModel: read("AI_MODEL"),
   naverClientId: read("NAVER_CLIENT_ID"),
   naverClientSecret: read("NAVER_CLIENT_SECRET"),
   naverRedirectUri: read("NAVER_REDIRECT_URI"),
