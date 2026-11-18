@@ -21,11 +21,19 @@ export async function geminiJson(parts: GeminiPart[], responseSchema: object, sy
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new GeminiError(`gemini http ${response.status}`);
+  if (!response.ok) {
+    // 원인 확인용 로그(키는 헤더로만 보내므로 응답 본문에 키가 들어가지 않음)
+    const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 300);
+    console.warn(`[gemini] model=${config.aiModel} status=${response.status} ${detail}`);
+    throw new GeminiError(`gemini http ${response.status}`);
+  }
   const data = await response.json() as { candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[] };
   const candidate = data.candidates?.[0];
   const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
-  if (!text || (candidate?.finishReason && candidate.finishReason !== "STOP")) throw new GeminiError("gemini no result");
+  if (!text || (candidate?.finishReason && candidate.finishReason !== "STOP")) {
+    console.warn(`[gemini] model=${config.aiModel} no result finishReason=${candidate?.finishReason ?? "none"}`);
+    throw new GeminiError("gemini no result");
+  }
   try { return JSON.parse(text); } catch { throw new GeminiError("gemini invalid json"); }
 }
 
