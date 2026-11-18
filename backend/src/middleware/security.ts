@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 import { apiFailure } from "../http.js";
+import { config } from "../config.js";
 
 interface RateEntry { count: number; resetAt: number }
 const buckets = new Map<string, RateEntry>();
@@ -22,7 +23,10 @@ export const requestSecurity: MiddlewareHandler = async (context, next) => {
   if (context.req.url.startsWith("https://")) context.header("strict-transport-security", "max-age=31536000; includeSubDomains");
 
   const contentLength = Number(context.req.header("content-length") ?? "0");
-  if (contentLength > 1_048_576) return context.json(apiFailure("PAYLOAD_TOO_LARGE", "요청 본문은 1MB를 초과할 수 없습니다."), 413);
+  // AI 사진 초안 API만 사진(base64) 크기만큼 본문을 더 허용합니다.
+  const isAiPhoto = context.req.path === "/api/mobile/merchant/ai/product-draft" && context.req.method === "POST";
+  const maxBody = isAiPhoto ? Math.ceil(config.maxImageBytes / 3) * 4 + 4096 : 1_048_576;
+  if (contentLength > maxBody) return context.json(apiFailure("PAYLOAD_TOO_LARGE", "요청 본문이 너무 큽니다."), 413);
 
   const now = Date.now();
   const isSensitive = /\/api\/(auth|inquiries|community|orders)/.test(context.req.path) && context.req.method !== "GET";

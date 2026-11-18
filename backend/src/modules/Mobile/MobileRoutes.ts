@@ -12,6 +12,8 @@ import { getAdminSupabase } from "../../supabase.js";
 import { computeEffectiveDealPrice } from "../../deal-pricing.js";
 import { ensureUpcomingSlots } from "../../pickup-slots.js";
 import { safeUserMessage } from "../../safe-message.js";
+import { productDraftRouter } from "../AI/ProductDraftRoutes.js";
+import { createDinnerSuggestRouter } from "../AI/DinnerSuggestRoutes.js";
 
 export const mobileRouter = new Hono();
 
@@ -88,19 +90,27 @@ function toMobileDeal(deal: DealRow, locations: Location[]) {
 
 const DEAL_SELECT = "id,product_id,deal_price,participants,target,ends_at,created_at,auto_discount_enabled,auto_discount_start_hours,auto_discount_max_percent,product:products(id,name,description,category,image,regular_price,inventory,seller_id,status)";
 
-mobileRouter.get("/mobile/deals", async (context) => {
-  if (!isSupabaseConfigured()) return context.json(apiFailure("SUPABASE_UNCONFIGURED", "데이터베이스가 연결되지 않았습니다."), 503);
+export async function loadActiveMobileDeals() {
   const nowIso = new Date().toISOString();
   const [{ data, error }, locations] = await Promise.all([
     getAdminSupabase().from("deals").select(DEAL_SELECT).eq("status", "active").lte("starts_at", nowIso).gt("ends_at", nowIso).order("created_at", { ascending: false }),
     activeLocations(),
   ]);
-  if (error) return context.json(apiFailure("QUERY_FAILED", "타임딜을 조회하지 못했습니다."), 502);
-  const deals = ((data ?? []) as unknown as (DealRow & { product: { status?: string } | null })[])
+  if (error) throw error;
+  return ((data ?? []) as unknown as (DealRow & { product: { status?: string } | null })[])
     .filter((deal) => deal.product && deal.product.status === "active")
     .map((deal) => toMobileDeal(deal, locations));
-  return context.json(apiSuccess({ deals }));
+}
+// [Claude | 2026-11-18] loadActiveMobileDeals — 딜 피드와 AI 추천이 같은 실제 딜 조회를 쓰도록 분리
+
+mobileRouter.get("/mobile/deals", async (context) => {
+  if (!isSupabaseConfigured()) return context.json(apiFailure("SUPABASE_UNCONFIGURED", "데이터베이스가 연결되지 않았습니다."), 503);
+  try { return context.json(apiSuccess({ deals: await loadActiveMobileDeals() })); }
+  catch { return context.json(apiFailure("QUERY_FAILED", "타임딜을 조회하지 못했습니다."), 502); }
 });
+mobileRouter.route("/mobile/ai", createDinnerSuggestRouter(loadActiveMobileDeals));
+mobileRouter.route("/mobile/merchant/ai", productDraftRouter);
+// [Claude | 2026-11-18] AI 추천·사진 초안 API 연결
 
 // ── 예약 ─────────────────────────────────────────────────────────
 type OrderRow = {

@@ -26,3 +26,7 @@ services:
         sync: false
       - key: PUBLIC_BACKEND_URL
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
